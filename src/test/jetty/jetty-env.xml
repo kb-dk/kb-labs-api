@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Configure class="org.eclipse.jetty.webapp.WebAppContext">
+
+    <New id="logback" class="org.eclipse.jetty.plus.jndi.EnvEntry">
+        <Arg>${project.artifactId}-logback-config</Arg>
+        <Arg type="java.lang.String">
+            ${basedir}/target/jetty-res/logback.xml
+        </Arg>
+        <Arg type="boolean">true</Arg>
+    </New>
+
+    <New id="config" class="org.eclipse.jetty.plus.jndi.EnvEntry">
+        <Arg>application-config</Arg>
+        <Arg type="java.lang.String">
+            ${basedir}/conf/${project.artifactId}.yaml
+        </Arg>
+        <Arg type="boolean">true</Arg>
+    </New>
+
+</Configure>

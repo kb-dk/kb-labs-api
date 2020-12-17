@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.sbforge</groupId>
+        <artifactId>sbforge-parent</artifactId>
+        <version>22</version>
+    </parent>
+
+    <groupId>dk.kb.labsapi</groupId>
+    <artifactId>labsapi</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>war</packaging>
+
+    <repositories>
+        <repository>
+            <id>sbforge-nexus</id>
+            <url>https://sbforge.org/nexus/content/groups/public</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <scm>
+        <url>https://sbprojects.statsbiblioteket.dk/stash/projects/ARK/repos/labsapi-template/browse</url>
+        <connection>scm:git:ssh://git@github.com:kb-dk/kb-labs-api.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com:kb-dk/kb-labs-api.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <licenses>
+        <!--SBForge stuff should have a license-->
+        <license>
+            <name>${license.name}</name>
+            <url>${license.url}</url>
+        </license>
+    </licenses>
+
+    <properties>
+        <!-- Specify java version here, to support forbiddenapis plugin -->
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <!-- Enable forbiddenapis plugin, do disable set to none -->
+        <api.check.phase>process-test-classes</api.check.phase>
+        <!--Specify the licenses here, so they can be picked up by openAPI-->
+        <license.name>Apache License, Version 2.0</license.name>
+        <license.url>https://www.apache.org/licenses/LICENSE-2.0.txt</license.url>
+
+        <project.package>dk.kb.labsapi</project.package>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>dk.kb.util</groupId>
+            <artifactId>kb-util</artifactId>
+            <version>1.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>4.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+
+        <!-- Apache CXF and servlet stuff -->
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>javax.ws.rs-api</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-frontend-jaxrs</artifactId>
+            <version>3.3.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-transports-http</artifactId>
+            <version>3.3.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.jaxrs</groupId>
+            <artifactId>jackson-jaxrs-json-provider</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-rs-client</artifactId>
+            <version>3.3.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-rs-service-description</artifactId>
+            <version>3.3.5</version>
+        </dependency>
+        <dependency>
+            <!--For the openapi endpoint /openapi.json-->
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-rs-service-description-openapi-v3</artifactId>
+            <version>3.3.5</version>
+        </dependency>
+        <dependency>
+            <!--For the swagger UI endpoint /api-docs?url=openapi.json-->
+            <groupId>org.webjars</groupId>
+            <artifactId>swagger-ui</artifactId>
+            <version>3.32.5</version>
+        </dependency>
+
+        <!-- openapitools dependency -->
+        <dependency>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-jaxrs</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>jsr311-api</artifactId>
+                    <groupId>javax.ws.rs</groupId>
+                </exclusion>
+            </exclusions>
+            <version>1.5.23</version>
+        </dependency>
+
+
+        <!-- Logging dependencies -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.29</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
+            <version>1.7.29</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
+            <version>1.7.29</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
+            <version>1.7.29</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+
+        <!-- Unit test -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.5.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.mockito/mockito-junit-jupiter -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>3.2.4</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.mock-server/mockserver-junit-jupiter -->
+        <dependency>
+            <groupId>org.mock-server</groupId>
+            <artifactId>mockserver-junit-jupiter</artifactId>
+            <version>5.9.0</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider -->
+
+
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/openapi</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <!--This ensures that the openapi.yaml have been filtered and copied to target/classes
+                        BEFORE being used by the openapi generator above-->
+                        <phase>generate-sources</phase>
+                        <!--as both the openapi codegen and this execution happens at phase generate-sources, ensure
+                        this happens first by having this placed above codegen in the pom-->
+                        <goals>
+                            <goal>resources</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>copy-resources</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/jetty-res</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/test/jetty</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>4.2.2</version>
+                <configuration>
+                    <generatorName>jaxrs-cxf-extended</generatorName>
+                    <inputSpec>${project.build.outputDirectory}/openapi.yaml</inputSpec>
+                    <modelNameSuffix>Dto</modelNameSuffix>
+                    <generateSupportingFiles>false</generateSupportingFiles>
+                    <generateApiTests>false</generateApiTests>
+                    <generateModelDocumentation>true</generateModelDocumentation>
+                    <generateApis>true</generateApis>
+                    <output>${project.basedir}</output>
+                    <templateDirectory>src/main/templates/</templateDirectory>
+
+                    <configOptions>
+                        <!--https://openapi-generator.tech/docs/generators/jaxrs-cxf-extended/-->
+                        <!--<sourceFolder>generated-sources</sourceFolder>-->
+                        <sourceFolder>target/generated-sources</sourceFolder>
+                        <useSwaggerFeature>true</useSwaggerFeature>
+                        <useSwaggerUI>true</useSwaggerUI>
+                        <apiPackage>${project.package}.api</apiPackage>
+                        <modelPackage>${project.package}.model</modelPackage>
+                        <dateLibrary>threetenbp</dateLibrary>
+                        <implFolder>src/main/java</implFolder>
+<!--                        <useGenericResponse>true</useGenericResponse>-->
+
+                    </configOptions>
+                </configuration>
+                <executions>
+                    <execution>
+                        <!-- Generate API and Model-files from the OpenAPI specification (positioned under the target/generated-sources/ folder).
+                             These files are overwritten on all builds, so they should never be edited manually. -->
+                        <id>generate api classes</id>
+
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <ignoreFileOverride>
+                                ${project.basedir}/.openapi-codegen-ignore-api
+                            </ignoreFileOverride>
+
+                            <configOptions>
+                                <!-- Setting this to true overwrites existing implementations.
+                                     Only set it temporarily when creating a new project -->
+                                <generateOperationBody>false</generateOperationBody>
+                            </configOptions>
+
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <!-- The purpose it to generate skeleton implementation classes, if such classes are not already existing.
+                         Since we always want to overwrite existing api & model-files when the OpenAPI specification is changed,
+                         but never want to overwrite existing implementation-files, we need to do the generation in 2 steps. -->
+
+                        <id>generate skeleton impl</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <ignoreFileOverride>
+                                ${project.basedir}/.openapi-codegen-ignore-impl
+                            </ignoreFileOverride>
+
+                            <configOptions>
+                                <generateOperationBody>true</generateOperationBody>
+                            </configOptions>
+
+                            <skipOverwrite>true</skipOverwrite>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate openapi.json</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <generatorName>openapi</generatorName>
+                            <output>${project.build.outputDirectory}</output>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <configuration>
+                    <webXml>src/main/webapp/WEB-INF/web.xml</webXml>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        </manifest>
+                    </archive>
+                    <!--Enable maven filtering for the web.xml-->
+                    <filteringDeploymentDescriptors>true</filteringDeploymentDescriptors>
+                    <webResources>
+                        <resource>
+                            <!--Include the openapi spec files so we can serve them-->
+                            <directory>${project.build.outputDirectory}</directory>
+                            <targetPath>.</targetPath>
+                            <includes>
+                                <include>openapi.json</include>
+                                <include>openapi.yaml</include>
+                            </includes>
+                        </resource>
+                    </webResources>
+                </configuration>
+            </plugin>
+
+
+            <!-- Used only for mvn jetty:run jetty:run-war -->
+            <plugin>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-maven-plugin</artifactId>
+                <version>10.0.0.alpha1</version>
+                <configuration>
+                    <useTestScope>true</useTestScope>
+                    <webApp>
+                        <contextPath>/${project.artifactId}/</contextPath>
+                        <descriptor>${project.build.finalName}/WEB-INF/web.xml</descriptor>
+                        <jettyEnvXml>${project.basedir}/target/jetty-res/jetty-env.xml</jettyEnvXml>
+                    </webApp>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

@@ -1,0 +1,8 @@
+{{#useGenericResponse}}Response{{/useGenericResponse}}{{!
+}}{{^useGenericResponse}}{{!
+    }}{{#vendorExtensions.x-useGenericResponse}}Response{{/vendorExtensions.x-useGenericResponse}}{{!
+    }}{{^vendorExtensions.x-useGenericResponse}}{{!
+        }}{{#vendorExtensions.x-streamingOutput}}javax.ws.rs.core.StreamingOutput{{/vendorExtensions.x-streamingOutput}}{{!
+        }}{{^vendorExtensions.x-streamingOutput}}{{{returnType}}}{{/vendorExtensions.x-streamingOutput}}{{!
+    }}{{/vendorExtensions.x-useGenericResponse}}{{!
+}}{{/useGenericResponse}}

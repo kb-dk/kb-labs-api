@@ -1,0 +1,56 @@
+openapi: 3.0.2
+info:
+  version: "${project.version}"
+  title: "${project.name}"
+  description: |
+    ${project.description}
+  contact:
+    email: "${user.name}@kb.dk"
+  license:
+    name: "${license.name}"
+    url: "${license.url}"
+servers:
+  #  /api must match servlet-mapping in web.xml
+  - url: "/${project.artifactId}/api"
+    description: "Current server"
+paths:
+  /ping:
+    get:
+      tags:
+        - "${project.name}"
+      summary: Ping the server to check if the server is reachable.
+      operationId: ping
+      x-useGenericResponse: false # If enabled the method will return Response
+      x-streamingOutput: false # If enabled the method will return StreamingOutput.
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+        '406':
+          description: Not Acceptable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Error
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string

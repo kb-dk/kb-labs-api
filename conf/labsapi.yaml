@@ -1,0 +1,6 @@
+config:
+  helloLines:
+    - Hello
+    - World
+    - from
+    - java-template
