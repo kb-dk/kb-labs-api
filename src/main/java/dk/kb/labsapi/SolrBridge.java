@@ -89,9 +89,10 @@ public class SolrBridge {
     }
 
     public static StreamingOutput export(String query, Collection<String> fields) {
+        getClient(); // Placeholder to set up the service, needed until a proper implementation
         if (exportSort == null) {
             throw new InternalServiceException(
-                    "No export sort (labsapi.aviser.export.solr.sort) specified in config. Unable to export");
+                    "Error: Unable to export: No export sort (labsapi.aviser.export.solr.sort) specified in config");
         }
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
@@ -105,6 +106,7 @@ public class SolrBridge {
     }
 
     public static long countHits(String query) {
+        getClient(); // Placeholder to set up the service, needed until a proper implementation
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
                 // Filter is added automatically by the SolrClient
