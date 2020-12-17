@@ -1,6 +1,7 @@
 package dk.kb.labsapi.api.impl;
 
 import dk.kb.labsapi.api.*;
+import java.util.ArrayList;
 import dk.kb.labsapi.model.ErrorDto;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,66 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
 
 
     /**
+     * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the Royal Danish Library). The export is restricted to newspapers older than 100 years and will be sorted by publication date.
+     * 
+     * @param query: A query for the newspapers to export metadata for. The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis A filter restricting the result to newspapers older than 100 years will be automatically applied
+     * 
+     * @param fields: The fields to export.
+     * 
+     * @param dryrun: Dry run: If true, only the count of the number of matching articles is returned
+     * 
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   <li>code = 400, message = "Invalid Argument", response = String.class</li>
+      *   <li>code = 406, message = "Not Acceptable", response = ErrorDto.class</li>
+      *   <li>code = 500, message = "Internal Error", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Boolean dryrun) throws ServiceException {
+        // TODO: Implement...
+    
+        
+        try{ 
+            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
+            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    
+    }
+
+    /**
+     * Perform a search with the given query, returning only the number of hits. Typically used to get an estimate for the result size for an export
+     * 
+     * @param query: A query for the newspaper articles. The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result. A filter restricting the result to newspapers older than 100 years will be automatically applied
+     * 
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = Long.class</li>
+      *   <li>code = 500, message = "Internal Error", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public javax.ws.rs.core.StreamingOutput hitCount(String query) throws ServiceException {
+        // TODO: Implement...
+    
+        
+        try{ 
+            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
+            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    
+    }
+
+    /**
      * Ping the server to check if the server is reachable.
      * 
      * @return <ul>
@@ -104,7 +165,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "UGmyP";
+            String response = "IB2zAt3";
         return response;
         } catch (Exception e){
             throw handleException(e);

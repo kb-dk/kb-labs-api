@@ -1,6 +1,17 @@
-config:
-  helloLines:
-    - Hello
-    - World
-    - from
-    - java-template
+labsapi:
+  aviser:
+    solr:
+      url: 'http://localhost:50001/solr' # Mandatory
+      collection: 'foo'
+      filter: 'recordBase:aviser AND py:[* TO 1919]'
+    export:
+      solr:
+        pagesize: 500
+        # TODO: Find real date field
+        sort: 'py asc, recordID asc' # Mandatory
+      # Should mirror the ones listed in openapi.yaml
+      fields: # Mandatory
+        - link
+        - recordID
+        - pwa
+        - text
