@@ -82,8 +82,8 @@ paths:
             items:
               type: string
               enum:  ['comments', 'header', 'content']
-            default: ['comments', 'header', 'content']
-            example: ['comments', 'header', 'content']
+            default: ['header', 'content']
+            example: ['header', 'content']
 
       x-streamingOutput: true
       responses:

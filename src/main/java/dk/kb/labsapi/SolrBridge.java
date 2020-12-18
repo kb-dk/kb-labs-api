@@ -66,7 +66,8 @@ public class SolrBridge {
     private static String exportSort = null;
 
     public enum STRUCTURE { comments, header, content ;
-        public static Set<STRUCTURE> DEFAULT = new HashSet<>(Arrays.asList(comments, header, content)) ;
+        public static Set<STRUCTURE> DEFAULT = new HashSet<>(Arrays.asList(header, content)) ;
+        public static Set<STRUCTURE> ALL = new HashSet<>(Arrays.asList(comments, header, content)) ;
         public static Set<STRUCTURE> valueOf(List<String> vals) {
             return vals == null || vals.isEmpty() ?
                     DEFAULT :
@@ -173,7 +174,7 @@ public class SolrBridge {
         String cursorMark = CursorMarkParams.CURSOR_MARK_START;
         ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
         AtomicLong counter = new AtomicLong(0);
-        while (true) {
+        while (counter.get() < max) {
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
             QueryResponse response = solrClient.query(request);
             writeResponse(response, fields, counter, max, csvPrinter);
@@ -198,6 +199,7 @@ public class SolrBridge {
                     map(SolrBridge::escapeString).
                     collect(Collectors.toList()));
         }
+        counter.addAndGet(Math.min(limit, docCount));
     }
 
     // CSVWriter should handle newline escape but doesn't!?
