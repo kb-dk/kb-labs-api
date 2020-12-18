@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -106,7 +107,7 @@ public class SolrBridge {
         return solrClient;
     }
 
-    public static StreamingOutput export(String query, Collection<String> fields, Set<STRUCTURE> structure) {
+    public static StreamingOutput export(String query, Collection<String> fields, long max, Set<STRUCTURE> structure) {
         getClient(); // Placeholder to set up the service, needed until a proper implementation
         if (exportSort == null) {
             throw new InternalServiceException(
@@ -116,11 +117,11 @@ public class SolrBridge {
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
                 // Filter is added automatically by the SolrClient
-                CommonParams.ROWS, Integer.toString(pageSize),
+                CommonParams.ROWS, Integer.toString((int) Math.min(max, pageSize)),
                 CommonParams.SORT, exportSort,
                  CommonParams.FL, Strings.join(fields, ",")); // TODO: If link is present, retrieve recordID
 
-        return streamResponse(request, query, fields, structure);
+        return streamResponse(request, query, fields, max, structure);
     }
 
     public static long countHits(String query) {
@@ -139,7 +140,7 @@ public class SolrBridge {
     }
 
     private static StreamingOutput streamResponse(
-            SolrParams request, String query, Collection<String> fields, Set<STRUCTURE> structure) {
+            SolrParams request, String query, Collection<String> fields, long max, Set<STRUCTURE> structure) {
         return output -> {
             try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8)) {
                 if (structure.contains(STRUCTURE.comments)) {
@@ -156,7 +157,7 @@ public class SolrBridge {
                 }
                 try (CSVPrinter printer = new CSVPrinter(os, csvFormat)) {
                     if (structure.contains(STRUCTURE.content)) {
-                        searchAndRetrieve(request, fields, printer);
+                        searchAndRetrieve(request, fields, max, printer);
                     }
                 } catch (IOException e) {
                     log.error("IOException writing Solr response for " + request);
@@ -167,25 +168,31 @@ public class SolrBridge {
         };
     }
 
-    private static void searchAndRetrieve(SolrParams baseRequest, Collection<String> fields, CSVPrinter csvPrinter)
+    private static void searchAndRetrieve(SolrParams baseRequest, Collection<String> fields, long max, CSVPrinter csvPrinter)
             throws IOException, SolrServerException {
         String cursorMark = CursorMarkParams.CURSOR_MARK_START;
         ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
+        AtomicLong counter = new AtomicLong(0);
         while (true) {
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
             QueryResponse response = solrClient.query(request);
-            writeResponse(response, fields, csvPrinter);
-            if (cursorMark.equals(response.getNextCursorMark())) {
+            writeResponse(response, fields, counter, max, csvPrinter);
+            if (cursorMark.equals(response.getNextCursorMark()) || counter.get() >= max) {
                 return;
             }
             cursorMark = response.getNextCursorMark();
         }
     }
 
-    private static void writeResponse(QueryResponse response, Collection<String> fields, CSVPrinter csvPrinter)
+    private static void writeResponse(
+            QueryResponse response, Collection<String> fields, AtomicLong counter, long max, CSVPrinter csvPrinter)
             throws IOException {
+        int docCount = response.getResults().size();
+        long limit = docCount <= max - counter.get() ? Long.MAX_VALUE :
+                docCount - (max - counter.get());
         for (SolrDocument doc: response.getResults()) {
             csvPrinter.printRecord(fields.stream().
+                    limit(limit).
                     map(doc::get).
                     map(SolrBridge::flattenStringList).
                     map(SolrBridge::escapeString).

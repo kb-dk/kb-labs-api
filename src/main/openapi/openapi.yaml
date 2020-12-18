@@ -60,14 +60,16 @@ paths:
               enum:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
             default:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
             example:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
-        - name: dryrun
+        - name: max
           in: query
           required: false
-          description: 'Dry run: If true, only the count of the number of matching articles is returned'
+          description: 'The maximum number of articles to return, -1 to return all articles. *WARNING* setting this to
+                        more than 50 when using the Swagger-UI to test will probably result in the browser locking up'
           schema:
-            type: boolean
-            default: false
-            example: false
+            type: integer
+            format: int64
+            default: 10
+            example: 10
         - name: structure
           in: query
           required: false

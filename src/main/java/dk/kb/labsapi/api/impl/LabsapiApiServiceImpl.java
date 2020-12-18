@@ -90,13 +90,13 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     /**
      * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the Royal Danish Library). The export is restricted to newspapers older than 100 years and will be sorted by publication date.
      * 
-     * @param query: A query for the newspapers to export metadata for. The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis A filter restricting the result to newspapers older than 100 years will be automatically applied
+     * @param query: A query for the newspapers to export metadata for.\\n The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis\\n A filter restricting the result to newspapers older than 100 years will be automatically applied
      * 
-     * @param fields: The fields to export. * link: A hyperlink to the Mediestream page for the article * recordID: The unique ID of the article in the Mediestream system * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100 * text: The text content for the article
+     * @param fields: The fields to export.\\n * link: A hyperlink to the Mediestream page for the article\\n * recordID: The unique ID of the article in the Mediestream system\\n * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS\\n * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100\\n * cer: \\n * fulltext_org: The original OCR text for the article\\n * pageUUID: The ID for the page that the article appears on\\n * editionUUID: The ID for the edition that the page with the article belongs to\\n * editionId: Human readable version of the edition\\n * titleUUID: TODO: Explain this\\n * familyId: TODO: Explain this\\n * newspaper_page: The page number of the addition that the article appears on\\n * newspaper_edition: TODO: Explain this\\n * lplace: TODO: Explain this\\n * location_name: Location names extracted from the text (low quality entity recognition)\\n * location_coordinates: Coordinates for places from location_name
      * 
-     * @param dryrun: Dry run: If true, only the count of the number of matching articles is returned
+     * @param max: The maximum number of articles to return, -1 to return all articles. *WARNING* setting this to more than 50 when using the Swagger-UI to test will probably result in the browser locking up
      * 
-     * @param structure: The major parts of the delivery. * comments: Metadata for the export (query, export time...), prefixed with # * header: The export field names * content: The export content itself
+     * @param structure: The major parts of the delivery.\\n * comments: Metadata for the export (query, export time...), prefixed with #\\n * header: The export field names\\n * content: The export content itself
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = String.class</li>
@@ -109,7 +109,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Boolean dryrun, List<String> structure) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure) throws ServiceException {
         // TODO: Implement...
     
         
@@ -125,7 +125,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     /**
      * Perform a search with the given query, returning only the number of hits. Typically used to get an estimate for the result size for an export
      * 
-     * @param query: A query for the newspaper articles. The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result. A filter restricting the result to newspapers older than 100 years will be automatically applied
+     * @param query: A query for the newspaper articles.\\n The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.\\n A filter restricting the result to newspapers older than 100 years will be automatically applied
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = Long.class</li>
@@ -167,7 +167,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "E2D4deaWn";
+            String response = "bUnk13";
         return response;
         } catch (Exception e){
             throw handleException(e);
