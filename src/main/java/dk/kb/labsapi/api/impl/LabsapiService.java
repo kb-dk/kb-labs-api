@@ -13,11 +13,15 @@ import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Context;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * labsapi
@@ -75,10 +79,17 @@ public class LabsapiService implements LabsapiApi {
             throw new InvalidArgumentServiceException(
                     "Error: No export fields defined. Valid fields are " + allowedAviserExportFields);
         }
-        Set<String> eFields = new HashSet<>(fields);
+        Set<String> eFields = fields.stream().
+                filter(Objects::nonNull).
+                filter(field -> !field.isEmpty()).
+                map(field -> Arrays.asList(field.split(", *"))).
+                flatMap(Collection::stream).
+                collect(Collectors.toSet());
+
         if (!allowedAviserExportFields.containsAll(eFields)) {
+            eFields.removeAll(allowedAviserExportFields);
             throw new InvalidArgumentServiceException(
-                    "Error: Unsupported export field in [" + eFields + "]. " +
+                    "Error: Unsupported export fields " + eFields + ": . " +
                     "Valid fields are " + allowedAviserExportFields);
         }
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
@@ -88,7 +99,7 @@ public class LabsapiService implements LabsapiApi {
         try{
             httpServletResponse.setHeader("Content-Disposition",
                                           "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
-            return SolrBridge.export(query, fields, structureSet);
+            return SolrBridge.export(query, eFields, structureSet);
         } catch (Exception e){
             throw handleException(e);
         }

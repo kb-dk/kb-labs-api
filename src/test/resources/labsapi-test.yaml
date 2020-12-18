@@ -10,10 +10,13 @@ labsapi:
         pagesize: 500
         # TODO: Find real date field
         # Needs to end with tie breaker (a unique field, typically the id-field)
-        sort: 'py asc, recordID asc' # Mandatory
+        sort: 'crawl_date asc, id asc' # Mandatory
       # Should mirror the ones listed in openapi.yaml
       fields: # Mandatory
-        - link
-        - recordID
-        - pwa
-        - text
+        # Test fields taken from the webarchive-discovery project
+        - id
+        - source_file
+        - source_file_offset
+        - domain
+        - title
+        - content

@@ -19,12 +19,16 @@ import dk.kb.webservice.exception.InternalServiceException;
 import joptsimple.internal.Strings;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.Log;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.CursorMarkParams;
 import org.apache.solr.common.params.FacetParams;
@@ -38,12 +42,15 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -115,9 +122,8 @@ public class SolrBridge {
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString(pageSize),
                 CommonParams.SORT, exportSort,
-                 CommonParams.FL, Strings.join(fields, ","),
-                CursorMarkParams.CURSOR_MARK_PARAM, CursorMarkParams.CURSOR_MARK_START);
-        
+                 CommonParams.FL, Strings.join(fields, ",")); // TODO: If link is present, retrieve recordID
+
         return streamResponse(request, query, fields, structure);
     }
 
@@ -141,29 +147,50 @@ public class SolrBridge {
         return output -> {
             try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8)) {
                 if (structure.contains(STRUCTURE.comments)) {
-                    os.write("# kb-labs-api export of Mediestream aviser data");
-                    os.write("# query: " + query.replace("\n", "\n"));
+                    os.write("# kb-labs-api export of Mediestream aviser data"+ "\n");
+                    os.write("# query: " + query.replace("\n", "\n") + "\n");
                     os.write("# fields: " + fields.toString() + "\n");
                     os.write("# export time: " + HUMAN_TIME.format(new Date()) + "\n");
                     os.write("# matched articles: " + countHits(query) + "\n");
                 }
 
-                try (CSVPrinter printer = structure.contains(STRUCTURE.header) ?
-                        new CSVPrinter(os, CSVFormat.DEFAULT.withHeader(fields.toArray(new String[0]))) :
-                        new CSVPrinter(os, CSVFormat.DEFAULT)) {
-
+                CSVFormat csvFormat = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.NON_NUMERIC);
+                if (structure.contains(STRUCTURE.header)) {
+                    csvFormat = csvFormat.withHeader(fields.toArray(new String[0]));
+                }
+                try (CSVPrinter printer = new CSVPrinter(os, csvFormat)) {
                     if (structure.contains(STRUCTURE.content)) {
-                        // TODO: Perform search & retrieval here
-                        while (true) {
-                            printer.printRecord(fields);
-                        }
+                        searchAndRetrieve(request, fields, printer);
                     }
                 } catch (IOException e) {
                     log.error("IOException writing Solr response for " + request);
+                } catch (SolrServerException e) {
+                    log.error("SolrException during search for " + request);
                 }
-
             }
         };
+    }
+
+    private static void searchAndRetrieve(SolrParams baseRequest, Collection<String> fields, CSVPrinter csvPrinter)
+            throws IOException, SolrServerException {
+        String cursorMark = CursorMarkParams.CURSOR_MARK_START;
+        ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
+        while (true) {
+            request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
+            QueryResponse response = solrClient.query(request);
+            writeResponse(response, fields, csvPrinter);
+            if (cursorMark.equals(response.getNextCursorMark())) {
+                return;
+            }
+            cursorMark = response.getNextCursorMark();
+        }
+    }
+
+    private static void writeResponse(QueryResponse response, Collection<String> fields, CSVPrinter csvPrinter)
+            throws IOException {
+        for (SolrDocument doc: response.getResults()) {
+            csvPrinter.printRecord(fields.stream().map(doc::get).collect(Collectors.toList()));
+        }
     }
 
     private static String sanitize(String query) {
