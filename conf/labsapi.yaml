@@ -2,18 +2,29 @@ labsapi:
   aviser:
     solr:
       url: 'http://localhost:50001/solr' # Mandatory
-      collection: 'foo'
+      collection: 'aviser.1.prod'
       # The filter will be applied to all aviser-requests
-      filter: 'recordBase:aviser AND py:[* TO 1919]'
+      filter: 'recordBase:doms_aviser AND py:[* TO 1919]'
     export:
       solr:
         pagesize: 500
-        # TODO: Find real date field
         # Needs to end with tie breaker (a unique field, typically the id-field)
-        sort: 'py asc, recordID asc' # Mandatory
+        sort: 'sort_year_asc asc, recordID asc' # Mandatory
       # Should mirror the ones listed in openapi.yaml
       fields: # Mandatory
         - link
         - recordID
+        - timestamp
         - pwa
-        - text
+        - cer
+        - fulltext_org
+        - pageUUID
+        - editionUUID
+        - titleUUID
+        - editionId
+        - familyId
+        - newspaper_page
+        - newspaper_edition
+        - lplace
+        - location_name
+        - location_coordinates
