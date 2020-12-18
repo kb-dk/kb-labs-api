@@ -37,17 +37,29 @@ paths:
           in: query
           required: true
           description: 'The fields to export.\n
-                        * link: A hyperlink to the Mediestream page for the article\n
+                         * link: A hyperlink to the Mediestream page for the article\n
                         * recordID: The unique ID of the article in the Mediestream system\n
+                        * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS\n
                         * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100\n
-                        * text: The text content for the article'
+                        * cer: \n
+                        * fulltext_org: The original OCR text for the article\n
+                        * pageUUID: The ID for the page that the article appears on\n
+                        * editionUUID: The ID for the edition that the page with the article belongs to\n
+                        * editionId: Human readable version of the edition\n
+                        * titleUUID: TODO: Explain this\n
+                        * familyId: TODO: Explain this\n
+                        * newspaper_page: The page number of the addition that the article appears on\n
+                        * newspaper_edition: TODO: Explain this\n
+                        * lplace: TODO: Explain this\n
+                        * location_name: Location names extracted from the text (low quality entity recognition)\n
+                        * location_coordinates: Coordinates for places from location_name'
           schema:
             type: array
             items:
               type: string
-              enum:  ['link', 'recordID', 'pwa', 'text']
-            default: ['link', 'recordID', 'pwa', 'text']
-            example: ['link', 'recordID', 'pwa', 'text']
+              enum:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
+            default:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
+            example:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
         - name: dryrun
           in: query
           required: false
