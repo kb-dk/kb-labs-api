@@ -4,7 +4,7 @@ labsapi:
       url: 'http://localhost:9000/solr'
       collection: 'warc1'
       # The filter will be applied to all aviser-requests
-      filter: ''
+      filter: 'text:kan'
     export:
       solr:
         pagesize: 500
@@ -20,3 +20,4 @@ labsapi:
         - domain
         - title
         - content
+        - links

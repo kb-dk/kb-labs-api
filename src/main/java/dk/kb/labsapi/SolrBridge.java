@@ -28,7 +28,6 @@ import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.CursorMarkParams;
 import org.apache.solr.common.params.FacetParams;
@@ -42,15 +41,12 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -189,8 +185,27 @@ public class SolrBridge {
     private static void writeResponse(QueryResponse response, Collection<String> fields, CSVPrinter csvPrinter)
             throws IOException {
         for (SolrDocument doc: response.getResults()) {
-            csvPrinter.printRecord(fields.stream().map(doc::get).collect(Collectors.toList()));
+            csvPrinter.printRecord(fields.stream().
+                    map(doc::get).
+                    map(SolrBridge::flattenStringList).
+                    map(SolrBridge::escapeString).
+                    collect(Collectors.toList()));
         }
+    }
+
+    // CSVWriter should handle newline escape but doesn't!?
+    private static Object escapeString(Object o) {
+        return o instanceof String ? ((String)o).replace("\\", "\\\\").replace("\n", "\\n") : o;
+    }
+
+    // Is Object is a List<String> then it is flattened to a single String with newlines as delimiter
+    @SuppressWarnings("unchecked")
+    private static Object flattenStringList(Object value) {
+        if (value instanceof List &&
+            (!((List<Object>)value).isEmpty() && ((List<Object>)value).get(0) instanceof String)) {
+            return Strings.join(((List<String>)value), "\n");
+        }
+        return value;
     }
 
     private static String sanitize(String query) {
