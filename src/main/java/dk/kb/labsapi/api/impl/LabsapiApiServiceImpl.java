@@ -92,9 +92,11 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param query: A query for the newspapers to export metadata for. The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis A filter restricting the result to newspapers older than 100 years will be automatically applied
      * 
-     * @param fields: The fields to export.
+     * @param fields: The fields to export. * link: A hyperlink to the Mediestream page for the article * recordID: The unique ID of the article in the Mediestream system * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100 * text: The text content for the article
      * 
      * @param dryrun: Dry run: If true, only the count of the number of matching articles is returned
+     * 
+     * @param structure: The major parts of the delivery. * comments: Metadata for the export (query, export time...), prefixed with # * header: The export field names * content: The export content itself
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = String.class</li>
@@ -107,7 +109,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Boolean dryrun) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Boolean dryrun, List<String> structure) throws ServiceException {
         // TODO: Implement...
     
         
@@ -165,7 +167,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "IB2zAt3";
+            String response = "E2D4deaWn";
         return response;
         } catch (Exception e){
             throw handleException(e);

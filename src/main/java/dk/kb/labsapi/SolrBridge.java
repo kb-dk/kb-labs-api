@@ -15,7 +15,6 @@
 package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
-import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import joptsimple.internal.Strings;
 import org.apache.commons.csv.CSVFormat;
@@ -33,17 +32,22 @@ import org.apache.solr.common.params.HighlightParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.stream.Collectors;
 
 /**
  * Handles Solr comminication.
@@ -51,9 +55,19 @@ import java.util.concurrent.ThreadFactory;
 public class SolrBridge {
     private static Log log = LogFactory.getLog(SolrBridge.class);
 
+    final static SimpleDateFormat HUMAN_TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH);
     private static SolrClient solrClient;
     private static int pageSize = 500;
     private static String exportSort = null;
+
+    public enum STRUCTURE { comments, header, content ;
+        public static Set<STRUCTURE> DEFAULT = new HashSet<>(Arrays.asList(comments, header, content)) ;
+        public static Set<STRUCTURE> valueOf(List<String> vals) {
+            return vals == null || vals.isEmpty() ?
+                    DEFAULT :
+                    vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
+        }
+    }
 
     private static ExecutorService executor = Executors.newCachedThreadPool(new ThreadFactory() {
         int threadID = 0;
@@ -88,12 +102,13 @@ public class SolrBridge {
         return solrClient;
     }
 
-    public static StreamingOutput export(String query, Collection<String> fields) {
+    public static StreamingOutput export(String query, Collection<String> fields, Set<STRUCTURE> structure) {
         getClient(); // Placeholder to set up the service, needed until a proper implementation
         if (exportSort == null) {
             throw new InternalServiceException(
                     "Error: Unable to export: No export sort (labsapi.aviser.export.solr.sort) specified in config");
         }
+
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
                 // Filter is added automatically by the SolrClient
@@ -102,7 +117,7 @@ public class SolrBridge {
                  CommonParams.FL, Strings.join(fields, ","),
                 CursorMarkParams.CURSOR_MARK_PARAM, CursorMarkParams.CURSOR_MARK_START);
         
-        return streamResponse(request, fields);
+        return streamResponse(request, query, fields, structure);
     }
 
     public static long countHits(String query) {
@@ -121,17 +136,32 @@ public class SolrBridge {
         }
     }
 
-    private static StreamingOutput streamResponse(SolrParams request, Collection<String> fields) {
+    private static StreamingOutput streamResponse(
+            SolrParams request, String query, Collection<String> fields, Set<STRUCTURE> structure) {
         return output -> {
-            String[] headers = fields.toArray(new String[0]);
-            try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8) ;
-                 CSVPrinter printer = new CSVPrinter(os, CSVFormat.DEFAULT.withHeader(headers))) {
-                while (true) {
-                    // TODO: Implement
-                    printer.printRecord(fields);
+            try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8)) {
+                if (structure.contains(STRUCTURE.comments)) {
+                    os.write("# kb-labs-api export of Mediestream aviser data");
+                    os.write("# query: " + query.replace("\n", "\n"));
+                    os.write("# fields: " + fields.toString() + "\n");
+                    os.write("# export time: " + HUMAN_TIME.format(new Date()) + "\n");
+                    os.write("# matched articles: " + countHits(query) + "\n");
                 }
-            } catch (IOException e) {
-                log.error("IOException writing Solr response for " + request);
+
+                try (CSVPrinter printer = structure.contains(STRUCTURE.header) ?
+                        new CSVPrinter(os, CSVFormat.DEFAULT.withHeader(fields.toArray(new String[0]))) :
+                        new CSVPrinter(os, CSVFormat.DEFAULT)) {
+
+                    if (structure.contains(STRUCTURE.content)) {
+                        // TODO: Perform search & retrieval here
+                        while (true) {
+                            printer.printRecord(fields);
+                        }
+                    }
+                } catch (IOException e) {
+                    log.error("IOException writing Solr response for " + request);
+                }
+
             }
         };
     }

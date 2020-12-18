@@ -27,8 +27,8 @@ paths:
         - name: query
           in: query
           required: true
-          description: 'A query for the newspapers to export metadata for.
-                        The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis
+          description: 'A query for the newspapers to export metadata for.\n
+                        The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis\n
                         A filter restricting the result to newspapers older than 100 years will be automatically applied'
           schema:
             type: string
@@ -36,12 +36,16 @@ paths:
         - name: fields
           in: query
           required: true
-          description: 'The fields to export.'
+          description: 'The fields to export.\n
+                        * link: A hyperlink to the Mediestream page for the article\n
+                        * recordID: The unique ID of the article in the Mediestream system\n
+                        * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100\n
+                        * text: The text content for the article'
           schema:
             type: array
             items:
               type: string
-              enum: ['link', 'recordID', 'pwa', 'text']
+              enum:  ['link', 'recordID', 'pwa', 'text']
             default: ['link', 'recordID', 'pwa', 'text']
             example: ['link', 'recordID', 'pwa', 'text']
         - name: dryrun
@@ -52,6 +56,20 @@ paths:
             type: boolean
             default: false
             example: false
+        - name: structure
+          in: query
+          required: false
+          description: 'The major parts of the delivery.\n
+                        * comments: Metadata for the export (query, export time...), prefixed with #\n
+                        * header: The export field names\n
+                        * content: The export content itself'
+          schema:
+            type: array
+            items:
+              type: string
+              enum:  ['comments', 'header', 'content']
+            default: ['comments', 'header', 'content']
+            example: ['comments', 'header', 'content']
 
       x-streamingOutput: true
       responses:
@@ -92,9 +110,9 @@ paths:
         - name: query
           in: query
           required: true
-          description: 'A query for the newspaper articles.
+          description: 'A query for the newspaper articles.\n
                         The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis
-                        for a more interactive result.
+                        for a more interactive result.\n
                         A filter restricting the result to newspapers older than 100 years will be automatically applied'
           schema:
             type: string
