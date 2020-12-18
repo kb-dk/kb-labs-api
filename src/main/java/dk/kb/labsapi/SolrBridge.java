@@ -150,6 +150,7 @@ public class SolrBridge {
                     os.write("# fields: " + fields.toString() + "\n");
                     os.write("# export time: " + HUMAN_TIME.format(new Date()) + "\n");
                     os.write("# matched articles: " + countHits(query) + "\n");
+                    os.write("# max articles returned: " + Long.toString(max) + "\n");
                 }
 
                 CSVFormat csvFormat = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.NON_NUMERIC);
