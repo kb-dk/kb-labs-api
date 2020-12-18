@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.CursorMarkParams;
 import org.apache.solr.common.params.FacetParams;
@@ -121,14 +122,13 @@ public class SolrBridge {
     }
 
     public static long countHits(String query) {
-        getClient(); // Placeholder to set up the service, needed until a proper implementation
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString(0));
         try {
-            // TODO: Perform search
-            return 87;
+            QueryResponse response = getClient().query(request);
+            return response.getResults().getNumFound();
         } catch (Exception e) {
             log.warn("Exception calling Solr for countHits(" + query + ")", e);
             throw new InternalServiceException(

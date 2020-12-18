@@ -12,7 +12,7 @@
     <New id="config" class="org.eclipse.jetty.plus.jndi.EnvEntry">
         <Arg>application-config</Arg>
         <Arg type="java.lang.String">
-            ${basedir}/conf/${project.artifactId}.yaml
+            labsapi-test.yaml
         </Arg>
         <Arg type="boolean">true</Arg>
     </New>
