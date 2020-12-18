@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -84,7 +85,7 @@ public class LabsapiService implements LabsapiApi {
                 filter(field -> !field.isEmpty()).
                 map(field -> Arrays.asList(field.split(", *"))).
                 flatMap(Collection::stream).
-                collect(Collectors.toSet());
+                collect(Collectors.toCollection(LinkedHashSet::new));
 
         if (!allowedAviserExportFields.containsAll(eFields)) {
             eFields.removeAll(allowedAviserExportFields);
