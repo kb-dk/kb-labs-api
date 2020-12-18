@@ -32,7 +32,7 @@ paths:
                         A filter restricting the result to newspapers older than 100 years will be automatically applied'
           schema:
             type: string
-            example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1899]'
+            example: '"brugt cykel" AND lplace:København AND py:[1850 TO 1899]'
         - name: fields
           in: query
           required: true
