@@ -56,7 +56,9 @@ public class LabsapiService implements LabsapiApi {
      *
      * @param max: The maximum number of articles to return, -1 to return all articles. *WARNING* setting this to more than 50 when using the Swagger-UI to test will probably result in the browser locking up
      *
-     * @param structure: The major parts of the delivery.\\n * comments: Metadata for the export (query, export time...), prefixed with #\\n * header: The export field names\\n * content: The export content itself
+     * @param structure: The major parts of the delivery.\\n * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON\\n * header: The export field names. Only relevant for CSV\\n * content: The export content itself
+     *
+     * @param format: The delivery format.\\n * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes\\n * JSON: Valid JSON in the form of a single array of Documents\\n * JSONL: Newline separated single-line JSON representations of Documents
      *
      * @return <ul>
       *   <li>code = 200, message = "OK", response = String.class</li>
@@ -69,7 +71,7 @@ public class LabsapiService implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure, String format) throws ServiceException {
         if (allowedAviserExportFields.isEmpty()) {
             log.error("Error: No allowed export fields defined in properties");
             throw new InternalServiceException(
@@ -95,13 +97,19 @@ public class LabsapiService implements LabsapiApi {
         }
         long trueMax = max == null ? 10 : max < 0 ? -1 : max;
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
+        SolrBridge.FORMAT trueFormat = format == null || format.isEmpty() ? SolrBridge.FORMAT.getDefault() : SolrBridge.FORMAT.valueOf(format);
+        if (trueFormat != SolrBridge.FORMAT.csv && structureSet.contains(SolrBridge.STRUCTURE.comments)) {
+            log.warn("Requested export in format " + trueFormat + " with structure " + SolrBridge.STRUCTURE.comments +
+                     ", which is not possible: Comments will not be delivered");
+        }
+
         log.debug(String.format(Locale.ENGLISH,
-                                "Exporting fields %s with max=%d and structure=%s for query '%s'",
-                                eFields, max, structureSet.toString(), query));
+                                "Exporting fields %s with max=%d and structure=%s in format=%s for query '%s'",
+                                eFields, max, structureSet.toString(), format, query));
         try{
             httpServletResponse.setHeader("Content-Disposition",
                                           "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
-            return SolrBridge.export(query, eFields, trueMax, structureSet);
+            return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);
         }

@@ -96,7 +96,9 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param max: The maximum number of articles to return, -1 to return all articles. *WARNING* setting this to more than 50 when using the Swagger-UI to test will probably result in the browser locking up
      * 
-     * @param structure: The major parts of the delivery.\\n * comments: Metadata for the export (query, export time...), prefixed with #\\n * header: The export field names\\n * content: The export content itself
+     * @param structure: The major parts of the delivery.\\n * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON\\n * header: The export field names. Only relevant for CSV\\n * content: The export content itself
+     * 
+     * @param format: The delivery format.\\n * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes\\n * JSON: Valid JSON in the form of a single array of Documents\\n * JSONL: Newline separated single-line JSON representations of Documents
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = String.class</li>
@@ -109,7 +111,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure, String format) throws ServiceException {
         // TODO: Implement...
     
         
@@ -167,7 +169,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "bUnk13";
+            String response = "Qrp1n5";
         return response;
         } catch (Exception e){
             throw handleException(e);

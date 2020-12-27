@@ -37,7 +37,7 @@ paths:
           in: query
           required: true
           description: 'The fields to export.\n
-                         * link: A hyperlink to the Mediestream page for the article\n
+                        * link: A hyperlink to the Mediestream page for the article\n
                         * recordID: The unique ID of the article in the Mediestream system\n
                         * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS\n
                         * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100\n
@@ -68,14 +68,15 @@ paths:
           schema:
             type: integer
             format: int64
-            default: 10
+            default: -1
             example: 10
         - name: structure
           in: query
           required: false
+          # TODO: Figure out how to deliver the comments with JSON
           description: 'The major parts of the delivery.\n
-                        * comments: Metadata for the export (query, export time...), prefixed with #\n
-                        * header: The export field names\n
+                        * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON\n
+                        * header: The export field names. Only relevant for CSV\n
                         * content: The export content itself'
           schema:
             type: array
@@ -84,14 +85,41 @@ paths:
               enum:  ['comments', 'header', 'content']
             default: ['header', 'content']
             example: ['header', 'content']
+        - name: format
+          in: query
+          required: false
+          # TODO: Figure out how to deliver the comments with JSON
+          description: 'The delivery format.\n
+                        * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes\n
+                        * JSON: Valid JSON in the form of a single array of Documents\n
+                        * JSONL: Newline separated single-line JSON representations of Documents'
+          schema:
+            type: string
+            enum:  ['CSV', 'JSON', 'JSONL']
+            default: 'CSV'
+            example: 'JSON'
 
       x-streamingOutput: true
       responses:
         '200':
           description: 'OK'
           content:
+            # application/x-jsonlines is another possibility. Potayto, potahto
+            application/x-ndjson:
+              schema:
+                description: 'Newline separated single-line JSON representations of Documents.\n
+                              See https://github.com/ndjson/ndjson-spec or https://jsonlines.org/ for the format'
+                type: string
+            application/json:
+              schema:
+                description: 'JSON-compliant representation of Documents. Note that the structure can be unwieldy for
+                              large exports. Consider using application/x-ndjson instead'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
             text/csv:
               schema:
+                description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
                 type: string
         '400':
           description: 'Invalid Argument'
@@ -189,4 +217,57 @@ components:
           type: integer
           format: int32
         message:
+          type: string
+
+    Document:
+      type: object
+      # Note that none of the fields are required
+      properties:
+        link:
+          description: 'A hyperlink to the Mediestream page for the article'
+          type: string
+        recordID:
+          description: 'The unique ID of the article in the Mediestream system'
+          type: string
+        timestamp:
+          description: 'The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS'
+          type: string
+        pwa:
+          description: 'Predicted Word Accuracy for the OCR text on a scale from 0 to 100'
+          type: integer
+        cer:
+          description: 'TODO: Explain this'
+          type: integer
+        fulltext_org:
+          description: 'The original OCR text for the article'
+          type: string
+        pageUUID:
+          description: 'The ID for the page that the article appears on'
+          type: string
+        editionUUID:
+          description: 'The ID for the edition that the page with the article belongs to'
+          type: string
+        editionId:
+          description: 'Human readable version of the edition'
+          type: string
+        titleUUID:
+          description: 'TODO: Explain this'
+          type: string
+        familyId:
+          description: 'TODO: Explain this'
+          type: string
+        newspaper_page:
+          description: 'The page number of the addition that the article appears on'
+          type: integer
+        newspaper_edition:
+          description: 'TODO: Explain this'
+          type: integer
+        lplace:
+          description: 'TODO: Explain this'
+          type: string
+        location_name:
+          description: 'Location names extracted from the text (low quality entity recognition)'
+          type: string
+        location_coordinates:
+          description: 'Coordinates for places from location_name'
           type: string

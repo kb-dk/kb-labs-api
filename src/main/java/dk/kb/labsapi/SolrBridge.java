@@ -14,8 +14,13 @@
  */
 package dk.kb.labsapi;
 
+import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import dk.kb.JSONStreamWriter;
+import dk.kb.RuntimeWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.webservice.exception.InternalServiceException;
+import io.swagger.util.Json;
 import joptsimple.internal.Strings;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -51,7 +56,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -73,6 +80,11 @@ public class SolrBridge {
                     DEFAULT :
                     vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
         }
+    }
+    public enum FORMAT { csv, json, jsonl;
+      public static FORMAT getDefault() {
+          return csv;
+      }
     }
 
     private static ExecutorService executor = Executors.newCachedThreadPool(new ThreadFactory() {
@@ -108,26 +120,18 @@ public class SolrBridge {
         return solrClient;
     }
 
-    public static StreamingOutput export(String query, Collection<String> fields, long max, Set<STRUCTURE> structure) {
-        getClient(); // Placeholder to set up the service, needed until a proper implementation
-        if (exportSort == null) {
-            throw new InternalServiceException(
-                    "Error: Unable to export: No export sort (labsapi.aviser.export.solr.sort) specified in config");
-        }
-
-        SolrParams request = new SolrQuery(
-                CommonParams.Q, sanitize(query),
-                // Filter is added automatically by the SolrClient
-                CommonParams.ROWS, Integer.toString((int) Math.min(max, pageSize)),
-                CommonParams.SORT, exportSort,
-                 CommonParams.FL, Strings.join(fields, ",")); // TODO: If link is present, retrieve recordID
-
-        return streamResponse(request, query, fields, max, structure);
-    }
-
+    /**
+     * Performs the fastest possible request ({@code rows=0&facet=false...} to Solr and return the number of hits.
+     * Typically used to get an idea of the size of a full export.
+     * @param query a Solr query.
+     * @return the number of hits for the query.
+     */
     public static long countHits(String query) {
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
+                FacetParams.FACET, "false",
+                GroupParams.GROUP, "false",
+                HighlightParams.HIGHLIGHT, "false",
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString(0));
         try {
@@ -140,17 +144,37 @@ public class SolrBridge {
         }
     }
 
-    private static StreamingOutput streamResponse(
+    public static StreamingOutput export(String query, Collection<String> fields, long max, Set<STRUCTURE> structure,
+                                         FORMAT format) {
+        getClient(); // Placeholder to set up the service, needed until a proper implementation
+        if (exportSort == null) {
+            throw new InternalServiceException(
+                    "Error: Unable to export: No export sort (labsapi.aviser.export.solr.sort) specified in config");
+        }
+
+        SolrParams request = new SolrQuery(
+                CommonParams.Q, sanitize(query),
+                // Filter is added automatically by the SolrClient
+                CommonParams.ROWS, Integer.toString((int) Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize)),
+                CommonParams.SORT, exportSort,
+                 CommonParams.FL, Strings.join(fields, ",")); // TODO: If link is present, retrieve recordID
+
+        return format == FORMAT.csv ?
+                streamResponseCSV(request, query, fields, max, structure) :
+                streamResponseJSON(request, query, fields, max, structure, format);
+    }
+
+    private static StreamingOutput streamResponseCSV(
             SolrParams request, String query, Collection<String> fields, long max, Set<STRUCTURE> structure) {
         return output -> {
             try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8)) {
                 if (structure.contains(STRUCTURE.comments)) {
                     os.write("# kb-labs-api export of Mediestream aviser data"+ "\n");
-                    os.write("# query: " + query.replace("\n", "\n") + "\n");
+                    os.write("# query: " + query.replace("\n", "\\n") + "\n");
                     os.write("# fields: " + fields.toString() + "\n");
                     os.write("# export time: " + HUMAN_TIME.format(new Date()) + "\n");
                     os.write("# matched articles: " + countHits(query) + "\n");
-                    os.write("# max articles returned: " + Long.toString(max) + "\n");
+                    os.write("# max articles returned: " + max + "\n");
                 }
 
                 CSVFormat csvFormat = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.NON_NUMERIC);
@@ -159,7 +183,18 @@ public class SolrBridge {
                 }
                 try (CSVPrinter printer = new CSVPrinter(os, csvFormat)) {
                     if (structure.contains(STRUCTURE.content)) {
-                        searchAndRetrieve(request, fields, max, printer);
+                        long processed = searchAndProcess(request, fields, pageSize, max, doc -> {
+                            try {
+                                printer.printRecord(fields.stream().
+                                        map(doc::get).
+                                        map(SolrBridge::flattenStringList).
+                                        map(SolrBridge::escapeString).
+                                        collect(Collectors.toList()));
+                            } catch (IOException e) {
+                                throw new RuntimeException("Exception writing to CSVPrinter for " + request, e);
+                            }
+                        });
+                        log.debug("Wrote " + processed + " CSV entries for " + request);
                     }
                 } catch (IOException e) {
                     log.error("IOException writing Solr response for " + request);
@@ -170,37 +205,68 @@ public class SolrBridge {
         };
     }
 
-    private static void searchAndRetrieve(SolrParams baseRequest, Collection<String> fields, long max, CSVPrinter csvPrinter)
+    private static StreamingOutput streamResponseJSON(
+            SolrParams request, String query, Collection<String> fields, long max, Set<STRUCTURE> structure,
+            FORMAT format) {
+        return output -> {
+            try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
+                 JSONStreamWriter jw = new JSONStreamWriter(
+                         osw, JSONStreamWriter.FORMAT.valueOf(format.toString()))) {
+                if (structure.contains(STRUCTURE.content)) {
+                    searchAndProcess(request, fields, pageSize, max, doc ->
+                            jw.writeJSON(
+                                    fields.stream().
+                                            filter(doc::containsKey).
+                                            collect(Collectors.toMap(
+                                                    field -> field,
+                                                    field -> flattenStringList(doc.get(field))
+                                            ))));
+                }
+            } catch (SolrServerException e) {
+                throw new RuntimeException("SolrException writing " + format + " for " + request, e);
+            }
+        };
+    }
+
+    /**
+     * Performs paging searches for the given baseRequest, expanding the returned {@link SolrDocument}s
+     * and feeding them to the processor.
+     * @param baseRequest query, filters etc. {@link CursorMarkParams#CURSOR_MARK_START} will be automatically
+     *                    added.
+     * @param fields      the fields to use with {@link #expandFields(SolrDocument, Collection)}.
+     * @param pageSize    the number of SolrDocuments to fetch for each request.
+     * @param max         the maximum number of SolrDocuments to process.
+     * @param processor   received each retrieved and expanded Solrdocument.
+     * @return the number of processed documents.
+     * @throws IOException if there was a problem calling Solr.
+     * @throws SolrServerException if there was a problem calling Solr.
+     */
+    private static long searchAndProcess(
+            SolrParams baseRequest, Collection<String> fields, int pageSize, long max, Consumer<SolrDocument> processor)
             throws IOException, SolrServerException {
         String cursorMark = CursorMarkParams.CURSOR_MARK_START;
         ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
         AtomicLong counter = new AtomicLong(0);
         while (counter.get() < max) {
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
+            request.set(CommonParams.ROWS,
+                        (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get()));
+
             QueryResponse response = solrClient.query(request);
-            writeResponse(response, fields, counter, max, csvPrinter);
+            response.getResults().stream().
+                    map(doc -> expandFields(doc, fields)).
+                    forEach(processor);
+            counter.addAndGet(response.getResults().size());
             if (cursorMark.equals(response.getNextCursorMark()) || counter.get() >= max) {
-                return;
+                return counter.get();
             }
             cursorMark = response.getNextCursorMark();
         }
+        return counter.get();
     }
 
-    private static void writeResponse(
-            QueryResponse response, Collection<String> fields, AtomicLong counter, long max, CSVPrinter csvPrinter)
-            throws IOException {
-        int docCount = response.getResults().size();
-        long limit = docCount <= max - counter.get() ? Long.MAX_VALUE :
-                docCount - (max - counter.get());
-        for (SolrDocument doc: response.getResults()) {
-            csvPrinter.printRecord(fields.stream().
-                    limit(limit).
-                    map(doc::get).
-                    map(SolrBridge::flattenStringList).
-                    map(SolrBridge::escapeString).
-                    collect(Collectors.toList()));
-        }
-        counter.addAndGet(Math.min(limit, docCount));
+    private static SolrDocument expandFields(SolrDocument doc, Collection<String> fields) {
+        return doc;  // TODO: Implement this
     }
 
     // CSVWriter should handle newline escape but doesn't!?
