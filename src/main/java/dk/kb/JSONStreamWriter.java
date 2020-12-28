@@ -25,7 +25,7 @@ import java.io.Writer;
 
 /**
  * Wrapper that handles streamed output of a list of JSON entries, either as a single valid JSON or as
- * JSON Lines (JSONL), which are 1 independent JSON/line.
+ * JSON Lines (JSONL, which is 1 independent JSON/line).
  *
  * Use the method {@link #writeJSON} and remember to call {@link #close} when finished.
  */
@@ -35,10 +35,15 @@ public class JSONStreamWriter extends RuntimeWriter {
 
     public enum FORMAT { json, jsonl }
 
-
     private final FORMAT format;
     private boolean first = true;
 
+    /**
+     * Wrap the given inner Writer in the JSONStreamWriter. Calls to {@link #writeJSON} writes directly to inner,
+     * so the JSONStreamWriter holds no cached data. The inner {@link Writer#flush()} is not called.
+     * @param inner  the Writer to send te result to.
+     * @param format Valid JSON or JSON Lines.
+     */
     public JSONStreamWriter(Writer inner, FORMAT format) {
         super(inner);
         this.format = format;
@@ -50,6 +55,12 @@ public class JSONStreamWriter extends RuntimeWriter {
         }
     }
 
+    /**
+     * Write a JSON expression that has already been serialized to String.
+     * It is the responsibility of the caller to ensure that jsonStr is valid standalone JSON.
+     * If {@link #format} is {@link FORMAT#jsonl}, newlines in jsonStr will be replaced by spaces.
+     * @param jsonStr a valid JSON.
+     */
     public void writeJSON(String jsonStr) {
         if (format == FORMAT.jsonl) {
             jsonStr = jsonStr.replace("\n", " ");
@@ -64,14 +75,22 @@ public class JSONStreamWriter extends RuntimeWriter {
         write(jsonStr);
     }
 
-    public void writeJSON(Object o) {
+    /**
+     * Use {@link #jsonWriter} to serialize the given object to String JSON and write the result, ensuring the
+     * invariants of {@link #format} holds.
+     * @param object
+     */
+    public void writeJSON(Object object) {
         try {
-            writeJSON(jsonWriter.writeValueAsString(o));
+            writeJSON(jsonWriter.writeValueAsString(object));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("JsonProcessingException attempting to write " + o, e);
+            throw new RuntimeException("JsonProcessingException attempting to write " + object, e);
         }
     }
 
+    /**
+     * Finishes the JSON stream by writing closing statements.
+     */
     @Override
     public void close() {
         if (format == FORMAT.json) {

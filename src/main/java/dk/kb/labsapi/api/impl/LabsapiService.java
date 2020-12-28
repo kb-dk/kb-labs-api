@@ -25,10 +25,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * labsapi
- *
- * <p>This pom can be inherited by projects wishing to integrate to the SBForge development platform. 
- *
+ * Implementation of the OpenAPI-generated {@link LabsapiApi}.
  */
 public class LabsapiService implements LabsapiApi {
     private static final Logger log = LoggerFactory.getLogger(LabsapiService.class);

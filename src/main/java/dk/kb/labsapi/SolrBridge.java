@@ -14,13 +14,9 @@
  */
 package dk.kb.labsapi;
 
-import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.JSONStreamWriter;
-import dk.kb.RuntimeWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.webservice.exception.InternalServiceException;
-import io.swagger.util.Json;
 import joptsimple.internal.Strings;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -56,7 +52,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -69,7 +64,7 @@ public class SolrBridge {
 
     final static SimpleDateFormat HUMAN_TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH);
     private static SolrClient solrClient;
-    private static int pageSize = 500;
+    private static int pageSize = 500; // TODO: Consider making this a property
     private static String exportSort = null;
 
     public enum STRUCTURE { comments, header, content ;
@@ -144,9 +139,17 @@ public class SolrBridge {
         }
     }
 
-    public static StreamingOutput export(String query, Collection<String> fields, long max, Set<STRUCTURE> structure,
+    /**
+     * Export the fields from the documents from a search for query using {@link #getClient()} by streaming.
+     * @param query     restraints for the export.
+     * @param fields    the fields to export.
+     * @param max       the maximum number of documents to export.
+     * @param structure the overall elements of the export.
+     * @param format    the export format.
+     * @return a lazy-evaluated stream delivering the content.
+     */
+    public static StreamingOutput export(String query, Set<String> fields, long max, Set<STRUCTURE> structure,
                                          FORMAT format) {
-        getClient(); // Placeholder to set up the service, needed until a proper implementation
         if (exportSort == null) {
             throw new InternalServiceException(
                     "Error: Unable to export: No export sort (labsapi.aviser.export.solr.sort) specified in config");
@@ -157,7 +160,7 @@ public class SolrBridge {
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString((int) Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize)),
                 CommonParams.SORT, exportSort,
-                 CommonParams.FL, Strings.join(fields, ",")); // TODO: If link is present, retrieve recordID
+                 CommonParams.FL, Strings.join(expandRequestFields(fields), ","));
 
         return format == FORMAT.csv ?
                 streamResponseCSV(request, query, fields, max, structure) :
@@ -165,7 +168,7 @@ public class SolrBridge {
     }
 
     private static StreamingOutput streamResponseCSV(
-            SolrParams request, String query, Collection<String> fields, long max, Set<STRUCTURE> structure) {
+            SolrParams request, String query, Set<String> fields, long max, Set<STRUCTURE> structure) {
         return output -> {
             try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8)) {
                 if (structure.contains(STRUCTURE.comments)) {
@@ -206,7 +209,7 @@ public class SolrBridge {
     }
 
     private static StreamingOutput streamResponseJSON(
-            SolrParams request, String query, Collection<String> fields, long max, Set<STRUCTURE> structure,
+            SolrParams request, String query, Set<String> fields, long max, Set<STRUCTURE> structure,
             FORMAT format) {
         return output -> {
             try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
@@ -233,7 +236,7 @@ public class SolrBridge {
      * and feeding them to the processor.
      * @param baseRequest query, filters etc. {@link CursorMarkParams#CURSOR_MARK_START} will be automatically
      *                    added.
-     * @param fields      the fields to use with {@link #expandFields(SolrDocument, Collection)}.
+     * @param fields      the fields to use with {@link #expandResponse(SolrDocument, Set)}.
      * @param pageSize    the number of SolrDocuments to fetch for each request.
      * @param max         the maximum number of SolrDocuments to process.
      * @param processor   received each retrieved and expanded Solrdocument.
@@ -242,7 +245,7 @@ public class SolrBridge {
      * @throws SolrServerException if there was a problem calling Solr.
      */
     private static long searchAndProcess(
-            SolrParams baseRequest, Collection<String> fields, int pageSize, long max, Consumer<SolrDocument> processor)
+            SolrParams baseRequest, Set<String> fields, int pageSize, long max, Consumer<SolrDocument> processor)
             throws IOException, SolrServerException {
         String cursorMark = CursorMarkParams.CURSOR_MARK_START;
         ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
@@ -252,9 +255,9 @@ public class SolrBridge {
             request.set(CommonParams.ROWS,
                         (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get()));
 
-            QueryResponse response = solrClient.query(request);
+            QueryResponse response = getClient().query(request);
             response.getResults().stream().
-                    map(doc -> expandFields(doc, fields)).
+                    map(doc -> expandResponse(doc, fields)).
                     forEach(processor);
             counter.addAndGet(response.getResults().size());
             if (cursorMark.equals(response.getNextCursorMark()) || counter.get() >= max) {
@@ -265,7 +268,11 @@ public class SolrBridge {
         return counter.get();
     }
 
-    private static SolrDocument expandFields(SolrDocument doc, Collection<String> fields) {
+    private static Set<String> expandRequestFields(Set<String> fields) {
+        return fields;  // TODO: Implement this
+    }
+
+    private static SolrDocument expandResponse(SolrDocument doc, Set<String> fields) {
         return doc;  // TODO: Implement this
     }
 
