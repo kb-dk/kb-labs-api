@@ -6,11 +6,14 @@ import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
+import org.apache.cxf.jaxrs.ext.MessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -94,11 +97,37 @@ public class LabsapiService implements LabsapiApi {
         }
         long trueMax = max == null ? 10 : max < 0 ? -1 : max;
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
-        SolrBridge.FORMAT trueFormat = format == null || format.isEmpty() ? SolrBridge.FORMAT.getDefault() : SolrBridge.FORMAT.valueOf(format);
+        SolrBridge.FORMAT trueFormat;
+        try {
+            // TODO: Also consider the "Accept"-header
+            trueFormat = format == null || format.isEmpty() ?
+                    SolrBridge.FORMAT.getDefault() :
+                    SolrBridge.FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new InvalidArgumentServiceException(
+                    "Error: The format '" + format + "' is unsupported. " +
+                    "Supported formats are " + Arrays.toString(SolrBridge.FORMAT.values()));
+        }
         if (trueFormat != SolrBridge.FORMAT.csv && structureSet.contains(SolrBridge.STRUCTURE.comments)) {
             log.warn("Requested export in format {} with structure {}, " +
                      "which is not possible: Comments will not be delivered",
                      trueFormat, SolrBridge.STRUCTURE.comments);
+        }
+        switch (trueFormat) { // TODO: This does not seem to work. Why not?
+            case csv: {
+                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "text/csv");
+                break;
+            }
+            case json: {
+                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+                break;
+            }
+            case jsonl: {
+                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjson");
+                break;
+            }
+            default: throw new InternalServiceException(
+                    "Internal exception: format '" + trueFormat + "' could not be converted to MIME type");
         }
 
         log.debug(String.format(Locale.ENGLISH,
