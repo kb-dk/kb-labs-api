@@ -105,13 +105,15 @@ public class SolrBridge {
             if (filter != null) {
                 baseParams.set(CommonParams.FQ, filter);
             }
-            pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize");
+            pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", 500);
             exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
-
             log.info("Creating SolrClient({}) with filter='{}'", fullURL, filter);
             solrClient = new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
         }
         return solrClient;
+    }
+    static {
+        getClient(); // Fail early
     }
 
     /**
@@ -150,8 +152,10 @@ public class SolrBridge {
     public static StreamingOutput export(String query, Set<String> fields, long max, Set<STRUCTURE> structure,
                                          FORMAT format) {
         if (exportSort == null) {
-            throw new InternalServiceException(
-                    "Error: Unable to export: No export sort (labsapi.aviser.export.solr.sort) specified in config");
+            String message = "Error: Unable to export: " +
+                             "No export sort (.labsapi.aviser.export.solr.sort) specified in config";
+            log.error(message);
+            throw new InternalServiceException(message);
         }
 
         SolrParams request = new SolrQuery(
