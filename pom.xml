@@ -52,6 +52,7 @@
         <license.url>https://www.apache.org/licenses/LICENSE-2.0.txt</license.url>
 
         <project.package>dk.kb.labsapi</project.package>
+        <project.description>Experimental API for publicly available date and metadata at the Royal Danish Library</project.description>
     </properties>
 
     <dependencies>
