@@ -21,8 +21,6 @@ import joptsimple.internal.Strings;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
-import org.apache.commons.logging.LogFactory;
-import org.apache.commons.logging.Log;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
@@ -36,6 +34,8 @@ import org.apache.solr.common.params.GroupParams;
 import org.apache.solr.common.params.HighlightParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
@@ -43,7 +43,6 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -60,7 +59,7 @@ import java.util.stream.Collectors;
  * Handles Solr comminication.
  */
 public class SolrBridge {
-    private static Log log = LogFactory.getLog(SolrBridge.class);
+    private static final Logger log = LoggerFactory.getLogger(SolrBridge.class);
 
     final static SimpleDateFormat HUMAN_TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH);
     private static SolrClient solrClient;
@@ -109,7 +108,7 @@ public class SolrBridge {
             pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize");
             exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
 
-            log.info("Creating SolrClient(" + fullURL + ") with filter='" + filter + "'");
+            log.info("Creating SolrClient({}) with filter='{}'", fullURL, filter);
             solrClient = new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
         }
         return solrClient;

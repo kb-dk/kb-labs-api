@@ -40,7 +40,7 @@ public class LabsapiService implements LabsapiApi {
         try {
             allowedAviserExportFields.addAll(ServiceConfig.getConfig().getList(key));
         } catch (Exception e) {
-            log.error("Unable to retrieve list of export fields from " + key + " in config. Export is not possible");
+            log.error("Unable to retrieve list of export fields from {} in config. Export is not possible", key);
         }
     }
 
@@ -96,8 +96,9 @@ public class LabsapiService implements LabsapiApi {
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
         SolrBridge.FORMAT trueFormat = format == null || format.isEmpty() ? SolrBridge.FORMAT.getDefault() : SolrBridge.FORMAT.valueOf(format);
         if (trueFormat != SolrBridge.FORMAT.csv && structureSet.contains(SolrBridge.STRUCTURE.comments)) {
-            log.warn("Requested export in format " + trueFormat + " with structure " + SolrBridge.STRUCTURE.comments +
-                     ", which is not possible: Comments will not be delivered");
+            log.warn("Requested export in format {} with structure {}, " +
+                     "which is not possible: Comments will not be delivered",
+                     trueFormat, SolrBridge.STRUCTURE.comments);
         }
 
         log.debug(String.format(Locale.ENGLISH,

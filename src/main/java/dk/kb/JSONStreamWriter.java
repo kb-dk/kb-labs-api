@@ -18,8 +18,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import io.swagger.util.Json;
-import org.apache.commons.logging.LogFactory;
-import org.apache.commons.logging.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Writer;
 
@@ -30,7 +30,7 @@ import java.io.Writer;
  * Use the method {@link #writeJSON} and remember to call {@link #close} when finished.
  */
 public class JSONStreamWriter extends RuntimeWriter {
-    private static Log log = LogFactory.getLog(JSONStreamWriter.class);
+    private static final Logger log = LoggerFactory.getLogger(JSONStreamWriter.class);
     private final ObjectWriter jsonWriter = Json.mapper().writer(new MinimalPrettyPrinter());
 
     public enum FORMAT { json, jsonl }
