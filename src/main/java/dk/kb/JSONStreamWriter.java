@@ -67,7 +67,7 @@ public class JSONStreamWriter extends RuntimeWriter {
         }
 
         if (first && format == FORMAT.json) {
-            write("{[\n");
+            write("[\n");
             first = false;
         } else {
             write(format == FORMAT.json ? ",\n" : "\n");
@@ -94,7 +94,7 @@ public class JSONStreamWriter extends RuntimeWriter {
     @Override
     public void close() {
         if (format == FORMAT.json) {
-            write(first ? "]}" : "\n]}");
+            write(first ? "]" : "\n]");
         }
         super.close();
     }
