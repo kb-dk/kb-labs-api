@@ -1,17 +1,25 @@
 labsapi:
   aviser:
     solr:
-      url: 'http://localhost:50001/solr' # Mandatory
+      # Mandatory, no default
+      url: 'http://localhost:50001/solr'
+      # Mandatory, no default
       collection: 'aviser.1.prod'
       # The filter will be applied to all aviser-requests
+      # No default
       filter: 'recordBase:doms_aviser AND py:[* TO 1919]'
     export:
       solr:
+        # Defaults to 500
         pagesize: 500
         # Needs to end with tie breaker (a unique field, typically the id-field)
-        sort: 'sort_year_asc asc, recordID asc' # Mandatory
+        # Mandatory, no default
+        sort: 'sort_year_asc asc, recordID asc'
       # Should mirror the ones listed in openapi.yaml
-      fields: # Mandatory
+      link:
+        # Defaults to http://www2.statsbiblioteket.dk/mediestream/avis/record/
+        prefix: 'http://www2.statsbiblioteket.dk/mediestream/avis/record/'
+      fields: # Mandatory, no default
         - link
         - recordID
         - timestamp
