@@ -1,5 +1,6 @@
 package dk.kb.webservice;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import javax.naming.InitialContext;
@@ -34,7 +35,14 @@ public class ContextListener implements ServletContextListener {
             InitialContext ctx = new InitialContext();
             String configFile = (String) ctx.lookup("java:/comp/env/application-config");
             //TODO this should not refer to something in template. Should we perhaps use reflection here?
-            ServiceConfig.initialize(configFile);
+            for (String conf: configFile.split(";")) { // Try each candidate after turn
+                try {
+                    ServiceConfig.initialize(conf);
+                    break; // First one wins
+                } catch (FileNotFoundException e) {
+                    // Okay, just try the next one
+                }
+            }
         } catch (NamingException e) {
             throw new RuntimeException("Failed to lookup settings", e);
         } catch (IOException e) {
