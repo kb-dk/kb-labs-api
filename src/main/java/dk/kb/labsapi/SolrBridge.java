@@ -40,11 +40,14 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -62,10 +65,14 @@ public class SolrBridge {
     private static final Logger log = LoggerFactory.getLogger(SolrBridge.class);
 
     final static SimpleDateFormat HUMAN_TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH);
-    private static SolrClient solrClient;
-    private static int pageSize = 500; // TODO: Consider making this a property
-    private static String exportSort = null;
+    final static String LINK = "link"; // Pseudo field with link to Mediestream webpage
+    final static String LINK_PREFIX_DEFAULT = "http://www2.statsbiblioteket.dk/mediestream/avis/record/";
 
+    private static SolrClient solrClient;
+    private static int pageSize = 500;
+    private static String linkPrefix;
+    private static String exportSort = null;
+    
     public enum STRUCTURE { comments, header, content ;
         public static Set<STRUCTURE> DEFAULT = new HashSet<>(Arrays.asList(header, content)) ;
         public static Set<STRUCTURE> ALL = new HashSet<>(Arrays.asList(comments, header, content)) ;
@@ -105,7 +112,8 @@ public class SolrBridge {
             if (filter != null) {
                 baseParams.set(CommonParams.FQ, filter);
             }
-            pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", 500);
+            pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", pageSize);
+            linkPrefix = ServiceConfig.getConfig().getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
             exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
             log.info("Creating SolrClient({}) with filter='{}'", fullURL, filter);
             solrClient = new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
@@ -272,11 +280,25 @@ public class SolrBridge {
     }
 
     private static Set<String> expandRequestFields(Set<String> fields) {
-        return fields;  // TODO: Implement this
+        if (fields.contains(LINK) && !fields.contains("pageUUID")) { // link = URL to the page
+            Set<String> expanded = new LinkedHashSet<>(fields);
+            expanded.add("pageUUID");
+            return expanded;
+        }
+        return fields;
     }
 
     private static SolrDocument expandResponse(SolrDocument doc, Set<String> fields) {
-        return doc;  // TODO: Implement this
+        if (fields.contains(LINK)) {
+            if (doc.containsKey("pageUUID")) {
+                // http://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page%3Auuid%3Af1ca07a5-6120-4429-ad73-5870d366b960/query/hestevogn
+                doc.setField(LINK, linkPrefix + URLEncoder.encode(
+                        doc.getFieldValue("pageUUID").toString(), StandardCharsets.UTF_8));
+            } else {
+                log.warn("expandResponse: link pseudo-field requested, but no pageUUID in response");
+            }
+        }
+        return doc;
     }
 
     // CSVWriter should handle newline escape but doesn't!?
