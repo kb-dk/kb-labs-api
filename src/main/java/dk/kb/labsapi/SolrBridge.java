@@ -65,8 +65,10 @@ public class SolrBridge {
     private static final Logger log = LoggerFactory.getLogger(SolrBridge.class);
 
     final static SimpleDateFormat HUMAN_TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH);
+    final static SimpleDateFormat EXPORT_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ENGLISH);
     final static String LINK = "link"; // Pseudo field with link to Mediestream webpage
     final static String LINK_PREFIX_DEFAULT = "http://www2.statsbiblioteket.dk/mediestream/avis/record/";
+    final static String TIMESTAMP = "timestamp";
 
     private static SolrClient solrClient;
     private static int pageSize = 500;
@@ -298,6 +300,18 @@ public class SolrBridge {
                 log.warn("expandResponse: link pseudo-field requested, but no pageUUID in response");
             }
         }
+
+        if (fields.contains(TIMESTAMP) && doc.containsKey(TIMESTAMP)) {
+            Object timestamp = doc.getFieldValue(TIMESTAMP);
+            if (timestamp instanceof Date) {
+                synchronized (EXPORT_ISO) {
+                    doc.setField(TIMESTAMP, EXPORT_ISO.format(timestamp));
+                }
+            } else {
+                log.warn("The field 'timestamp' was expected to be of type Date, but was " + timestamp.getClass());
+            }
+        }
+
         return doc;
     }
 

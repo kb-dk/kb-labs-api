@@ -6,14 +6,12 @@ import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
-import org.apache.cxf.jaxrs.ext.MessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -36,7 +34,7 @@ public class LabsapiService implements LabsapiApi {
     @Context
     private transient HttpServletResponse httpServletResponse;
 
-    final static SimpleDateFormat SIMPLE_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HHmm", Locale.ENGLISH);
+    final static SimpleDateFormat FILENAME_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HHmm", Locale.ENGLISH);
     final static Set<String> allowedAviserExportFields = new HashSet<>();
     static {
         String key = ".labsapi.aviser.export.fields";
@@ -142,7 +140,7 @@ public class LabsapiService implements LabsapiApi {
         }
     }
     private synchronized static String getCurrentTimeISO() {
-        return SIMPLE_ISO.format(new Date());
+        return FILENAME_ISO.format(new Date());
     }
 
     /**
