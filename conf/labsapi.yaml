@@ -7,7 +7,7 @@ labsapi:
       collection: 'aviser.1.prod'
       # The filter will be applied to all aviser-requests
       # No default
-      filter: 'recordBase:doms_aviser AND py:[* TO 1919]'
+      filter: 'recordBase:doms_aviser AND py:[* TO 1880]'
     export:
       solr:
         # Defaults to 500
