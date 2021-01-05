@@ -263,7 +263,7 @@ public class SolrBridge {
         String cursorMark = CursorMarkParams.CURSOR_MARK_START;
         ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
         AtomicLong counter = new AtomicLong(0);
-        while (counter.get() < max) {
+        while (max == -1 || counter.get() < max) {
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
             request.set(CommonParams.ROWS,
                         (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get()));
