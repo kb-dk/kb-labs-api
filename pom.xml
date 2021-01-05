@@ -283,7 +283,7 @@
                             <configOptions>
                                 <!-- Setting this to true overwrites existing implementations.
                                      Only set it temporarily when creating a new project -->
-                                <generateOperationBody>false</generateOperationBody>
+                                <generateOperationBody>true</generateOperationBody>
                             </configOptions>
 
                         </configuration>
