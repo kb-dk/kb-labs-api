@@ -267,13 +267,12 @@ public class SolrBridge {
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
             request.set(CommonParams.ROWS,
                         (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get()));
-
             QueryResponse response = getClient().query(request);
             response.getResults().stream().
                     map(doc -> expandResponse(doc, fields)).
                     forEach(processor);
             counter.addAndGet(response.getResults().size());
-            if (cursorMark.equals(response.getNextCursorMark()) || counter.get() >= max) {
+            if (cursorMark.equals(response.getNextCursorMark()) || (max != -1 && counter.get() >= max)) {
                 return counter.get();
             }
             cursorMark = response.getNextCursorMark();
