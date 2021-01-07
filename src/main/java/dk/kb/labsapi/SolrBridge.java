@@ -17,7 +17,6 @@ package dk.kb.labsapi;
 import dk.kb.JSONStreamWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.webservice.exception.InternalServiceException;
-import joptsimple.internal.Strings;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
@@ -41,7 +40,6 @@ import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -173,7 +171,7 @@ public class SolrBridge {
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString((int) Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize)),
                 CommonParams.SORT, exportSort,
-                 CommonParams.FL, Strings.join(expandRequestFields(fields), ","));
+                 CommonParams.FL, String.join(",", expandRequestFields(fields)));
 
         return format == FORMAT.csv ?
                 streamResponseCSV(request, query, fields, max, structure) :
@@ -324,7 +322,7 @@ public class SolrBridge {
     private static Object flattenStringList(Object value) {
         if (value instanceof List &&
             (!((List<Object>)value).isEmpty() && ((List<Object>)value).get(0) instanceof String)) {
-            return Strings.join(((List<String>)value), "\n");
+            return String.join("\n", ((List<String>)value));
         }
         return value;
     }

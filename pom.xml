@@ -140,6 +140,12 @@
             <version>1.8</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.11</version>
+        </dependency>
+
         <!-- Logging dependencies -->
         <dependency>
             <groupId>org.slf4j</groupId>

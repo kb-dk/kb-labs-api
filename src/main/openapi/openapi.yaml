@@ -129,6 +129,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Document'
+              examples:
+                jsonExample:
+                  externalValue: 'file://example_aviser_export.json'
             text/csv:
               schema:
                 description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
