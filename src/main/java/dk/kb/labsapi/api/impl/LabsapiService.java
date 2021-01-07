@@ -111,7 +111,7 @@ public class LabsapiService implements LabsapiApi {
                      "which is not possible: Comments will not be delivered",
                      trueFormat, SolrBridge.STRUCTURE.comments);
         }
-        switch (trueFormat) { // TODO: This does not seem to work. Why not?
+        switch (trueFormat) {
             case csv: {
                 httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "text/csv");
                 break;
@@ -132,7 +132,7 @@ public class LabsapiService implements LabsapiApi {
                                 "Exporting fields %s with max=%d and structure=%s in format=%s for query '%s'",
                                 eFields, max, structureSet.toString(), format, query));
         try{
-            httpServletResponse.setHeader("Content-Disposition",
+            httpServletResponse.addHeader(HttpHeaders.CONTENT_DISPOSITION,
                                           "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
             return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
