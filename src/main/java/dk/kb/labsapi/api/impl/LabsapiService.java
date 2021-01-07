@@ -133,7 +133,7 @@ public class LabsapiService implements LabsapiApi {
                                 eFields, max, structureSet.toString(), format, query));
         try{
             httpServletResponse.setHeader("Content-Disposition",
-                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
+                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + "." + trueFormat + "\"");
             return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);
