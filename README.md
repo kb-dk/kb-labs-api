@@ -9,7 +9,7 @@ The code has been made open source for inspiration only and no support is provid
 
 The current experimental API acts as a filtering proxy for 140+ year old Danish newspaper data,
 also available through the human oriented discovery interface at [Mediestream](http://mediestream.dk/).
-It allows for export of the OCR text fron newspaper articles as well as selected metadata fields,
+It allows for export of the OCR text from newspaper articles as well as selected metadata fields,
 based on a query from the user.
 
 It is not currently (2021-01-06) publicly available, but hopefully this will change within a week or two.
