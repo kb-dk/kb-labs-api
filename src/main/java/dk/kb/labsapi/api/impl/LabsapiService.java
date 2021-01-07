@@ -83,17 +83,18 @@ public class LabsapiService implements LabsapiApi {
         Set<String> eFields = fields.stream().
                 filter(Objects::nonNull).
                 filter(field -> !field.isEmpty()).
-                map(field -> Arrays.asList(field.split(", *"))).
+                map(field -> Arrays.asList(field.split("\\s*,\\s*"))).
                 flatMap(Collection::stream).
+                map(String::trim).
                 collect(Collectors.toCollection(LinkedHashSet::new));
 
         if (!allowedAviserExportFields.containsAll(eFields)) {
             eFields.removeAll(allowedAviserExportFields);
             throw new InvalidArgumentServiceException(
-                    "Error: Unsupported export fields " + eFields + ": . " +
+                    "Error: Unsupported export fields '" + eFields + "': . " +
                     "Valid fields are " + allowedAviserExportFields);
         }
-        long trueMax = max == null ? 10 : max < 0 ? -1 : max;
+        long trueMax = max == null ? 10 : (max < 0 ? -1 : max);
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
         SolrBridge.FORMAT trueFormat;
         try {
