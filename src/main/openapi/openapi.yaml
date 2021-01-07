@@ -4,8 +4,6 @@ info:
   title: "${project.name}"
   description: |
     ${project.description}
-  contact:
-    email: "${user.name}@kb.dk"
   license:
     name: "${license.name}"
     url: "${license.url}"
