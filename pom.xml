@@ -27,7 +27,7 @@
     </repositories>
 
     <scm>
-        <url>https://sbprojects.statsbiblioteket.dk/stash/projects/ARK/repos/labsapi-template/browse</url>
+        <url>https://github.com/kb-dk/kb-labs-api/</url>
         <connection>scm:git:ssh://git@github.com:kb-dk/kb-labs-api.git</connection>
         <developerConnection>scm:git:ssh://git@github.com:kb-dk/kb-labs-api.git</developerConnection>
         <tag>HEAD</tag>
@@ -52,7 +52,7 @@
         <license.url>https://www.apache.org/licenses/LICENSE-2.0.txt</license.url>
 
         <project.package>dk.kb.labsapi</project.package>
-        <project.description>Experimental API for publicly available date and metadata at the Royal Danish Library</project.description>
+        <project.description>Experimental API for publicly available data and metadata at the Royal Danish Library</project.description>
     </properties>
 
     <dependencies>
@@ -188,6 +188,7 @@
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-junit-jupiter</artifactId>
             <version>5.9.0</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider -->
@@ -200,6 +201,10 @@
             <resource>
                 <directory>src/main/openapi</directory>
                 <filtering>true</filtering>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
             </resource>
         </resources>
         <plugins>
