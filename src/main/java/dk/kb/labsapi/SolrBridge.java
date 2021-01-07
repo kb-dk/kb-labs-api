@@ -224,17 +224,15 @@ public class SolrBridge {
             FORMAT format) {
         return output -> {
             try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
-                 JSONStreamWriter jw = new JSONStreamWriter(
-                         osw, JSONStreamWriter.FORMAT.valueOf(format.toString()))) {
+                 JSONStreamWriter jw = new JSONStreamWriter(osw, JSONStreamWriter.FORMAT.valueOf(format.toString()))) {
                 if (structure.contains(STRUCTURE.content)) {
                     searchAndProcess(request, fields, pageSize, max, doc ->
-                            jw.writeJSON(
-                                    fields.stream().
-                                            filter(doc::containsKey).
-                                            collect(Collectors.toMap(
-                                                    field -> field,
-                                                    field -> flattenStringList(doc.get(field))
-                                            ))));
+                            jw.writeJSON(fields.stream().
+                                    filter(doc::containsKey).
+                                    collect(Collectors.toMap(
+                                            field -> field,
+                                            field -> flattenStringList(doc.get(field))
+                                    ))));
                 }
             } catch (SolrServerException e) {
                 throw new RuntimeException("SolrException writing " + format + " for " + request, e);

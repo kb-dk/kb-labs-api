@@ -83,17 +83,18 @@ public class LabsapiService implements LabsapiApi {
         Set<String> eFields = fields.stream().
                 filter(Objects::nonNull).
                 filter(field -> !field.isEmpty()).
-                map(field -> Arrays.asList(field.split(", *"))).
+                map(field -> Arrays.asList(field.split("\\s*,\\s*"))).
                 flatMap(Collection::stream).
+                map(String::trim).
                 collect(Collectors.toCollection(LinkedHashSet::new));
 
         if (!allowedAviserExportFields.containsAll(eFields)) {
             eFields.removeAll(allowedAviserExportFields);
             throw new InvalidArgumentServiceException(
-                    "Error: Unsupported export fields " + eFields + ": . " +
+                    "Error: Unsupported export fields '" + eFields + "': . " +
                     "Valid fields are " + allowedAviserExportFields);
         }
-        long trueMax = max == null ? 10 : max < 0 ? -1 : max;
+        long trueMax = max == null ? 10 : (max < 0 ? -1 : max);
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
         SolrBridge.FORMAT trueFormat;
         try {
@@ -132,6 +133,8 @@ public class LabsapiService implements LabsapiApi {
                                 "Exporting fields %s with max=%d and structure=%s in format=%s for query '%s'",
                                 eFields, max, structureSet.toString(), format, query));
         try{
+            httpServletResponse.setHeader("Content-Disposition",
+                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + "." + trueFormat + "\"");
             httpServletResponse.addHeader(HttpHeaders.CONTENT_DISPOSITION,
                                           "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
             return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
