@@ -6,7 +6,9 @@ import java.util.Set;
 
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import dk.kb.labsapi.api.impl.LabsapiService;
+import dk.kb.labsapi.model.DocumentDto;
 import dk.kb.webservice.ServiceExceptionMapper;
+import org.apache.cxf.jaxrs.provider.StreamingResponseProvider;
 
 
 public class Application extends javax.ws.rs.core.Application {
@@ -16,7 +18,8 @@ public class Application extends javax.ws.rs.core.Application {
         return new HashSet<>(Arrays.asList(
                 JacksonJsonProvider.class,
                 LabsapiService.class,
-                ServiceExceptionMapper.class
+                ServiceExceptionMapper.class,
+                StreamingResponseProvider.class
         ));
     }
 

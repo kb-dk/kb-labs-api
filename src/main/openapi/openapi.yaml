@@ -95,33 +95,17 @@ paths:
               enum:  ['comments', 'header', 'content']
             default: ['header', 'content']
             example: ['header', 'content']
-        - name: format
-          in: query
-          required: false
-          # TODO: Figure out how to deliver the comments with JSON
-          description: |
-                      The delivery format.
-
-                      * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes
-                      * JSON: Valid JSON in the form of a single array of Documents
-                      * JSONL: Newline separated single-line JSON representations of Documents
-          schema:
-            type: string
-            enum:  ['CSV', 'JSON', 'JSONL']
-            default: 'CSV'
-            example: 'JSON'
-
-      x-streamingOutput: true
+      x-streamingResponse: true
       responses:
         '200':
           description: 'OK'
           content:
             # application/x-jsonlines is another possibility. Potayto, potahto
-            application/x-ndjson:
+            application/jsonl:
               schema:
                 description: 'Newline separated single-line JSON representations of Documents.\n
                               See https://github.com/ndjson/ndjson-spec or https://jsonlines.org/ for the format'
-                type: string
+                $ref: '#/components/schemas/Document'
             application/json:
               schema:
                 description: 'JSON-compliant representation of Documents. Note that the structure can be unwieldy for

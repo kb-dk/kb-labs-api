@@ -3,12 +3,17 @@ package dk.kb.labsapi.api.impl;
 import dk.kb.labsapi.SolrBridge;
 import dk.kb.labsapi.api.LabsapiApi;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.labsapi.model.DocumentDto;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
+import org.apache.cxf.jaxrs.ext.StreamingResponse;
+import org.apache.http.entity.ContentType;
+import org.eclipse.jetty.http.HttpHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
@@ -33,6 +38,8 @@ public class LabsapiService implements LabsapiApi {
 
     @Context
     private transient HttpServletResponse httpServletResponse;
+    @Context
+    private transient HttpServletRequest httpServletRequest;
 
     final static SimpleDateFormat FILENAME_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HHmm", Locale.ENGLISH);
     final static Set<String> allowedAviserExportFields = new HashSet<>();
@@ -56,7 +63,6 @@ public class LabsapiService implements LabsapiApi {
      *
      * @param structure: The major parts of the delivery.\\n * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON\\n * header: The export field names. Only relevant for CSV\\n * content: The export content itself
      *
-     * @param format: The delivery format.\\n * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes\\n * JSON: Valid JSON in the form of a single array of Documents\\n * JSONL: Newline separated single-line JSON representations of Documents
      *
      * @return <ul>
       *   <li>code = 200, message = "OK", response = String.class</li>
@@ -69,7 +75,7 @@ public class LabsapiService implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure, String format) throws ServiceException {
+    public org.apache.cxf.jaxrs.ext.StreamingResponse<DocumentDto> exportFields(String query, List<String> fields, Long max, List<String> structure) throws ServiceException {
         if (allowedAviserExportFields.isEmpty()) {
             log.error("Error: No allowed export fields defined in properties");
             throw new InternalServiceException(
@@ -96,12 +102,11 @@ public class LabsapiService implements LabsapiApi {
         }
         long trueMax = max == null ? 10 : (max < 0 ? -1 : max);
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
+        String format = httpServletRequest.getHeader(HttpHeaders.ACCEPT);
         SolrBridge.FORMAT trueFormat;
         try {
             // TODO: Also consider the "Accept"-header
-            trueFormat = format == null || format.isEmpty() ?
-                    SolrBridge.FORMAT.getDefault() :
-                    SolrBridge.FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
+            trueFormat = SolrBridge.FORMAT.parse(format);
         } catch (IllegalArgumentException e) {
             throw new InvalidArgumentServiceException(
                     "Error: The format '" + format + "' is unsupported. " +
@@ -112,31 +117,13 @@ public class LabsapiService implements LabsapiApi {
                      "which is not possible: Comments will not be delivered",
                      trueFormat, SolrBridge.STRUCTURE.comments);
         }
-        switch (trueFormat) {
-            case csv: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "text/csv");
-                break;
-            }
-            case json: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
-                break;
-            }
-            case jsonl: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjson");
-                break;
-            }
-            default: throw new InternalServiceException(
-                    "Internal exception: format '" + trueFormat + "' could not be converted to MIME type");
-        }
 
         log.debug(String.format(Locale.ENGLISH,
                                 "Exporting fields %s with max=%d and structure=%s in format=%s for query '%s'",
                                 eFields, max, structureSet.toString(), format, query));
         try{
-            httpServletResponse.setHeader("Content-Disposition",
+            httpServletResponse.setHeader(HttpHeaders.CONTENT_DISPOSITION,
                                           "inline; filename=\"mediestream_" + getCurrentTimeISO() + "." + trueFormat + "\"");
-            httpServletResponse.addHeader(HttpHeaders.CONTENT_DISPOSITION,
-                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
             return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);

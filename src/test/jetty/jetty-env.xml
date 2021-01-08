@@ -2,7 +2,7 @@
 <Configure class="org.eclipse.jetty.webapp.WebAppContext">
 
     <New id="logback" class="org.eclipse.jetty.plus.jndi.EnvEntry">
-        <Arg>${project.artifactId}-logback-config</Arg>
+        <Arg>labsapi-logback-config</Arg>
         <Arg type="java.lang.String">
             ${basedir}/target/jetty-res/logback.xml
         </Arg>
@@ -12,7 +12,7 @@
     <New id="config" class="org.eclipse.jetty.plus.jndi.EnvEntry">
         <Arg>application-config</Arg>
         <Arg type="java.lang.String">
-            ${user.home}/conf/labsapi-test.yaml;labsapi-test.yaml
+            ${basedir}/conf/labsapi-test.yaml;labsapi-test.yaml
         </Arg>
         <Arg type="boolean">true</Arg>
     </New>

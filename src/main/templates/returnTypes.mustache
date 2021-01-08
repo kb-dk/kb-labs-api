@@ -3,6 +3,9 @@
     }}{{#vendorExtensions.x-useGenericResponse}}Response{{/vendorExtensions.x-useGenericResponse}}{{!
     }}{{^vendorExtensions.x-useGenericResponse}}{{!
         }}{{#vendorExtensions.x-streamingOutput}}javax.ws.rs.core.StreamingOutput{{/vendorExtensions.x-streamingOutput}}{{!
-        }}{{^vendorExtensions.x-streamingOutput}}{{{returnType}}}{{/vendorExtensions.x-streamingOutput}}{{!
+        }}{{^vendorExtensions.x-streamingOutput}}{{!
+                }}{{#vendorExtensions.x-streamingResponse}}org.apache.cxf.jaxrs.ext.StreamingResponse<{{{returnType}}}>{{/vendorExtensions.x-streamingResponse}}{{!
+                }}{{^vendorExtensions.x-streamingResponse}}{{{returnType}}}{{/vendorExtensions.x-streamingResponse}}{{!
+        }}{{/vendorExtensions.x-streamingOutput}}{{!
     }}{{/vendorExtensions.x-useGenericResponse}}{{!
 }}{{/useGenericResponse}}

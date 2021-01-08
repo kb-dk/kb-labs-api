@@ -7,10 +7,10 @@
         </encoder>
     </appender>
 
-    <root level="INFO">
+    <root level="DEBUG">
       <appender-ref ref="STDOUT" />
     </root>
 
-    <logger name="${project.package}" level="DEBUG"/>
+    <logger name="dk.kb" level="DEBUG"/>
  
 </included>
