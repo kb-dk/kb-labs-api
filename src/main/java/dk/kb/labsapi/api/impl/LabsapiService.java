@@ -112,17 +112,17 @@ public class LabsapiService implements LabsapiApi {
                      "which is not possible: Comments will not be delivered",
                      trueFormat, SolrBridge.STRUCTURE.comments);
         }
-        switch (trueFormat) { // TODO: This does not seem to work. Why not?
+        switch (trueFormat) {
             case csv: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "text/csv");
+                httpServletResponse.setContentType("text/csv");
                 break;
             }
             case json: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+                httpServletResponse.setContentType("application/json");
                 break;
             }
             case jsonl: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjson");
+                httpServletResponse.setContentType( "application/x-ndjson");
                 break;
             }
             default: throw new InternalServiceException(
