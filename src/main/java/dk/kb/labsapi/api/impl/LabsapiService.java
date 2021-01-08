@@ -154,8 +154,6 @@ public class LabsapiService implements LabsapiApi {
         try{
             httpServletResponse.setHeader("Content-Disposition",
                                           "inline; filename=\"mediestream_" + getCurrentTimeISO() + "." + trueFormat + "\"");
-            httpServletResponse.addHeader(HttpHeaders.CONTENT_DISPOSITION,
-                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
             return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);
