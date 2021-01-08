@@ -49,6 +49,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -65,11 +66,22 @@ public class SolrBridge {
     final static String LINK_PREFIX_DEFAULT = "http://www2.statsbiblioteket.dk/mediestream/avis/record/";
     final static String TIMESTAMP = "timestamp";
 
-    private static final SolrClient solrClient = createClient();
-    private static int pageSize = 500;
-    private static String linkPrefix;
-    private static String exportSort = null;
-    
+    private static final SolrClient solrClient;
+    private static final int pageSize;
+    private static final String linkPrefix;
+    private static final String exportSort;
+    private static final int maxConnections;
+    private static final Semaphore connection;
+
+    static { // Basic setup
+        solrClient = createClient();
+        pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", 500);
+        linkPrefix = ServiceConfig.getConfig().getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
+        exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
+        maxConnections = ServiceConfig.getConfig().getInteger(".labsapi.aviser.solr.connections", 5);
+        connection = new Semaphore(maxConnections, true);
+    }
+
     public enum STRUCTURE { comments, header, content ;
         public static Set<STRUCTURE> DEFAULT = new HashSet<>(Arrays.asList(header, content)) ;
         public static Set<STRUCTURE> ALL = new HashSet<>(Arrays.asList(comments, header, content)) ;
@@ -98,9 +110,6 @@ public class SolrBridge {
         if (filter != null) {
             baseParams.set(CommonParams.FQ, filter);
         }
-        pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", pageSize);
-        linkPrefix = ServiceConfig.getConfig().getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
-        exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
         log.info("Creating SolrClient({}) with filter='{}'", fullURL, filter);
         return new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
     }
@@ -120,12 +129,15 @@ public class SolrBridge {
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString(0));
         try {
+            connection.acquire();
             QueryResponse response = solrClient.query(request);
             return response.getResults().getNumFound();
         } catch (Exception e) {
             log.warn("Exception calling Solr for countHits(" + query + ")", e);
             throw new InternalServiceException(
                     "Internal error counting hits for query '" + query + "': " + e.getMessage());
+        } finally {
+            connection.release();
         }
     }
 
@@ -247,7 +259,15 @@ public class SolrBridge {
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
             request.set(CommonParams.ROWS,
                         (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get()));
-            QueryResponse response = solrClient.query(request);
+            QueryResponse response;
+            try {
+                connection.acquire();
+                response = solrClient.query(request);
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while trying to acquire a connection", e);
+            } finally {
+                connection.release();
+            }
             response.getResults().stream().
                     map(doc -> expandResponse(doc, fields)).
                     forEach(processor);
@@ -311,10 +331,10 @@ public class SolrBridge {
 
     private static String sanitize(String query) {
         // Quick disabling of obvious tricks
-        return query.
+        return query.trim().
                 replaceAll("^[{]", "\\{"). // Behaviour adjustment
                 replaceAll("^/", "\\/").   // Regexp matching
-                replaceAll(":/", ":\\/");  // Regexp matching
+                replaceAll("([^\\\\])/", "$1\\/");  // Regexp matching
     }
 
 }
