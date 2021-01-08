@@ -6,12 +6,17 @@ import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
+import org.apache.cxf.jaxrs.ext.MessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -43,6 +48,20 @@ public class LabsapiService implements LabsapiApi {
         } catch (Exception e) {
             log.error("Unable to retrieve list of export fields from {} in config. Export is not possible", key);
         }
+    }
+    
+    
+    /**
+     * This method just redirects gets to WEBAPP/api to the swagger UI /WEBAPP/api/api-docs?url=WEBAPP/api/openapi.yaml
+     */
+    @GET
+    @Path("/")
+    public Response redirect(@Context MessageContext request){
+        String path = request.get("org.apache.cxf.message.Message.PATH_INFO").toString();
+        if (path != null && !path.endsWith("/")){
+            path = path + "/";
+        }
+        return Response.temporaryRedirect(URI.create(request.get("org.apache.cxf.request.url") + "/api-docs?url=" + path + "openapi.yaml")).build();
     }
 
     /**
@@ -135,6 +154,8 @@ public class LabsapiService implements LabsapiApi {
         try{
             httpServletResponse.setHeader("Content-Disposition",
                                           "inline; filename=\"mediestream_" + getCurrentTimeISO() + "." + trueFormat + "\"");
+            httpServletResponse.addHeader(HttpHeaders.CONTENT_DISPOSITION,
+                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
             return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);
