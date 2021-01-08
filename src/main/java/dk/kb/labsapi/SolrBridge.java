@@ -49,9 +49,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -68,7 +65,7 @@ public class SolrBridge {
     final static String LINK_PREFIX_DEFAULT = "http://www2.statsbiblioteket.dk/mediestream/avis/record/";
     final static String TIMESTAMP = "timestamp";
 
-    private static SolrClient solrClient;
+    private static final SolrClient solrClient = createClient();
     private static int pageSize = 500;
     private static String linkPrefix;
     private static String exportSort = null;
@@ -88,30 +85,24 @@ public class SolrBridge {
       }
     }
 
-    private static SolrClient getClient() {
-        if (solrClient == null) {
-            String solrURL = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.url");
-            String collection = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.collection");
-            String fullURL = solrURL + (solrURL.endsWith("/") ? "" : "/") + collection;
-            String filter = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.filter", null);
+    private static SolrClient createClient() {
+        String solrURL = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.url");
+        String collection = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.collection");
+        String fullURL = solrURL + (solrURL.endsWith("/") ? "" : "/") + collection;
+        String filter = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.filter", null);
 
-            ModifiableSolrParams baseParams = new ModifiableSolrParams();
-            baseParams.set(HighlightParams.HIGHLIGHT, false);
-            baseParams.set(FacetParams.FACET, false);
-            baseParams.set(GroupParams.GROUP, false);
-            if (filter != null) {
-                baseParams.set(CommonParams.FQ, filter);
-            }
-            pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", pageSize);
-            linkPrefix = ServiceConfig.getConfig().getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
-            exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
-            log.info("Creating SolrClient({}) with filter='{}'", fullURL, filter);
-            solrClient = new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
+        ModifiableSolrParams baseParams = new ModifiableSolrParams();
+        baseParams.set(HighlightParams.HIGHLIGHT, false);
+        baseParams.set(FacetParams.FACET, false);
+        baseParams.set(GroupParams.GROUP, false);
+        if (filter != null) {
+            baseParams.set(CommonParams.FQ, filter);
         }
-        return solrClient;
-    }
-    static {
-        getClient(); // Fail early
+        pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", pageSize);
+        linkPrefix = ServiceConfig.getConfig().getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
+        exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
+        log.info("Creating SolrClient({}) with filter='{}'", fullURL, filter);
+        return new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
     }
 
     /**
@@ -129,7 +120,7 @@ public class SolrBridge {
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString(0));
         try {
-            QueryResponse response = getClient().query(request);
+            QueryResponse response = solrClient.query(request);
             return response.getResults().getNumFound();
         } catch (Exception e) {
             log.warn("Exception calling Solr for countHits(" + query + ")", e);
@@ -139,7 +130,7 @@ public class SolrBridge {
     }
 
     /**
-     * Export the fields from the documents from a search for query using {@link #getClient()} by streaming.
+     * Export the fields from the documents from a search for query using {@link #solrClient} by streaming.
      * @param query     restraints for the export.
      * @param fields    the fields to export.
      * @param max       the maximum number of documents to export.
@@ -221,6 +212,7 @@ public class SolrBridge {
                     searchAndProcess(request, fields, pageSize, max, doc ->
                             jw.writeJSON(fields.stream().
                                     filter(doc::containsKey).
+                                    // TODO: Convert to DocumentDTO
                                     collect(Collectors.toMap(
                                             field -> field,
                                             field -> flattenStringList(doc.get(field))
@@ -255,7 +247,7 @@ public class SolrBridge {
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
             request.set(CommonParams.ROWS,
                         (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get()));
-            QueryResponse response = getClient().query(request);
+            QueryResponse response = solrClient.query(request);
             response.getResults().stream().
                     map(doc -> expandResponse(doc, fields)).
                     forEach(processor);
