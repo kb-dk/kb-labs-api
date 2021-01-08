@@ -88,16 +88,6 @@ public class SolrBridge {
       }
     }
 
-    private static ExecutorService executor = Executors.newCachedThreadPool(new ThreadFactory() {
-        int threadID = 0;
-        @Override
-        public Thread newThread(Runnable r) {
-            Thread t = new Thread(r, "SolrThread_" + threadID++);
-            t.setDaemon(true);
-            return t;
-        }
-    });
-
     private static SolrClient getClient() {
         if (solrClient == null) {
             String solrURL = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.url");
@@ -186,7 +176,9 @@ public class SolrBridge {
                     os.write("# kb-labs-api export of Mediestream aviser data"+ "\n");
                     os.write("# query: " + query.replace("\n", "\\n") + "\n");
                     os.write("# fields: " + fields.toString() + "\n");
-                    os.write("# export time: " + HUMAN_TIME.format(new Date()) + "\n");
+                    synchronized (HUMAN_TIME) {
+                        os.write("# export time: " + HUMAN_TIME.format(new Date()) + "\n");
+                    }
                     os.write("# matched articles: " + countHits(query) + "\n");
                     os.write("# max articles returned: " + max + "\n");
                 }
