@@ -16,6 +16,7 @@ package dk.kb.labsapi;
 
 import dk.kb.JSONStreamWriter;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
@@ -24,6 +25,7 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.response.FacetField;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.params.CommonParams;
@@ -36,8 +38,10 @@ import org.apache.solr.common.params.SolrParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -53,6 +57,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Handles Solr comminication.
@@ -73,12 +78,14 @@ public class SolrBridge {
     private static final int maxConnections;
     private static final Semaphore connection;
 
+
     static { // Basic setup
         solrClient = createClient();
-        pageSize = ServiceConfig.getConfig().getInteger(".labsapi.aviser.export.solr.pagesize", 500);
-        linkPrefix = ServiceConfig.getConfig().getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
-        exportSort = ServiceConfig.getConfig().getString(".labsapi.aviser.export.solr.sort");
-        maxConnections = ServiceConfig.getConfig().getInteger(".labsapi.aviser.solr.connections", 5);
+        YAML conf = ServiceConfig.getConfig();
+        pageSize = conf.getInteger(".labsapi.aviser.export.solr.pagesize", 500);
+        linkPrefix = conf.getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
+        exportSort = conf.getString(".labsapi.aviser.export.solr.sort");
+        maxConnections = conf.getInteger(".labsapi.aviser.solr.connections", 5);
         connection = new Semaphore(maxConnections, true);
     }
 
@@ -105,7 +112,6 @@ public class SolrBridge {
 
         ModifiableSolrParams baseParams = new ModifiableSolrParams();
         baseParams.set(HighlightParams.HIGHLIGHT, false);
-        baseParams.set(FacetParams.FACET, false);
         baseParams.set(GroupParams.GROUP, false);
         if (filter != null) {
             baseParams.set(CommonParams.FQ, filter);
@@ -163,6 +169,7 @@ public class SolrBridge {
                 CommonParams.Q, sanitize(query),
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString((int) Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize)),
+                FacetParams.FACET, "false",
                 CommonParams.SORT, exportSort,
                  CommonParams.FL, String.join(",", expandRequestFields(fields)));
 
@@ -314,6 +321,61 @@ public class SolrBridge {
         return doc;
     }
 
+    /* *************************************************************************************************************** */
+    
+    public enum FACET_FORMAT { csv;
+      public static FACET_FORMAT getDefault() {
+          return csv;
+      }
+    }
+    public enum FACET_SORT { count, index;
+      public static FACET_SORT getDefault() {
+          return count;
+      }
+    }
+
+    public static StreamingOutput facet(
+            String query, String field, FACET_SORT sort, Integer limit, FACET_FORMAT outFormat) {
+        SolrParams request = new SolrQuery(
+                CommonParams.Q, sanitize(query),
+                FacetParams.FACET, "true",
+                FacetParams.FACET_FIELD, field,
+                FacetParams.FACET_LIMIT, limit.toString(),
+                FacetParams.FACET_SORT, sort.toString(),
+                GroupParams.GROUP, "false",
+                HighlightParams.HIGHLIGHT, "false",
+                // Filter is added automatically by the SolrClient
+                CommonParams.ROWS, Integer.toString(0));
+        QueryResponse response;
+        try {
+            connection.acquire();
+            response = solrClient.query(request);
+        } catch (Exception e) {
+            log.warn("Exception calling Solr for countHits(" + query + ")", e);
+            throw new InternalServiceException(
+                    "Internal error counting hits for query '" + query + "': " + e.getMessage());
+        } finally {
+            connection.release();
+        }
+        CSVFormat csvFormat = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.NON_NUMERIC).withHeader(field, "count");
+
+        return output -> {
+            try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8) ;
+                 CSVPrinter printer = new CSVPrinter(os, csvFormat)) {
+                FacetField facetField = response.getFacetField(field);
+                if (facetField != null) {
+                    for (FacetField.Count count: facetField.getValues()) {
+                        printer.printRecord(count.getName(), count.getCount());
+                    }
+                }
+            } catch (IOException e) {
+                log.error("IOException writing Solr response for facet request" + request);
+            }
+        };
+    }
+
+
+
     // CSVWriter should handle newline escape but doesn't!?
     private static Object escapeString(Object o) {
         return o instanceof String ? ((String)o).replace("\\", "\\\\").replace("\n", "\\n") : o;
@@ -331,6 +393,9 @@ public class SolrBridge {
 
     private static String sanitize(String query) {
         // Quick disabling of obvious tricks
+        if ("*".equals(query)) {
+            query = "*:*";
+        }
         return query.trim().
                 replaceAll("^[{]", "\\{"). // Behaviour adjustment
                 replaceAll("^/", "\\/").   // Regexp matching

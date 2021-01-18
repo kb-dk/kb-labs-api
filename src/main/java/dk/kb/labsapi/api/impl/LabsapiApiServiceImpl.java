@@ -43,7 +43,7 @@ import io.swagger.annotations.Api;
 /**
  * labsapi
  *
- * <p>This pom can be inherited by projects wishing to integrate to the SBForge development platform. 
+ * <p>Experimental API for publicly available data and metadata at the Royal Danish Library 
  *
  */
 public class LabsapiApiServiceImpl implements LabsapiApi {
@@ -88,17 +88,17 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
 
 
     /**
-     * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the Royal Danish Library). The export is restricted to newspapers older than 100 years and will be sorted by publication date.
+     * Export data from old newspapers at http://mediestream.dk/
      * 
-     * @param query: A query for the newspapers to export metadata for.\\n The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis\\n A filter restricting the result to newspapers older than 100 years will be automatically applied
+     * @param query: A query for the newspapers to export metadata for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied 
      * 
-     * @param fields: The fields to export.\\n * link: A hyperlink to the Mediestream page for the article\\n * recordID: The unique ID of the article in the Mediestream system\\n * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS\\n * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100\\n * cer: \\n * fulltext_org: The original OCR text for the article\\n * pageUUID: The ID for the page that the article appears on\\n * editionUUID: The ID for the edition that the page with the article belongs to\\n * editionId: Human readable version of the edition\\n * titleUUID: TODO: Explain this\\n * familyId: TODO: Explain this\\n * newspaper_page: The page number of the addition that the article appears on\\n * newspaper_edition: TODO: Explain this\\n * lplace: TODO: Explain this\\n * location_name: Location names extracted from the text (low quality entity recognition)\\n * location_coordinates: Coordinates for places from location_name
+     * @param fields: The fields to export.  * link: A hyperlink to the Mediestream page for the article * recordID: The unique ID of the article in the Mediestream system * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100 * cer: * fulltext_org: The original OCR text for the article * pageUUID: The ID for the page that the article appears on * editionUUID: The ID for the edition that the page with the article belongs to * editionId: Human readable version of the edition * titleUUID: TODO: Explain this * familyId: TODO: Explain this * newspaper_page: The page number of the addition that the article appears on * newspaper_edition: TODO: Explain this * lplace: TODO: Explain this * location_name: Location names extracted from the text (low quality entity recognition) * location_coordinates: Coordinates for places from location_name 
      * 
-     * @param max: The maximum number of articles to return, -1 to return all articles. *WARNING* setting this to more than 50 when using the Swagger-UI to test will probably result in the browser locking up
+     * @param max: The maximum number of articles to return, -1 to return all articles.  **WARNING** setting this to more than 50 when using the Swagger-UI to test will probably result in the browser locking up 
      * 
-     * @param structure: The major parts of the delivery.\\n * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON\\n * header: The export field names. Only relevant for CSV\\n * content: The export content itself
+     * @param structure: The major parts of the delivery.  * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON * header: The export field names. Only relevant for CSV * content: The export content itself 
      * 
-     * @param format: The delivery format.\\n * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes\\n * JSON: Valid JSON in the form of a single array of Documents\\n * JSONL: Newline separated single-line JSON representations of Documents
+     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of Documents * JSONL: Newline separated single-line JSON representations of Documents 
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = String.class</li>
@@ -107,6 +107,8 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       *   <li>code = 500, message = "Internal Error", response = String.class</li>
       *   </ul>
       * @throws ServiceException when other http codes should be returned
+      *
+      * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The export is restricted to newspapers older than 140 years and will be sorted by publication date.&#39; 
       *
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
@@ -125,9 +127,45 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     }
 
     /**
+     * Facet on a field for newspapers data from http://mediestream.dk/
+     * 
+     * @param query: A query for the newspapers to export aggregates facet statistics for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied 
+     * 
+     * @param field: The field to facet. Note that it is case sensitive.  * pu: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published * familyId: The name of the newspaper : py: Publication year 
+     * 
+     * @param sort: The sort order of the facet content.
+     * 
+     * @param limit: The maximum number of entries to return for a facet field.
+     * 
+     * @param format: The delivery format.  * CSV: Comma separated, strings encapsulated in quotes 
+     * 
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;pu&#x60; delivers a list of all \&quot;publishing locations\&quot; for all the articles matching the query. The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The data are restricted to newspapers older than 140 years and will be sorted by publication date.&#39; 
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public javax.ws.rs.core.StreamingOutput facet(String query, String field, String sort, Integer limit, String format) throws ServiceException {
+        // TODO: Implement...
+    
+        
+        try{ 
+            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
+            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    
+    }
+
+    /**
      * Perform a search with the given query, returning only the number of hits. Typically used to get an estimate for the result size for an export
      * 
-     * @param query: A query for the newspaper articles.\\n The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.\\n A filter restricting the result to newspapers older than 100 years will be automatically applied
+     * @param query: A query for the newspaper articles.  The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.  A filter restricting the result to newspapers older than 140 years will be automatically applied&#39; 
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = Long.class</li>
@@ -169,7 +207,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "Qrp1n5";
+            String response = "Xgm5PllHb";
         return response;
         } catch (Exception e){
             throw handleException(e);

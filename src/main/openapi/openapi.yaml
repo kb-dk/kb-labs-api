@@ -155,6 +155,91 @@ paths:
               schema:
                 type: string
 
+  /aviser/query/facet:
+    get:
+      tags:
+        - "${project.name}"
+      summary: Facet on a field for newspapers data from http://mediestream.dk/
+      description: |
+                  Faceting aggregates statistics for a given field based on a query. E.g. faceting on `familyID`
+                  delivers a list of all unique general newspaper titles for all the articles matching the query.
+
+                  The data are from articles in the newspaper collection at http://mediestream.dk/
+                  (a part of the [Royal Danish Library](https://kb.dk)). The data are restricted to newspapers older
+                  than 140 years and will be sorted by publication date.'
+      operationId: facet
+
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: |
+                      A query for the newspapers to export aggregates facet statistics for.
+
+                      The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis
+
+                      A filter restricting the result to newspapers older than 140 years will be automatically applied
+          schema:
+            type: string
+            example: 'Sletterhage fyr'
+        - name: field
+          in: query
+          required: false
+          description: |
+                      The field to facet. Note that it is case sensitive.
+
+                      * familyId: The general name of the newspaper
+                      * lvx: The specific name of the newspaper
+                      * lplace: "Udgivelsessted" / publication location. Where the paper was published
+                      : py: Publication year
+          schema:
+            type: string
+            enum:  ['familyId', 'lvx', 'lplace', 'py']
+            default:  'familyId'
+            example:  'familyId'
+        - name: sort
+          in: query
+          required: false
+          description: The sort order of the facet content.
+          schema:
+            type: string
+            enum:  ['count', 'index']
+            default:  'count'
+            example:  'count'
+        - name: limit
+          in: query
+          required: false
+          description: The maximum number of entries to return for a facet field.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+            example: 10
+        - name: format
+          in: query
+          required: false
+          # TODO: Figure out how to deliver the comments with JSON
+          description: |
+                      The delivery format.
+
+                      * CSV: Comma separated, strings encapsulated in quotes
+          schema:
+            type: string
+            enum:  ['CSV']
+            default: 'CSV'
+            example: 'CSV'
+
+      x-streamingOutput: true # To handle mixed return types
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            text/csv:
+              schema:
+                description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
+                type: string
+
   /aviser/hits:
     get:
       tags:
@@ -291,3 +376,4 @@ components:
         location_coordinates:
           description: 'Coordinates for places from location_name'
           type: string
+

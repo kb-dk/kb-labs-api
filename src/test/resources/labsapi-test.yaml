@@ -5,6 +5,16 @@ labsapi:
       collection: 'warc1'
       # The filter will be applied to all aviser-requests
       filter: 'text:kan'
+    facet:
+      # Maximum field.limit
+      # Defaults to 1000
+      limit:
+        max: 1000
+      fields: # Mandatory, no default
+        - familyId
+        - lvx
+        - lplace
+        - py
     export:
       solr:
         pagesize: 500

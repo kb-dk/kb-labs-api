@@ -13,6 +13,16 @@ labsapi:
       # maxConnection exports running at the same time as they will interleave their paging.
       # Default is 5
       connections: 5
+    facet:
+      # Maximum field.limit
+      # Defaults to 1000
+      limit:
+        max: 1000
+      fields: # Mandatory, no default
+        - familyId
+        - lvx
+        - lplace
+        - py
     export:
       solr:
         # Defaults to 500

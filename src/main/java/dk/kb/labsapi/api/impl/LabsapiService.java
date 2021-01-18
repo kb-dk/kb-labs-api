@@ -14,8 +14,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -41,6 +41,8 @@ public class LabsapiService implements LabsapiApi {
 
     final static SimpleDateFormat FILENAME_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HHmm", Locale.ENGLISH);
     final static Set<String> allowedAviserExportFields = new HashSet<>();
+    final static Set<String> allowedFacetFields = new HashSet<>();
+    private static final Integer facetLimitMax;
     static {
         String key = ".labsapi.aviser.export.fields";
         try {
@@ -48,22 +50,17 @@ public class LabsapiService implements LabsapiApi {
         } catch (Exception e) {
             log.error("Unable to retrieve list of export fields from {} in config. Export is not possible", key);
         }
-    }
-    
-    
-    /**
-     * This method just redirects gets to WEBAPP/api to the swagger UI /WEBAPP/api/api-docs?url=WEBAPP/api/openapi.yaml
-     */
-    @GET
-    @Path("/")
-    public Response redirect(@Context MessageContext request){
-        String path = request.get("org.apache.cxf.message.Message.PATH_INFO").toString();
-        if (path != null && !path.endsWith("/")){
-            path = path + "/";
-        }
-        return Response.temporaryRedirect(URI.create(request.get("org.apache.cxf.request.url") + "/api-docs?url=" + path + "openapi.yaml")).build();
-    }
 
+        key = ".labsapi.aviser.facet.fields";
+        try {
+            allowedFacetFields.addAll(ServiceConfig.getConfig().getList(key));
+        } catch (Exception e) {
+            log.error("Unable to retrieve list of facet fields from {} in config. Facet is not possible", key);
+        }
+        facetLimitMax = ServiceConfig.getConfig().getInteger(".labsapi.aviser.facet.limit.max", 1000);
+    }
+    
+    
     /**
      * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the Royal Danish Library). The export is restricted to newspapers older than 100 years and will be sorted by publication date.
      *
@@ -88,7 +85,7 @@ public class LabsapiService implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure, String format) throws ServiceException {
+    public StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure, String format) throws ServiceException {
         if (allowedAviserExportFields.isEmpty()) {
             log.error("Error: No allowed export fields defined in properties");
             throw new InternalServiceException(
@@ -164,6 +161,55 @@ public class LabsapiService implements LabsapiApi {
     }
 
     /**
+     * Facet on one or more fields for newspapers data from http://mediestream.dk/
+     *
+     * @param query: A query for the newspapers to export aggregates facet statistics for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied
+     *
+     * @param field: The field to facet. Note that it is case sensitive.  * pu: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published * familyId: The name of the newspaper : py: Publication year
+     *
+     * @param sort: The sort order of the facet content.
+     *
+     * @param limit: The maximum number of entries to return for a facet field.
+     *
+     * @param format: The delivery format.  * CSV: Comma separated, strings encapsulated in quotes
+     *
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;pu&#x60; delivers a list of all \&quot;publishing locations\&quot; for all the articles matching the query. The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The data are restricted to newspapers older than 140 years and will be sorted by publication date.&#39;
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public StreamingOutput facet(String query, String field, String sort, Integer limit, String format) throws ServiceException {
+        SolrBridge.FACET_SORT eSort = sort == null || sort.isEmpty() ?
+                SolrBridge.FACET_SORT.getDefault() :
+                SolrBridge.FACET_SORT.valueOf(sort.toLowerCase(Locale.ROOT));
+        if (eSort == null) {
+            throw new InvalidArgumentServiceException("Unknown sort '" + sort + "'");
+        }
+        SolrBridge.FACET_FORMAT eFormat = format == null || format.isEmpty() ?
+                SolrBridge.FACET_FORMAT.getDefault() :
+                SolrBridge.FACET_FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
+        if (eFormat == null) {
+            throw new InvalidArgumentServiceException("Unknown delivery format '" + format + "'");
+        }
+        if (!allowedFacetFields.contains(field)) {
+            throw new InvalidArgumentServiceException(
+                    "Cannot facet on field '" + field + "', only " + allowedFacetFields + " are acceptable");
+        }
+
+        try {
+            return SolrBridge.facet(query, field, eSort, limit, eFormat);
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    }
+
+
+    /**
      * Perform a search with the given query, returning only the number of hits. Typically used to get an estimate for the result size for an export
      *
      * @param query: A query for the newspaper articles. The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result. A filter restricting the result to newspapers older than 100 years will be automatically applied
@@ -212,6 +258,19 @@ public class LabsapiService implements LabsapiApi {
             log.error("ServiceException(HTTP 500):", e); //You probably want to log this.
             return new InternalServiceException(e.getMessage());
         }
+    }
+
+    /**
+     * This method just redirects gets to WEBAPP/api to the swagger UI /WEBAPP/api/api-docs?url=WEBAPP/api/openapi.yaml
+     */
+    @GET
+    @Path("/")
+    public Response redirect(@Context MessageContext request){
+        String path = request.get("org.apache.cxf.message.Message.PATH_INFO").toString();
+        if (path != null && !path.endsWith("/")){
+            path = path + "/";
+        }
+        return Response.temporaryRedirect(URI.create(request.get("org.apache.cxf.request.url") + "/api-docs?url=" + path + "openapi.yaml")).build();
     }
 
 }
