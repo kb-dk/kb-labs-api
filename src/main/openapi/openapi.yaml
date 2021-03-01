@@ -240,6 +240,110 @@ paths:
                 description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
                 type: string
 
+  /aviser/stats/timeline:
+    get:
+      tags:
+        - "${project.name}"
+      summary: 'Extract statistics for the newspaper corpus at http://mediestream.dk/'
+      description: |
+                  Faceting aggregates statistics for a given field based on a query. E.g. faceting on `familyID`
+                  delivers a list of all unique general newspaper titles for all the articles matching the query.
+
+                  The data are from articles in the newspaper collection at http://mediestream.dk/
+                  (a part of the [Royal Danish Library](https://kb.dk)).
+
+                  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract.
+                  Patience is adviced.
+      operationId: aviserStatsTimeline
+
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: |
+                      Optional query for the timeline statistics. If no query is given, all data are selected.
+                      The output will be a number of timeslices with the given granularity, followed by a summary.
+
+                      The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis
+                      for a more interactive result.
+          schema:
+            type: string
+            example: '(cykel OR cikle) AND lplace:København'
+            default: '*:*'
+        - name: granularity
+          in: query
+          description: 'The granularity of the timeline. The finer the granularity, the longer the processing time.'
+          schema:
+            type: string
+            enum: ['decade', 'year', 'month']
+            default: 'year'
+            example: 'year'
+        - name: startTime
+          in: query
+          required: false
+          description: |
+                      The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM.
+                      This cannot be earlier than 1666.
+          schema:
+            type: string
+            default: '1666'
+            example: '1666'
+        - name: endTime
+          in: query
+          required: false
+          description: |
+                      The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM.
+                      If blank, the current point in time is used.
+
+                      Note: As of 2021, Mediestream does nok contain newspapers from the last 8 years.
+          schema:
+            type: string
+            default: ''
+            example: '2021'
+        - name: elements
+          in: query
+          required: false
+          description: |
+                    The elements for the timeline. The element 'unique_publishers' is special as it, as the name
+                    signals, the number of unique puslishers and not the sum of instances.
+          schema:
+            type: array
+            items:
+              type: string
+              enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_publishers']
+            default: ['articles', 'pages', 'editions']
+            example: ['articles', 'pages', 'editions']
+        - name: format
+          in: query
+          required: false
+          description: |
+                      The delivery format.
+
+                      * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes
+                      * JSON: Valid JSON in the form of a single array of TimelineEntrys
+          schema:
+            type: string
+            enum:  ['CSV', 'JSON']
+            default: 'CSV'
+            example: 'JSON'
+
+      x-streamingOutput: true
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/json:
+              schema:
+                description: 'JSON-compliant representation of TimelineEntry'
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimelineEntry'
+            text/csv:
+              schema:
+                description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
+                type: string
+
+
   /aviser/hits:
     get:
       tags:
@@ -377,3 +481,92 @@ components:
           description: 'Coordinates for places from location_name'
           type: string
 
+    Timeline:
+      type: object
+      # Note that none of the fields are required
+      properties:
+        request:
+          type: object
+          required:
+            - datetime
+            - query
+            - granularity
+            - startTime
+            - endTime
+            - elements
+          properties:
+            datetime: 'Timestamp for the request'
+              description: 'YYYY-MM-DD hh:mm timestamp for generation'
+              type: string
+              example: '2021-03-01 13:45'
+            query: 'Timestamp for the request'
+              description: 'Query for the timeline (*:* means all available data)'
+              type: string
+              example: '(cykel OR cikle) AND lplace:København'
+            granularity: ''
+              description: 'The granularity of the timeline'
+              type: string
+              enum: ['decade', 'year', 'month']
+              example: 'year'
+            startTime: ''
+              description: 'The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
+              type: string
+              example: '1666-01'
+            endTime: ''
+              description: 'The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
+              type: string
+              example: '1999-12'
+            elements:
+              description: |
+                    The elements for the timeline. The element 'unique_publishers' is special as it, as the name
+                    signals, the number of unique puslishers and not the sum of instances.
+              type: array
+              items:
+                type: string
+                enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_publishers']
+              example: ['articles', 'pages', 'editions']
+
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEntry'
+        total:
+          $ref: '#/components/schemas/TimelineEntry'
+
+    TimelineEntry:
+      type: object
+      required:
+        - timestamp
+      properties:
+        timestamp:
+          description: 'Timestamp for the timeline element, expressed either as YYYY or YYYY-MM, depending on granularity.'
+          type: string
+          example: '1800-01'
+        characters:
+          description: 'The total number of characters in the articles in the slice of time'
+          type: integer
+          format: int64
+        words:
+          description: 'The total number of words in the articles in the slice of time'
+          type: integer
+          format: int64
+        paragraphs:
+          description: 'The total number of paragraphs in the articles in the slice of time'
+          type: integer
+          format: int64
+        articles:
+          description: 'The total number of articles in the slice of time'
+          type: integer
+          format: int64
+        pages:
+          description: 'The total number of pages in the slice of time'
+          type: integer
+          format: int64
+        editions:
+          description: 'The total number of editions in the slice of time'
+          type: integer
+          format: int64
+        unique_publishers:
+          description: 'The number of unique publishers in the slice of time'
+          type: integer
+          format: int64
