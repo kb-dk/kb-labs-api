@@ -486,52 +486,54 @@ components:
       # Note that none of the fields are required
       properties:
         request:
-          type: object
-          required:
-            - datetime
-            - query
-            - granularity
-            - startTime
-            - endTime
-            - elements
-          properties:
-            datetime: 'Timestamp for the request'
-              description: 'YYYY-MM-DD hh:mm timestamp for generation'
-              type: string
-              example: '2021-03-01 13:45'
-            query: 'Timestamp for the request'
-              description: 'Query for the timeline (*:* means all available data)'
-              type: string
-              example: '(cykel OR cikle) AND lplace:København'
-            granularity: ''
-              description: 'The granularity of the timeline'
-              type: string
-              enum: ['decade', 'year', 'month']
-              example: 'year'
-            startTime: ''
-              description: 'The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
-              type: string
-              example: '1666-01'
-            endTime: ''
-              description: 'The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
-              type: string
-              example: '1999-12'
-            elements:
-              description: |
-                    The elements for the timeline. The element 'unique_publishers' is special as it, as the name
-                    signals, the number of unique puslishers and not the sum of instances.
-              type: array
-              items:
-                type: string
-                enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_publishers']
-              example: ['articles', 'pages', 'editions']
-
+          $ref: '#/components/schemas/TimelineRequest'
         entries:
           type: array
           items:
             $ref: '#/components/schemas/TimelineEntry'
         total:
           $ref: '#/components/schemas/TimelineEntry'
+
+    TimelineRequest:
+      type: object
+      required:
+        - requestTime
+        - query
+        - granularity
+        - startTime
+        - endTime
+        - elements
+      properties:
+        requestTime:
+          description: 'The calendar date + time when the request was issued and the timeline exported. YYYY-MM-DD hh:mm'
+          type: string
+          example: '2021-03-01 13:45'
+        query:
+          description: 'Query for the timeline (*:* means all available data)'
+          type: string
+          example: '(cykel OR cikle) AND lplace:København'
+        granularity:
+          description: 'The granularity of the timeline'
+          type: string
+          enum: ['decade', 'year', 'month']
+          example: 'year'
+        startTime:
+          description: 'The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
+          type: string
+          example: '1666-01'
+        endTime:
+          description: 'The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
+          type: string
+          example: '1999-12'
+        elements:
+          description: |
+                The elements for the timeline. The element 'unique_publishers' is special as it, as the name
+                signals, the number of unique puslishers and not the sum of instances.
+          type: array
+          items:
+            type: string
+            enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_publishers']
+          example: ['articles', 'pages', 'editions']
 
     TimelineEntry:
       type: object

@@ -59,8 +59,36 @@ public class LabsapiService implements LabsapiApi {
         }
         facetLimitMax = ServiceConfig.getConfig().getInteger(".labsapi.aviser.facet.limit.max", 1000);
     }
-    
-    
+
+    /**
+     * Extract statistics for the newspaper corpus at http://mediestream.dk/
+     *
+     * @param query: Optional query for the timeline statistics. If no query is given, all data are selected. The output will be a number of timeslices with the given granularity, followed by a summary.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.
+     *
+     * @param granularity: The granularity of the timeline. The finer the granularity, the longer the processing time.
+     *
+     * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM. This cannot be earlier than 1666.
+     *
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM. If blank, the current point in time is used.  Note: As of 2021, Mediestream does nok contain newspapers from the last 8 years.
+     *
+     * @param elements: The elements for the timeline. The element &#39;unique_publishers&#39; is special as it, as the name signals, the number of unique puslishers and not the sum of instances.
+     *
+     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of Documents * JSONL: Newline separated single-line JSON representations of Documents
+     *
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;familyID&#x60; delivers a list of all unique general newspaper titles for all the articles matching the query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)).  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract. Patience is adviced.
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public StreamingOutput aviserStatsTimeline(String query, String granularity, String startTime, String endTime, List<String> elements, String format) throws ServiceException {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
     /**
      * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the Royal Danish Library). The export is restricted to newspapers older than 100 years and will be sorted by publication date.
      *
@@ -112,18 +140,18 @@ public class LabsapiService implements LabsapiApi {
         }
         long trueMax = max == null ? 10 : (max < 0 ? -1 : max);
         Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
-        SolrBridge.FORMAT trueFormat;
+        SolrBridge.EXPORT_FORMAT trueFormat;
         try {
             // TODO: Also consider the "Accept"-header
             trueFormat = format == null || format.isEmpty() ?
-                    SolrBridge.FORMAT.getDefault() :
-                    SolrBridge.FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
+                    SolrBridge.EXPORT_FORMAT.getDefault() :
+                    SolrBridge.EXPORT_FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidArgumentServiceException(
                     "Error: The format '" + format + "' is unsupported. " +
-                    "Supported formats are " + Arrays.toString(SolrBridge.FORMAT.values()));
+                    "Supported formats are " + Arrays.toString(SolrBridge.EXPORT_FORMAT.values()));
         }
-        if (trueFormat != SolrBridge.FORMAT.csv && structureSet.contains(SolrBridge.STRUCTURE.comments)) {
+        if (trueFormat != SolrBridge.EXPORT_FORMAT.csv && structureSet.contains(SolrBridge.STRUCTURE.comments)) {
             log.warn("Requested export in format {} with structure {}, " +
                      "which is not possible: Comments will not be delivered",
                      trueFormat, SolrBridge.STRUCTURE.comments);

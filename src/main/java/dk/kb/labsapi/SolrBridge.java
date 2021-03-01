@@ -38,10 +38,8 @@ import org.apache.solr.common.params.SolrParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -57,7 +55,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Handles Solr comminication.
@@ -78,9 +75,8 @@ public class SolrBridge {
     private static final int maxConnections;
     private static final Semaphore connection;
 
-
     static { // Basic setup
-        solrClient = createClient();
+        solrClient = createClient(".labsapi.aviser");
         YAML conf = ServiceConfig.getConfig();
         pageSize = conf.getInteger(".labsapi.aviser.export.solr.pagesize", 500);
         linkPrefix = conf.getString(".labsapi.aviser.export.link.prefix", LINK_PREFIX_DEFAULT);
@@ -98,17 +94,28 @@ public class SolrBridge {
                     vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
         }
     }
-    public enum FORMAT { csv, json, jsonl;
-      public static FORMAT getDefault() {
+    public enum EXPORT_FORMAT { csv, json, jsonl;
+      public static EXPORT_FORMAT getDefault() {
+          return csv;
+      }
+    }
+    public enum TIMELINE_FORMAT { csv, json;
+      public static TIMELINE_FORMAT getDefault() {
           return csv;
       }
     }
 
-    private static SolrClient createClient() {
-        String solrURL = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.url");
-        String collection = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.collection");
+    /**
+     * Setup the SolrClient based on the given configRoot, e.g. {@code .labsapi.aviser}.
+     * @param configRoot where to take the Solr setup from.
+     * @return a SolrClient ready for use.
+     */
+    private static SolrClient createClient(String configRoot) {
+        YAML conf = ServiceConfig.getConfig().getSubMap(configRoot);
+        String solrURL = conf.getString(".solr.url");
+        String collection = conf.getString(".solr.collection");
         String fullURL = solrURL + (solrURL.endsWith("/") ? "" : "/") + collection;
-        String filter = ServiceConfig.getConfig().getString(".labsapi.aviser.solr.filter", null);
+        String filter = conf.getString(".solr.filter", null);
 
         ModifiableSolrParams baseParams = new ModifiableSolrParams();
         baseParams.set(HighlightParams.HIGHLIGHT, false);
@@ -157,7 +164,7 @@ public class SolrBridge {
      * @return a lazy-evaluated stream delivering the content.
      */
     public static StreamingOutput export(String query, Set<String> fields, long max, Set<STRUCTURE> structure,
-                                         FORMAT format) {
+                                         EXPORT_FORMAT format) {
         if (exportSort == null) {
             String message = "Error: Unable to export: " +
                              "No export sort (.labsapi.aviser.export.solr.sort) specified in config";
@@ -173,7 +180,7 @@ public class SolrBridge {
                 CommonParams.SORT, exportSort,
                  CommonParams.FL, String.join(",", expandRequestFields(fields)));
 
-        return format == FORMAT.csv ?
+        return format == EXPORT_FORMAT.csv ?
                 streamResponseCSV(request, query, fields, max, structure) :
                 streamResponseJSON(request, query, fields, max, structure, format);
     }
@@ -223,7 +230,7 @@ public class SolrBridge {
 
     private static StreamingOutput streamResponseJSON(
             SolrParams request, String query, Set<String> fields, long max, Set<STRUCTURE> structure,
-            FORMAT format) {
+            EXPORT_FORMAT format) {
         return output -> {
             try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
                  JSONStreamWriter jw = new JSONStreamWriter(osw, JSONStreamWriter.FORMAT.valueOf(format.toString()))) {
