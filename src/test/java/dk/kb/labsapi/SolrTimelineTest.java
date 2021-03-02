@@ -53,6 +53,13 @@ class SolrTimelineTest {
     }
 
     @Test
+    void testTimelineStar() throws IOException {
+        empty(SolrTimeline.getInstance().timeline(
+                "*:*", SolrTimeline.GRANULARITY.year, "1666", "1670",
+                Collections.singletonList(SolrTimeline.ELEMENT.pages), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+    }
+
+    @Test
     void testTimelineNoHits() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
                 "sdgfsgss", SolrTimeline.GRANULARITY.decade, "1666", "1700",

@@ -26,6 +26,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
 import org.apache.solr.client.solrj.request.json.JsonQueryRequest;
+import org.apache.solr.client.solrj.request.json.QueryFacetMap;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.response.json.BucketJsonFacet;
 import org.apache.solr.common.params.CommonParams;
@@ -317,12 +318,12 @@ public class SolrTimeline extends SolrBase {
                     entry.setParagraphs(count);
                     break;
                 }
-                case articles: {
-                    entry.setArticles(count);
-                    break;
-                }
                 case pages: {
                     entry.setPages(count);
+                    break;
+                }
+                case articles: {
+                    entry.setArticles(count);
                     break;
                 }
                 case editions: {
@@ -353,12 +354,12 @@ public class SolrTimeline extends SolrBase {
                     total.setParagraphs(total.getParagraphs()+entry.getParagraphs());
                     break;
                 }
-                case articles: {
-                    total.setArticles(total.getArticles()+entry.getArticles());
-                    break;
-                }
                 case pages: {
                     total.setPages(total.getPages()+entry.getPages());
+                    break;
+                }
+                case articles: {
+                    total.setArticles(total.getArticles()+entry.getArticles());
                     break;
                 }
                 case editions: {
@@ -371,8 +372,6 @@ public class SolrTimeline extends SolrBase {
                 }
             }
         });
-
-
     }
 
     private JsonQueryRequest getTimelineRequest(
@@ -411,12 +410,15 @@ public class SolrTimeline extends SolrBase {
         if (elements.contains(ELEMENT.paragraphs)) {
             elementCalls.put("paragraphs", "sum(statBlocks)");
         }
-        if ("*:*".equals(trueQuery)) {
+        // TODO: Figure out why pages & editions does not work when using QueryFacetMap
+        if ("*:*disabledfornow".equals(trueQuery)) {
             if (elements.contains(ELEMENT.pages)) {
-                elementCalls.put("pages", Map.of("query", "segment_index:1"));
+                // https://lucene.apache.org/solr/guide/8_3/json-facet-api.html
+                elementCalls.put("pages", new QueryFacetMap("segment_index:1"));
             }
             if (elements.contains(ELEMENT.editions)) {
-                elementCalls.put("editions", Map.of("query", "segment_index:1 AND newspaper_page:1"));
+                elementCalls.put("editions", new QueryFacetMap("segment_index:1 AND newspaper_page:1"));
+//                elementCalls.put("editions", Map.of("query", "segment_index:1 AND newspaper_page:1"));
             }
         } else {
             if (elements.contains(ELEMENT.pages)) {
@@ -439,6 +441,7 @@ public class SolrTimeline extends SolrBase {
                 "facet", elementCalls
                 )
         );
+
         return jQuery;
     }
 
