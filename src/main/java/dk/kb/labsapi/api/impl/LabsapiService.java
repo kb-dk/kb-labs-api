@@ -113,6 +113,7 @@ public class LabsapiService implements LabsapiApi {
                 "timeline").stream()
                 .map(SolrTimeline.ELEMENT::valueOf)
                 .collect(Collectors.toSet());
+        log.info("trueElements: " + trueElements + " from " + elements);
         Set<SolrTimeline.STRUCTURE> trueStructure = SolrTimeline.STRUCTURE.valueOf(structure);
         SolrTimeline.TIMELINE_FORMAT trueFormat = SolrTimeline.TIMELINE_FORMAT.lenientParse(format);
 
@@ -237,7 +238,7 @@ public class LabsapiService implements LabsapiApi {
                     "Error: Unsupported " + designation + " elements '" + parsed + "': . " +
                     "Valid fields are " + valids);
         }
-        return valids;
+        return parsed;
     }
 
     private synchronized static String getCurrentTimeISO() {

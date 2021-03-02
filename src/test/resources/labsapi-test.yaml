@@ -1,18 +1,19 @@
 labsapi:
   aviser:
-    solr:
+    solr: # Shared between facet, hits and export
       # Mandatory, no default
       url: 'http://localhost:50001/solr'
       # Mandatory, no default
       collection: 'aviser.1.prod'
-      # The filter will be applied to all aviser-requests
+      # The filter will be applied to all aviser-requests for facets and export
       # No default
       filter: 'recordBase:doms_aviser AND py:[* TO 1880]'
       # The maximum number of simultaneous connections to Solr.
       # Note that export is internally performed by paging so it is possible to have more than
       # maxConnection exports running at the same time as they will interleave their paging.
       # Default is 5
-      connections: 5
+      connections: 3
+
     facet:
       # Maximum field.limit
       # Defaults to 1000
@@ -23,19 +24,55 @@ labsapi:
         - lvx
         - lplace
         - py
+
     export:
       solr:
+        # Defaults to 500
         pagesize: 500
-        # TODO: Find real date field
         # Needs to end with tie breaker (a unique field, typically the id-field)
-        sort: 'crawl_date asc, id asc' # Mandatory
+        # Mandatory, no default
+        sort: 'sort_year_asc asc, recordID asc'
       # Should mirror the ones listed in openapi.yaml
-      fields: # Mandatory
-        # Test fields taken from the webarchive-discovery project
-        - id
-        - source_file
-        - source_file_offset
-        - domain
-        - title
-        - content
-        - links
+      link:
+        # Defaults to http://www2.statsbiblioteket.dk/mediestream/avis/record/
+        prefix: 'http://www2.statsbiblioteket.dk/mediestream/avis/record/'
+      fields: # Mandatory, no default
+        - link
+        - recordID
+        - timestamp
+        - pwa
+        - cer
+        - fulltext_org
+        - pageUUID
+        - editionUUID
+        - titleUUID
+        - editionId
+        - familyId
+        - newspaper_page
+        - newspaper_edition
+        - lplace
+        - location_name
+        - location_coordinates
+
+    timeline:
+      solr: # Timeline does not have the same restrictions as facet, hits and export.
+        # Mandatory, no default
+        url: 'http://localhost:50001/solr'
+        # Mandatory, no default
+        collection: 'aviser.1.prod'
+        #filter: 'recordBase:doms_aviser AND py:[* TO 1880]'
+        # The maximum number of simultaneous connections to Solr.
+        # Default is 5
+        connections: 3
+        # filter is optional here
+        #filter: 'recordBase:doms_aviser AND py:[* TO 1880]'
+      minYear: 1666 # Optional. Default is 1666
+      maxYear: NOW # Optional. Valid values is YYYY or NOW
+      elements: # Optional, defaults are ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
+        - characters
+        - words
+        - paragraphs
+        - articles
+        - pages
+        - editions
+        - unique_publishers
