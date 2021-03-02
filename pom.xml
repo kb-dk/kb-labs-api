@@ -59,7 +59,7 @@
         <dependency>
             <groupId>dk.kb.util</groupId>
             <artifactId>kb-util</artifactId>
-            <version>1.3.0</version>
+            <version>1.4.1</version>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>
