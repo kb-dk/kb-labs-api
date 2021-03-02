@@ -14,6 +14,7 @@
  */
 package dk.kb.labsapi;
 
+import dk.kb.JSONStreamWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.model.TimelineDto;
 import dk.kb.labsapi.model.TimelineEntryDto;
@@ -21,6 +22,9 @@ import dk.kb.labsapi.model.TimelineRequestDto;
 import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
 import org.apache.solr.client.solrj.request.json.JsonQueryRequest;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.response.json.BucketJsonFacet;
@@ -32,14 +36,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.StreamingOutput;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,6 +57,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Solr timeline handling for the aviser corpus at Mediestream.
@@ -72,10 +80,10 @@ public class SolrTimeline extends SolrBase {
     }
 
     public SolrTimeline() {
-        super(".labsapi.aviser");
+        super(".labsapi.aviser.timeline");
         YAML conf = ServiceConfig.getConfig().getSubMap(".labsapi.aviser.timeline");
         final int nowYear = LocalDate.now(DA).getYear();
-        minYear = conf.getInteger(".minYear", 1666);
+        minYear = conf.getInteger(".minYear", 1666); // TODO: Round depending on granularity
         maxYear = "NOW".equals(conf.getString(".maxYear", null)) ?
                 nowYear :
                 conf.getInteger(".maxYear", nowYear);
@@ -93,9 +101,15 @@ public class SolrTimeline extends SolrBase {
     public StreamingOutput timeline(
             String query, GRANULARITY granularity, String startTime, String endTime, Collection<ELEMENT> elements,
             Set<STRUCTURE> structure, TIMELINE_FORMAT format) {
+        TimelineDto timeline = getTimeline(query, granularity, startTime, endTime, elements);
+        return streamTimeline(timeline, structure, format);
+    }
+
+    TimelineDto getTimeline(
+            String query, GRANULARITY granularity, String startTime, String endTime, Collection<ELEMENT> elements) {
         String trueQuery = sanitize(query);
-        String trueStartTime = parseTime(startTime, minYear);
-        String trueEndTime = parseTime(endTime, maxYear);
+        String trueStartTime = parseTime(startTime, minYear, true);
+        String trueEndTime = parseTime(endTime, maxYear, false);
         JsonQueryRequest jQuery = getTimelineRequest(granularity, elements, trueQuery, trueStartTime, trueEndTime);
 
         QueryResponse response;
@@ -121,29 +135,120 @@ public class SolrTimeline extends SolrBase {
                                   .map(e -> e.toString().toUpperCase(Locale.ROOT))
                                   .map(TimelineRequestDto.ElementsEnum::valueOf).collect(Collectors.toList()))
                 .granularity(TimelineRequestDto.GranularityEnum.valueOf(granularity.toString().toUpperCase(Locale.ROOT)));
-        TimelineDto timeline = makeTimeline(request, elements, response);
-        System.out.println(timeline);
-        return null ; //streamTimelineResponse(timeline, structure, format);
+        return makeTimeline(request, elements, response);
+    }
+
+    private StreamingOutput streamTimeline(TimelineDto timeline, Set<STRUCTURE> structure, TIMELINE_FORMAT format) {
+        switch (format) {
+            case csv: return streamTimelineCSV(timeline, structure);
+            case json: return streamTimelineJSON(timeline);
+            default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
+        }
+    }
+
+    private StreamingOutput streamTimelineJSON(TimelineDto timeline) {
+        return output -> {
+            try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
+                 JSONStreamWriter jw = new JSONStreamWriter(osw, JSONStreamWriter.FORMAT.json)) {
+                jw.writeJSON(timeline);
+            }
+        };
+    }
+
+    // TODO: Proper ordering of structure
+    private StreamingOutput streamTimelineCSV(TimelineDto timeline, Set<STRUCTURE> structure) {
+        final TimelineRequestDto req = timeline.getRequest();
+        final String[] headers = Stream.concat(
+                Stream.of("timestamp"),
+                req.getElements().stream().map(Object::toString))
+                .toArray(String[]::new);
+
+        return output -> {
+            try (OutputStreamWriter os = new OutputStreamWriter(output, StandardCharsets.UTF_8)) {
+                if (structure.contains(STRUCTURE.comments)) {
+                    os.write("# kb-labs-api timeline of Mediestream aviser data"+ "\n");
+                    os.write("# query: " + req.getQuery().replace("\n", "\\n") + "\n");
+                    os.write("# startTime: " + req.getStartTime() + "\n");
+                    os.write("# endTime: " + req.getEndTime() + "\n");
+                    os.write("# granularity: " + req.getGranularity() + "\n");
+                    os.write("# elements: " + req.getElements() + "\n");
+                    os.write("# export time: " + req.getRequestTime() + "\n");
+                    os.write("# matched articles: " + timeline.getTotal().getArticles() + "\n");
+                }
+
+                CSVFormat csvFormat = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.NON_NUMERIC);
+                if (structure.contains(STRUCTURE.header)) {
+                    csvFormat = csvFormat.withHeader(headers);
+                }
+                try (CSVPrinter printer = new CSVPrinter(os, csvFormat)) {
+                    timeline.getEntries().forEach(entry -> SolrTimeline.print(printer, entry, req.getElements()));
+                    SolrTimeline.print(printer, timeline.getTotal(), req.getElements());
+                }
+            } catch (Exception e) {
+                log.error("IOException writing Timeline response", e);
+            }
+        };
+    }
+
+    private static void print(
+            CSVPrinter printer, TimelineEntryDto entry, List<TimelineRequestDto.ElementsEnum> elements) {
+        List<Object> cells = rowToCells(entry, elements);
+        try {
+            printer.printRecord(cells);
+        } catch (IOException e) {
+            throw new RuntimeException("Exception writing CSV entry for " + entry, e);
+        }
+    }
+
+    private static List<Object> rowToCells(TimelineEntryDto entry, List<TimelineRequestDto.ElementsEnum> elements) {
+        List<Object> cells = new ArrayList<>(elements.size() + 1);
+        cells.add(entry.getTimestamp()); // Mandatory
+        elements.forEach(element -> {
+            switch (element) {
+                case CHARACTERS: {
+                    cells.add(entry.getCharacters());
+                    break;
+                }
+                case WORDS: {
+                    cells.add(entry.getWords());
+                    break;
+                }
+                case PARAGRAPHS: {
+                    cells.add(entry.getParagraphs());
+                    break;
+                }
+                case PAGES: {
+                    cells.add(entry.getPages());
+                    break;
+                }
+                case ARTICLES: {
+                    cells.add(entry.getArticles());
+                    break;
+                }
+                case EDITIONS: {
+                    cells.add(entry.getEditions());
+                    break;
+                }
+                case UNIQUE_TITLES: {
+                    cells.add(entry.getUniqueTitles());
+                    break;
+                }
+                default: throw new UnsupportedOperationException("Unknown element '" + element + "'");
+            }
+        });
+        return cells;
     }
 
     private TimelineDto makeTimeline(TimelineRequestDto request, Collection<ELEMENT> elements, QueryResponse response) {
         TimelineDto timeline = new TimelineDto();
         timeline.setRequest(request);
 
-        TimelineEntryDto total = new TimelineEntryDto()
-                .timestamp("total")
-                .articles(0L)
-                .characters(0L)
-                .editions(0L)
-                .pages(0L)
-                .paragraphs(0L)
-                .uniqueTitles(0L)
-                .words(0L);
+        TimelineEntryDto total = createBlankEntry("total", elements);
 
         List<TimelineEntryDto> entries =
                 response.getJsonFacetingResponse().getBucketBasedFacets("timeline").getBuckets().stream()
                         .map(e -> solrEntryToDto(e, elements))
-                        .peek(e -> updateTotal(total, e))
+                        .peek(e -> updateTotal(total, e, elements))
                         //.sorted(Comparator.comparing(e -> e.getTimestamp())) // Order is already handled by Solr
                         .collect(Collectors.toList());
         // TODO: Handle unique publishers
@@ -153,41 +258,36 @@ public class SolrTimeline extends SolrBase {
         return timeline;
     }
 
-    private static TimelineEntryDto solrEntryToDto(BucketJsonFacet bucket, Collection<ELEMENT> elements) {
-        // TODO: Use granularity to adjust to either YYYY or YYYY-MM
-        String timestamp = Integer.toString(
-                Instant.ofEpochMilli(((Date)bucket.getVal()).getTime()).atZone(Z).getYear());
-        TimelineEntryDto entry =  new TimelineEntryDto().timestamp(timestamp);
+    private static TimelineEntryDto createBlankEntry(String timestamp, Collection<ELEMENT> elements) {
+        TimelineEntryDto entry = new TimelineEntryDto().timestamp(timestamp);
         elements.forEach(e -> {
-            Object num = e == ELEMENT.articles ? bucket.getCount() : bucket.getStatValue(e.toString());
-            long articles = num instanceof Long ? (Long) num : ((Double) num).longValue();
             switch (e) {
                 case characters: {
-                    entry.setCharacters(((Double) bucket.getStatValue(e.toString())).longValue());
+                    entry.setCharacters(0L);
                     break;
                 }
                 case words: {
-                    entry.setWords(((Double) bucket.getStatValue(e.toString())).longValue());
+                    entry.setWords(0L);
                     break;
                 }
                 case paragraphs: {
-                    entry.setParagraphs(((Double) bucket.getStatValue(e.toString())).longValue());
+                    entry.setParagraphs(0L);
                     break;
                 }
                 case articles: {
-                    entry.setArticles(articles);
+                    entry.setArticles(0L);
                     break;
                 }
                 case pages: {
-                    entry.setPages((Long) bucket.getStatValue(e.toString()));
+                    entry.setPages(0L);
                     break;
                 }
                 case editions: {
-                    entry.setEditions((Long) bucket.getStatValue(e.toString()));
+                    entry.setEditions(0L);
                     break;
                 }
                 case unique_titles: {
-                    entry.setUniqueTitles((Long) bucket.getStatValue(e.toString()));
+                    entry.setUniqueTitles(0L);
                     break;
                 }
             }
@@ -195,13 +295,84 @@ public class SolrTimeline extends SolrBase {
         return entry;
     }
 
-    private static void updateTotal(TimelineEntryDto total, TimelineEntryDto entry) {
-        total.setCharacters(total.getCharacters()+entry.getCharacters());
-        total.setWords(total.getWords()+entry.getWords());
-        total.setParagraphs(total.getParagraphs()+entry.getParagraphs());
-        total.setArticles(total.getArticles()+entry.getArticles());
-        total.setPages(total.getPages()+entry.getPages());
-        total.setArticles(total.getArticles()+entry.getArticles());
+    private static TimelineEntryDto solrEntryToDto(BucketJsonFacet bucket, Collection<ELEMENT> elements) {
+        // TODO: Use granularity to adjust to either YYYY or YYYY-MM
+        String timestamp = Integer.toString(
+                Instant.ofEpochMilli(((Date)bucket.getVal()).getTime()).atZone(Z).getYear());
+        TimelineEntryDto entry =  createBlankEntry(timestamp, elements);
+        elements.forEach(e -> {
+            Object num = e == ELEMENT.articles ? bucket.getCount() : bucket.getStatValue(e.toString());
+            long count = num == null ? 0L : // null means no match in the time slice
+                    num instanceof Long ? (Long) num : ((Double) num).longValue();
+            switch (e) {
+                case characters: {
+                    entry.setCharacters(count);
+                    break;
+                }
+                case words: {
+                    entry.setWords(count);
+                    break;
+                }
+                case paragraphs: {
+                    entry.setParagraphs(count);
+                    break;
+                }
+                case articles: {
+                    entry.setArticles(count);
+                    break;
+                }
+                case pages: {
+                    entry.setPages(count);
+                    break;
+                }
+                case editions: {
+                    entry.setEditions(count);
+                    break;
+                }
+                case unique_titles: {
+                    entry.setUniqueTitles(count);
+                    break;
+                }
+            }
+        });
+        return entry;
+    }
+
+    private static void updateTotal(TimelineEntryDto total, TimelineEntryDto entry, Collection<ELEMENT> elements) {
+        elements.forEach(e -> {
+            switch (e) {
+                case characters: {
+                    total.setCharacters(total.getCharacters()+entry.getCharacters());
+                    break;
+                }
+                case words: {
+                    total.setWords(total.getWords()+entry.getWords());
+                    break;
+                }
+                case paragraphs: {
+                    total.setParagraphs(total.getParagraphs()+entry.getParagraphs());
+                    break;
+                }
+                case articles: {
+                    total.setArticles(total.getArticles()+entry.getArticles());
+                    break;
+                }
+                case pages: {
+                    total.setPages(total.getPages()+entry.getPages());
+                    break;
+                }
+                case editions: {
+                    total.setEditions(total.getEditions()+entry.getEditions());
+                    break;
+                }
+                case unique_titles: {
+                    total.setUniqueTitles(null);
+                    break;
+                }
+            }
+        });
+
+
     }
 
     private JsonQueryRequest getTimelineRequest(
@@ -277,16 +448,16 @@ public class SolrTimeline extends SolrBase {
      * @param time YYYY or YYYY-MM or blank.
      * @return a Solr timestamp.
      */
-    private String parseTime(String time, int defaultYear) {
+    private String parseTime(String time, int defaultYear, boolean first) {
         if (time == null || time.isBlank()) {
             // TODO: 12-31T23... when end
-            return defaultYear + "-01-01T00:00:00Z";
+            return defaultYear + (first ? "-01-01T00:00:00Z" : "-12-31T23:59:59Z");
         }
 
         Matcher matcher;
         if ((matcher = YYYY.matcher(time)).matches()) {
             int year = Integer.parseInt(matcher.group());
-            return Math.max(minYear, Math.min(maxYear, year)) + "-01-01T00:00:00Z";
+            return Math.max(minYear, Math.min(maxYear, year)) + (first ? "-01-01T00:00:00Z" : "-12-31T23:59:59Z");
         }
         if ((matcher = YYYY_MM.matcher(time)).matches()) {
             int year = Integer.parseInt(matcher.group(1));
@@ -300,7 +471,8 @@ public class SolrTimeline extends SolrBase {
                         "The month in '" + time + "' was " + month + " which is not valid under the GregorianCalendar");
             }
             year = Math.max(minYear, Math.min(maxYear, year));
-            return String.format(Locale.ROOT, "%4d-%2d-01-01T00:00:00Z", year, month);
+            // TODO: Does not seem legal
+            return String.format(Locale.ROOT, "%4d-%2d" + (first ? "-01T00:00:00Z" : "-31T23:59:59Z"), year, month);
         }
         if ("now".equals(time.toLowerCase(Locale.ROOT))) {
             LocalDate now = LocalDate.now(DA);

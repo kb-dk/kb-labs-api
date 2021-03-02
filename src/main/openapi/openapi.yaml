@@ -246,8 +246,7 @@ paths:
         - "${project.name}"
       summary: 'Extract statistics for the newspaper corpus at http://mediestream.dk/'
       description: |
-                  Faceting aggregates statistics for a given field based on a query. E.g. faceting on `familyID`
-                  delivers a list of all unique general newspaper titles for all the articles matching the query.
+                  Extracts a timeline of statistical elements, optionally based on a query.
 
                   The data are from articles in the newspaper collection at http://mediestream.dk/
                   (a part of the [Royal Danish Library](https://kb.dk)).
@@ -502,16 +501,16 @@ components:
 
     Timeline:
       type: object
-      # Note that none of the fields are required
       properties:
         request:
           $ref: '#/components/schemas/TimelineRequest'
+        total:
+          $ref: '#/components/schemas/TimelineEntry'
+        # TODO: total100plus, total140plus
         entries:
           type: array
           items:
             $ref: '#/components/schemas/TimelineEntry'
-        total:
-          $ref: '#/components/schemas/TimelineEntry'
 
     TimelineRequest:
       type: object
