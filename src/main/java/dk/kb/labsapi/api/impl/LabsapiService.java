@@ -1,8 +1,10 @@
 package dk.kb.labsapi.api.impl;
 
-import dk.kb.labsapi.SolrBridge;
+import dk.kb.labsapi.SolrExport;
+import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
@@ -40,20 +42,35 @@ public class LabsapiService implements LabsapiApi {
     private transient HttpServletResponse httpServletResponse;
 
     final static SimpleDateFormat FILENAME_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HHmm", Locale.ENGLISH);
+    ;
+
     final static Set<String> allowedAviserExportFields = new HashSet<>();
+    final static Set<SolrTimeline.ELEMENT> allowedTimelineElements = new HashSet<>();
+
     final static Set<String> allowedFacetFields = new HashSet<>();
     private static final Integer facetLimitMax;
+
     static {
+        final YAML conf = ServiceConfig.getConfig();
+        
         String key = ".labsapi.aviser.export.fields";
         try {
-            allowedAviserExportFields.addAll(ServiceConfig.getConfig().getList(key));
+            allowedAviserExportFields.addAll(conf.getList(key));
         } catch (Exception e) {
             log.error("Unable to retrieve list of export fields from {} in config. Export is not possible", key);
         }
 
+        String eKey = ".labsapi.aviser.timeline.elements";
+        if (!conf.containsKey(eKey)) {
+            log.info("No '{}' key in configuration, using default elements {} for timeline", eKey, SolrTimeline.DEFAULT_TIMELINE_ELEMENTS);
+            allowedTimelineElements.addAll(SolrTimeline.DEFAULT_TIMELINE_ELEMENTS);
+        } else {
+            allowedTimelineElements.addAll(conf.getList(eKey));
+        }
+
         key = ".labsapi.aviser.facet.fields";
         try {
-            allowedFacetFields.addAll(ServiceConfig.getConfig().getList(key));
+            allowedFacetFields.addAll(conf.getList(key));
         } catch (Exception e) {
             log.error("Unable to retrieve list of facet fields from {} in config. Facet is not possible", key);
         }
@@ -85,8 +102,43 @@ public class LabsapiService implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public StreamingOutput aviserStatsTimeline(String query, String granularity, String startTime, String endTime, List<String> elements, String format) throws ServiceException {
-        throw new UnsupportedOperationException("Not implemented yet");
+    public StreamingOutput aviserStatsTimeline(String query, String granularity, String startTime, String endTime, List<String> elements, List<String> structure, String format) throws ServiceException {
+        if (elements.isEmpty()) {
+            log.debug("No timeline elements defined, using default " + SolrTimeline.DEFAULT_TIMELINE_ELEMENTS);
+            elements = SolrTimeline.DEFAULT_TIMELINE_ELEMENTS.stream().map(Enum::toString).collect(Collectors.toList());
+        }
+        SolrTimeline.GRANULARITY trueGranularity = SolrTimeline.GRANULARITY.lenientParse(granularity);
+        Set<SolrTimeline.ELEMENT> trueElements = ensureValids(
+                elements, Arrays.stream(SolrTimeline.ELEMENT.values()).map(Enum::toString).collect(Collectors.toSet()),
+                "timeline").stream()
+                .map(SolrTimeline.ELEMENT::valueOf)
+                .collect(Collectors.toSet());
+        Set<SolrTimeline.STRUCTURE> trueStructure = SolrTimeline.STRUCTURE.valueOf(structure);
+        SolrTimeline.TIMELINE_FORMAT trueFormat = SolrTimeline.TIMELINE_FORMAT.lenientParse(format);
+
+        switch (trueFormat) {
+            case csv: {
+                httpServletResponse.setContentType("text/csv");
+                break;
+            }
+            case json: {
+                httpServletResponse.setContentType("application/json");
+                break;
+            }
+            default: throw new InternalServiceException(
+                    "Internal exception: format '" + trueFormat + "' could not be converted to MIME type");
+        }
+
+        log.debug(String.format(Locale.ENGLISH,
+                                "Timeline elements %s with structure=%s in format=%s for query '%s'",
+                                trueElements, trueStructure.toString(), format, query));
+        try{
+            httpServletResponse.setHeader("Content-Disposition",
+                                          "inline; filename=\"mediestream_timeline_" + getCurrentTimeISO() + "." + trueFormat + "\"");
+            return SolrTimeline.getInstance().timeline(query, trueGranularity, startTime, endTime, trueElements, trueStructure, trueFormat);
+        } catch (Exception e){
+            throw handleException(e);
+        }
     }
 
     /**
@@ -124,37 +176,15 @@ public class LabsapiService implements LabsapiApi {
             throw new InvalidArgumentServiceException(
                     "Error: No export fields defined. Valid fields are " + allowedAviserExportFields);
         }
-        Set<String> eFields = fields.stream().
-                filter(Objects::nonNull).
-                filter(field -> !field.isEmpty()).
-                map(field -> Arrays.asList(field.split("\\s*,\\s*"))).
-                flatMap(Collection::stream).
-                map(String::trim).
-                collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> eFields = ensureValids(fields, allowedAviserExportFields, "export");
 
-        if (!allowedAviserExportFields.containsAll(eFields)) {
-            eFields.removeAll(allowedAviserExportFields);
-            throw new InvalidArgumentServiceException(
-                    "Error: Unsupported export fields '" + eFields + "': . " +
-                    "Valid fields are " + allowedAviserExportFields);
-        }
         long trueMax = max == null ? 10 : (max < 0 ? -1 : max);
-        Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
-        SolrBridge.EXPORT_FORMAT trueFormat;
-        try {
-            // TODO: Also consider the "Accept"-header
-            trueFormat = format == null || format.isEmpty() ?
-                    SolrBridge.EXPORT_FORMAT.getDefault() :
-                    SolrBridge.EXPORT_FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new InvalidArgumentServiceException(
-                    "Error: The format '" + format + "' is unsupported. " +
-                    "Supported formats are " + Arrays.toString(SolrBridge.EXPORT_FORMAT.values()));
-        }
-        if (trueFormat != SolrBridge.EXPORT_FORMAT.csv && structureSet.contains(SolrBridge.STRUCTURE.comments)) {
+        Set<SolrExport.STRUCTURE> structureSet = SolrExport.STRUCTURE.valueOf(structure);
+        SolrExport.EXPORT_FORMAT trueFormat = SolrExport.EXPORT_FORMAT.lenientParse(format);
+        if (trueFormat != SolrExport.EXPORT_FORMAT.csv && structureSet.contains(SolrExport.STRUCTURE.comments)) {
             log.warn("Requested export in format {} with structure {}, " +
                      "which is not possible: Comments will not be delivered",
-                     trueFormat, SolrBridge.STRUCTURE.comments);
+                     trueFormat, SolrExport.STRUCTURE.comments);
         }
         switch (trueFormat) {
             case csv: {
@@ -178,12 +208,38 @@ public class LabsapiService implements LabsapiApi {
                                 eFields, max, structureSet.toString(), format, query));
         try{
             httpServletResponse.setHeader("Content-Disposition",
-                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + "." + trueFormat + "\"");
-            return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
+                                          "inline; filename=\"mediestream_export_" + getCurrentTimeISO() + "." + trueFormat + "\"");
+            return SolrExport.getInstance().export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);
         }
     }
+
+    /**
+     * Splits candidates on comma and ensured that all candidates are in valids.
+     * @param candidates  candidate elements.
+     * @param valids      all valid elements.
+     * @param designation the type of elements, used when raising an excaption.
+     * @return the sanitized candidates.
+     * @throws InvalidArgumentServiceException if one or more candidates are not in valids.
+     */
+    private Set<String> ensureValids(List<String> candidates, Set<String> valids, String designation) {
+        Set<String> parsed = candidates.stream().
+                filter(Objects::nonNull).
+                filter(field -> !field.isEmpty()).
+                map(field -> Arrays.asList(field.split("\\s*,\\s*"))).
+                flatMap(Collection::stream).
+                map(String::trim).
+                collect(Collectors.toCollection(LinkedHashSet::new));
+        if (!valids.containsAll(parsed)) {
+            parsed.removeAll(allowedAviserExportFields);
+            throw new InvalidArgumentServiceException(
+                    "Error: Unsupported " + designation + " elements '" + parsed + "': . " +
+                    "Valid fields are " + valids);
+        }
+        return valids;
+    }
+
     private synchronized static String getCurrentTimeISO() {
         return FILENAME_ISO.format(new Date());
     }
@@ -212,15 +268,15 @@ public class LabsapiService implements LabsapiApi {
      */
     @Override
     public StreamingOutput facet(String query, String field, String sort, Integer limit, String format) throws ServiceException {
-        SolrBridge.FACET_SORT eSort = sort == null || sort.isEmpty() ?
-                SolrBridge.FACET_SORT.getDefault() :
-                SolrBridge.FACET_SORT.valueOf(sort.toLowerCase(Locale.ROOT));
+        SolrExport.FACET_SORT eSort = sort == null || sort.isEmpty() ?
+                SolrExport.FACET_SORT.getDefault() :
+                SolrExport.FACET_SORT.valueOf(sort.toLowerCase(Locale.ROOT));
         if (eSort == null) {
             throw new InvalidArgumentServiceException("Unknown sort '" + sort + "'");
         }
-        SolrBridge.FACET_FORMAT eFormat = format == null || format.isEmpty() ?
-                SolrBridge.FACET_FORMAT.getDefault() :
-                SolrBridge.FACET_FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
+        SolrExport.FACET_FORMAT eFormat = format == null || format.isEmpty() ?
+                SolrExport.FACET_FORMAT.getDefault() :
+                SolrExport.FACET_FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
         if (eFormat == null) {
             throw new InvalidArgumentServiceException("Unknown delivery format '" + format + "'");
         }
@@ -230,7 +286,7 @@ public class LabsapiService implements LabsapiApi {
         }
 
         try {
-            return SolrBridge.facet(query, field, eSort, limit, eFormat);
+            return SolrExport.getInstance().facet(query, field, eSort, limit, eFormat);
         } catch (Exception e){
             throw handleException(e);
         }
@@ -252,7 +308,7 @@ public class LabsapiService implements LabsapiApi {
      */
     @Override
     public javax.ws.rs.core.StreamingOutput hitCount(String query) throws ServiceException {
-        return output -> output.write(Long.toString(SolrBridge.countHits(query)).getBytes(StandardCharsets.UTF_8));
+        return output -> output.write(Long.toString(SolrExport.getInstance().countHits(query)).getBytes(StandardCharsets.UTF_8));
     }
 
     /**

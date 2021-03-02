@@ -266,6 +266,8 @@ paths:
 
                       The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis
                       for a more interactive result.
+
+                      Note: Queries other than '*:*' will cause the numbers for pages and editions to be approximate.
           schema:
             type: string
             example: '(cykel OR cikle) AND lplace:København'
@@ -304,15 +306,32 @@ paths:
           in: query
           required: false
           description: |
-                    The elements for the timeline. The element 'unique_publishers' is special as it, as the name
-                    signals, the number of unique puslishers and not the sum of instances.
+                    The elements for the timeline. The element 'unique_titles' is special as it, as the name
+                    signals, the number of unique titles and not the sum of instances.
           schema:
             type: array
             items:
               type: string
-              enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_publishers']
+              enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
             default: ['articles', 'pages', 'editions']
             example: ['articles', 'pages', 'editions']
+        - name: structure
+          in: query
+          required: false
+          # TODO: Figure out how to deliver the comments with JSON
+          description: |
+                      The major parts of the delivery.
+
+                      * comments: Metadata for the timeline (query, export time...), prefixed with # in CSV
+                      * header: The export field names. Only relevant for CSV as it is implicit in JSON
+                      * content: The export content itself
+          schema:
+            type: array
+            items:
+              type: string
+              enum:  ['comments', 'header', 'content']
+            default: ['header', 'content']
+            example: ['header', 'content']
         - name: format
           in: query
           required: false
@@ -532,7 +551,7 @@ components:
           type: array
           items:
             type: string
-            enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_publishers']
+            enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
           example: ['articles', 'pages', 'editions']
 
     TimelineEntry:
@@ -568,7 +587,7 @@ components:
           description: 'The total number of editions in the slice of time'
           type: integer
           format: int64
-        unique_publishers:
-          description: 'The number of unique publishers in the slice of time'
+        unique_titles:
+          description: 'The number of unique newspaper titles in the slice of time'
           type: integer
           format: int64

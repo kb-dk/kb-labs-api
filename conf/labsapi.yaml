@@ -51,3 +51,14 @@ labsapi:
         - lplace
         - location_name
         - location_coordinates
+    timeline:
+      minYear: 1666 # Optional. Default is 1666
+      maxYear: NOW # Optional. Valid values is YYYY or NOW
+      elements: # Optional, defaults are ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
+        - characters
+        - words
+        - paragraphs
+        - articles
+        - pages
+        - editions
+        - unique_publishers
