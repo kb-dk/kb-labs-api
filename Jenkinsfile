@@ -8,10 +8,10 @@ openshift.withCluster() { // Use "default" cluster or fallback to OpenShift clus
 
     //Create template with maven settings.xml, so we have credentials for nexus
     podTemplate(
-            inheritFrom: 'kb-jenkins-agent-java-11',
+            inheritFrom: 'maven',
             cloud: 'openshift', //cloud must be openshift
-            label: 'kb-jenkins-agent-java-11-with-settings.xml',
-            name: 'kb-jenkins-agent-java-11-with-settings.xml',
+            label: 'agent-with-settings.xml',
+            name: 'agent-with-settings.xml',
             volumes: [ //mount the settings.xml
                        secretVolume(mountPath: '/etc/m2', secretName: 'maven-settings')
             ]) {
@@ -23,7 +23,7 @@ openshift.withCluster() { // Use "default" cluster or fallback to OpenShift clus
 
         try {
             //GO to a node with maven and settings.xml
-            node('kb-jenkins-agent-java-11-with-settings.xml') {
+            node('agent-with-settings.xml') {
                 //Do not use concurrent builds
                 properties([disableConcurrentBuilds()])
 
