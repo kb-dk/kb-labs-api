@@ -14,6 +14,8 @@ labsapi:
       # Default is 5
       connections: 3
     facet:
+      minYear: 1666 # Optional. Default is 1666
+      maxYear: NOW # Optional. Valid values are YYYY or NOW
       # Maximum field.limit
       # Defaults to 1000
       limit:
@@ -64,7 +66,7 @@ labsapi:
         # filter is optional here
         #filter: 'recordBase:doms_aviser AND py:[* TO 1880]'
       minYear: 1666 # Optional. Default is 1666
-      maxYear: NOW # Optional. Valid values is YYYY or NOW
+      maxYear: NOW # Optional. Valid values are YYYY or NOW
       elements: # Optional, defaults are ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
         - characters
         - words

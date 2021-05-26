@@ -182,6 +182,28 @@ paths:
           schema:
             type: string
             example: 'Sletterhage fyr'
+        - name: startTime
+          in: query
+          required: false
+          description: |
+                      The starting point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+                      This cannot be earlier than 1666.
+          schema:
+            type: string
+            default: '1666'
+            example: '1666'
+        - name: endTime
+          in: query
+          required: false
+          description: |
+                      The ending point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+                      If blank, the current point in time is used.
+
+                      Note: As of 2021, Mediestream does not contain newspapers later than 2013.
+          schema:
+            type: string
+            default: ''
+            example: '2021'
         - name: field
           in: query
           required: false
@@ -296,7 +318,7 @@ paths:
                       The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM.
                       If blank, the current point in time is used.
 
-                      Note: As of 2021, Mediestream does nok contain newspapers from the last 8 years.
+                      Note: As of 2021, Mediestream does not contain newspapers later than 2013.
           schema:
             type: string
             default: ''

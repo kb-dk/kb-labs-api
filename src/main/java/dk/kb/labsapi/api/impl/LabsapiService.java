@@ -250,6 +250,10 @@ public class LabsapiService implements LabsapiApi {
      *
      * @param query: A query for the newspapers to export aggregates facet statistics for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied
      *
+     * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. This cannot be earlier than 1666.
+     *
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013.
+     *
      * @param field: The field to facet. Note that it is case sensitive.  * pu: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published * familyId: The name of the newspaper : py: Publication year
      *
      * @param sort: The sort order of the facet content.
@@ -268,7 +272,7 @@ public class LabsapiService implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public StreamingOutput facet(String query, String field, String sort, Integer limit, String format) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput facet(String query, String startTime, String endTime, String field, String sort, Integer limit, String format) throws ServiceException {
         SolrExport.FACET_SORT eSort = sort == null || sort.isEmpty() ?
                 SolrExport.FACET_SORT.getDefault() :
                 SolrExport.FACET_SORT.valueOf(sort.toLowerCase(Locale.ROOT));
@@ -287,7 +291,7 @@ public class LabsapiService implements LabsapiApi {
         }
 
         try {
-            return SolrExport.getInstance().facet(query, field, eSort, limit, eFormat);
+            return SolrExport.getInstance().facet(query, startTime, endTime, field, eSort, limit, eFormat);
         } catch (Exception e){
             throw handleException(e);
         }

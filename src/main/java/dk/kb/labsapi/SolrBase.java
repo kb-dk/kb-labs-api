@@ -120,6 +120,25 @@ public class SolrBase {
         }
         return counter.get();
     }
+    protected void initialSolrCall(SolrParams request, Consumer<SolrDocument> processor,
+                                   Function<SolrDocument, SolrDocument> responseExpander) throws Exception {
+        callSolr(request).getResults().stream()
+                .map(doc -> responseExpander == null ? doc : responseExpander.apply(doc))
+                .filter(Objects::nonNull)
+                .forEach(processor);
+    }
+
+    protected void simplifiedSolrCall(SolrParams request, Function<SolrDocument, SolrDocument> docExpander,
+                                      Consumer<SolrDocument> docConsumer) throws Exception {
+        if (docExpander == null) { // Use identity function if there is no docExpander
+            docExpander = (doc) -> doc;
+        }
+
+        callSolr(request).getResults().stream()
+                .map(docExpander)
+                .filter(Objects::nonNull)
+                .forEach(docConsumer);
+    }
 
     /**
      * Performs a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.

@@ -97,7 +97,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM. This cannot be earlier than 1666. 
      * 
-     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM. If blank, the current point in time is used.  Note: As of 2021, Mediestream does nok contain newspapers from the last 8 years. 
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013. 
      * 
      * @param elements: The elements for the timeline. The element &#39;unique_titles&#39; is special as it, as the name signals, the number of unique titles and not the sum of instances. 
      * 
@@ -110,7 +110,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       *   </ul>
       * @throws ServiceException when other http codes should be returned
       *
-      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;familyID&#x60; delivers a list of all unique general newspaper titles for all the articles matching the query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)).  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract. Patience is adviced. 
+      * Extracts a timeline of statistical elements, optionally based on a query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)).  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract. Patience is adviced. 
       *
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
@@ -172,6 +172,10 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param query: A query for the newspapers to export aggregates facet statistics for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied 
      * 
+     * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. This cannot be earlier than 1666. 
+     * 
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013. 
+     * 
      * @param field: The field to facet. Note that it is case sensitive.  * familyId: The general name of the newspaper * lvx: The specific name of the newspaper * lplace: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published : py: Publication year 
      * 
      * @param sort: The sort order of the facet content.
@@ -190,7 +194,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput facet(String query, String field, String sort, Integer limit, String format) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput facet(String query, String startTime, String endTime, String field, String sort, Integer limit, String format) throws ServiceException {
         // TODO: Implement...
     
         
@@ -248,7 +252,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "yW23mqW";
+            String response = "HAkXigK0";
         return response;
         } catch (Exception e){
             throw handleException(e);

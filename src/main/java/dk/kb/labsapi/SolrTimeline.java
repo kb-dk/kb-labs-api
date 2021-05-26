@@ -44,7 +44,6 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -55,8 +54,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -246,8 +243,17 @@ public class SolrTimeline extends SolrBase {
 
         TimelineEntryDto total = createBlankEntry("total", elements);
 
+        if (response.getJsonFacetingResponse() == null) { // No hits at all
+            // TODO: Add support for zero-timeline
+            throw new IllegalStateException(
+                    "Sorry, no hits with the given constraints and zero-timeline support has not been added yet");
+        }
+
         List<TimelineEntryDto> entries =
-                response.getJsonFacetingResponse().getBucketBasedFacets("timeline").getBuckets().stream()
+                response.getJsonFacetingResponse()
+                        .getBucketBasedFacets("timeline")
+                        .getBuckets()
+                        .stream()
                         .map(e -> solrEntryToDto(e, elements))
                         .peek(e -> updateTotal(total, e, elements))
                         //.sorted(Comparator.comparing(e -> e.getTimestamp())) // Order is already handled by Solr
@@ -447,45 +453,10 @@ public class SolrTimeline extends SolrBase {
 
     /* ************************************************************************************************************** */
 
-    /**
-     * @param time YYYY or YYYY-MM or blank.
-     * @return a Solr timestamp.
-     */
     private String parseTime(String time, int defaultYear, boolean first) {
-        if (time == null || time.isBlank()) {
-            // TODO: 12-31T23... when end
-            return defaultYear + (first ? "-01-01T00:00:00Z" : "-12-31T23:59:59Z");
-        }
-
-        Matcher matcher;
-        if ((matcher = YYYY.matcher(time)).matches()) {
-            int year = Integer.parseInt(matcher.group());
-            return Math.max(minYear, Math.min(maxYear, year)) + (first ? "-01-01T00:00:00Z" : "-12-31T23:59:59Z");
-        }
-        if ((matcher = YYYY_MM.matcher(time)).matches()) {
-            int year = Integer.parseInt(matcher.group(1));
-            int month = Integer.parseInt(matcher.group(2).replaceAll("^0", ""));
-            if (month == 0) {
-                throw new IllegalArgumentException(
-                        "The month in '" + time + "' was 0. Month indexes should start with 1");
-            }
-            if (month > 12) {
-                throw new IllegalArgumentException(
-                        "The month in '" + time + "' was " + month + " which is not valid under the GregorianCalendar");
-            }
-            year = Math.max(minYear, Math.min(maxYear, year));
-            // TODO: Does not seem legal
-            return String.format(Locale.ROOT, "%4d-%2d" + (first ? "-01T00:00:00Z" : "-31T23:59:59Z"), year, month);
-        }
-        if ("now".equals(time.toLowerCase(Locale.ROOT))) {
-            LocalDate now = LocalDate.now(DA);
-            return now.format(DateTimeFormatter.ofPattern("yyyy-MM-01T00:00:00Z", Locale.ROOT));
-        }
-        throw new IllegalArgumentException("Unsupported datetime format '" + time + "'");
+        return ParamUtil.parseTimeYearMonth(time, defaultYear, minYear, maxYear, first);
     }
-    private static final Pattern YYYY = Pattern.compile("[0-9]{4,4}");
-    private static final Pattern YYYY_MM = Pattern.compile("([0-9]{4,4})-([01][0-9])");
-    
+
     public enum STRUCTURE { comments, header, content ;
         public static Set<STRUCTURE> DEFAULT = new HashSet<>(Arrays.asList(header, content)) ;
         public static Set<STRUCTURE> ALL = new HashSet<>(Arrays.asList(comments, header, content)) ;

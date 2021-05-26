@@ -41,6 +41,8 @@ import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -63,11 +65,17 @@ public class SolrExport extends SolrBase {
     final static String LINK_PREFIX_DEFAULT = "http://www2.statsbiblioteket.dk/mediestream/avis/record/";
     final static String TIMESTAMP = "timestamp";
 
+    final static ZoneId DA = ZoneId.of("Europe/Copenhagen");
+    final static ZoneId Z = ZoneId.of("Z");
+
     private static final SolrExport instance = new SolrExport();
 
     private final int pageSize;
     private final String linkPrefix;
     private final String exportSort;
+
+    private final int minYear;
+    private final int maxYear;
 
     public SolrExport() {
         super(".labsapi.aviser");
@@ -75,6 +83,12 @@ public class SolrExport extends SolrBase {
         pageSize = conf.getInteger(".solr.pagesize", 500);
         linkPrefix = conf.getString(".link.prefix", LINK_PREFIX_DEFAULT);
         exportSort = conf.getString(".solr.sort");
+
+        final int nowYear = LocalDate.now(DA).getYear();
+        minYear = conf.getInteger(".minYear", 1666);
+        maxYear = "NOW".equals(conf.getString(".maxYear", null)) ?
+                nowYear :
+                conf.getInteger(".maxYear", nowYear);
     }
 
     public static SolrExport getInstance() {
@@ -280,7 +294,13 @@ public class SolrExport extends SolrBase {
     }
 
     public StreamingOutput facet(
-            String query, String field, FACET_SORT sort, Integer limit, FACET_FORMAT outFormat) {
+            String query, String startTime, String endTime, String field, FACET_SORT sort, Integer limit,
+            FACET_FORMAT outFormat) {
+
+        String trueStartTime = ParamUtil.parseTimeYearMonth(startTime, minYear, minYear, maxYear, true);
+        String trueEndTime = ParamUtil.parseTimeYearMonth(endTime, maxYear, minYear, maxYear, false);
+
+
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
                 FacetParams.FACET, "true",
