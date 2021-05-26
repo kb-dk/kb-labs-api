@@ -28,6 +28,7 @@ import org.apache.commons.csv.QuoteMode;
 import org.apache.solr.client.solrj.request.json.JsonQueryRequest;
 import org.apache.solr.client.solrj.request.json.QueryFacetMap;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.client.solrj.response.json.BucketBasedJsonFacet;
 import org.apache.solr.client.solrj.response.json.BucketJsonFacet;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.FacetParams;
@@ -47,12 +48,14 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -248,8 +251,10 @@ public class SolrTimeline extends SolrBase {
             throw new IllegalStateException(
                     "Sorry, no hits with the given constraints and zero-timeline support has not been added yet");
         }
+        BucketBasedJsonFacet buckets = response.getJsonFacetingResponse().getBucketBasedFacets("timeline");
 
-        List<TimelineEntryDto> entries =
+        // TODO: Consider filling in the blanks
+        List<TimelineEntryDto> entries = buckets == null ? Collections.emptyList() :
                 response.getJsonFacetingResponse()
                         .getBucketBasedFacets("timeline")
                         .getBuckets()

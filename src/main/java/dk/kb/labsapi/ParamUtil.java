@@ -17,9 +17,11 @@ package dk.kb.labsapi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,26 +34,30 @@ public class ParamUtil {
 
 
     private static final Pattern YYYY = Pattern.compile("[0-9]{4,4}");
-    private static final Pattern YYYY_MM = Pattern.compile("([0-9]{4,4})-([01][0-9])");
-    private static final Pattern YYYY_MM_DD = Pattern.compile("([0-9]{4,4})-([01][0-9])-([0-3][0-9])");
+    private static final Pattern YYYY_MM = Pattern.compile("([0-9]{4,4})-([01]?[0-9])");
+    private static final Pattern YYYY_MM_DD = Pattern.compile("([0-9]{4,4})-([01]?[0-9])-([0-3]?[0-9])");
+    private static final DateTimeFormatter SOLR_DATE =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'00:00:00'Z'", Locale.ROOT);
 
     /**
      * @param time YYYY or YYYY-MM or blank.
      * @param defaultYear what to return if time is null or blank.
      * @param minYear the earliest allowed year, inclusive.
-     * @param maxYear the lates allowed year, inclusive.
+     * @param maxYear the latest allowed year, inclusive.
      * @param first if true, the timestamp to return is the first in a range (time is 00:00:00), else it is latest
      *              (time is 23:59:59).
      * @return a Solr timestamp.
      */
     public static String parseTimeYearMonth(String time, int defaultYear, int minYear, int maxYear, boolean first) {
+        LocalDate date = first ?
+                LocalDate.of(defaultYear, 1, 1) :
+                LocalDate.of(defaultYear, 12, 31);
         if (time == null || time.isBlank()) {
-            // TODO: 12-31T23... when end
-            return defaultYear + (first ? "-01-01T00:00:00Z" : "-12-31T23:59:59Z");
+            return date.format(SOLR_DATE);
         }
         if ("now".equals(time.toLowerCase(Locale.ROOT))) {
-            LocalDate now = LocalDate.now(SolrTimeline.DA);
-            return now.format(DateTimeFormatter.ofPattern("yyyy-MM-01T00:00:00Z", Locale.ROOT));
+            date = date.withYear(Math.min(maxYear, LocalDate.now(SolrTimeline.DA).getYear()));
+            return date.format(SOLR_DATE);
         }
         if (YYYY_MM_DD.matcher(time).matches()) {
             throw new IllegalArgumentException(
@@ -70,27 +76,22 @@ public class ParamUtil {
      * @return a Solr timestamp.
      */
     public static String parseTimeYearMonthDay(String time, int defaultYear, int minYear, int maxYear, boolean first) {
+        LocalDate date = first ?
+                LocalDate.of(defaultYear, 1, 1) :
+                LocalDate.of(defaultYear, 12, 31);
         if (time == null || time.isBlank()) {
-            // TODO: 12-31T23... when end
-            return defaultYear + (first ? "-01-01T00:00:00Z" : "-12-31T23:59:59Z");
+            return date.format(SOLR_DATE);
         }
         if ("now".equals(time.toLowerCase(Locale.ROOT))) {
             LocalDate now = LocalDate.now(SolrTimeline.DA);
-            return now.format(DateTimeFormatter.ofPattern("yyyy-MM-ddT00:00:00Z", Locale.ROOT));
+            now = now.withYear(Math.min(maxYear, now.getYear()));
+            return now.format(SOLR_DATE);
         }
-
-        LocalDate date;
 
         Matcher matcher;
         if ((matcher = YYYY.matcher(time)).matches()) {
             int year = Math.max(minYear, Math.min(maxYear, Integer.parseInt(matcher.group())));
-            date = LocalDate.of(year, 1, 1);
-            if (!first) {
-                date = date.withMonth(12);
-                date = date.withDayOfMonth(date.lengthOfMonth());
-            }
-            
-            return Math.max(minYear, Math.min(maxYear, year)) + (first ? "-01-01T00:00:00Z" : "-12-31T23:59:59Z");
+            return date.withYear(year).format(SOLR_DATE);
         }
 
         if ((matcher = YYYY_MM.matcher(time)).matches()) {
@@ -105,12 +106,16 @@ public class ParamUtil {
                         "The month in '" + time + "' was " + month + " which is not valid under the GregorianCalendar");
             }
             year = Math.max(minYear, Math.min(maxYear, year));
-            // TODO: Does not seem legal
-            return String.format(Locale.ROOT, "%4d-%2d" + (first ? "-01T00:00:00Z" : "-31T23:59:59Z"), year, month);
+            date = date.withYear(year)
+                    .withDayOfMonth(1)
+                    .withMonth(month);
+            date = date.with(first ? TemporalAdjusters.firstDayOfMonth() : TemporalAdjusters.lastDayOfMonth());
+            return date.format(SOLR_DATE);
         }
 
         if ((matcher = YYYY_MM_DD.matcher(time)).matches()) {
             int year = Integer.parseInt(matcher.group(1));
+            year = Math.max(minYear, Math.min(maxYear, year));
             int month = Integer.parseInt(matcher.group(2).replaceAll("^0", ""));
             if (month == 0) {
                 throw new IllegalArgumentException(
@@ -120,11 +125,16 @@ public class ParamUtil {
                 throw new IllegalArgumentException(
                         "The month in '" + time + "' was " + month + " which is not valid under the GregorianCalendar");
             }
-            year = Math.max(minYear, Math.min(maxYear, year));
-            // TODO: Does not seem legal
-            return String.format(Locale.ROOT, "%4d-%2d" + (first ? "-01T00:00:00Z" : "-31T23:59:59Z"), year, month);
+            int day = Integer.parseInt(matcher.group(3).replaceAll("^0", ""));
+            try {
+                date = LocalDate.of(year, month, day);
+            } catch (DateTimeException e) {
+                throw new IllegalArgumentException("Invalid YYYY-MM-DD: '" + time + "'");
+            }
+            return date.format(SOLR_DATE);
         }
 
         throw new IllegalArgumentException("Unsupported datetime format '" + time + "'");
     }
+
 }

@@ -58,13 +58,34 @@ class SolrTimelineTest {
     }
 
     @Test
+    void testTimelineMonthShort() throws IOException {
+        empty(SolrTimeline.getInstance().timeline(
+                "hest", SolrTimeline.GRANULARITY.decade, "1666-1", "1700-1",
+                Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+    }
+
+    @Test
+    void testTimelineMonthEarly() throws IOException {
+        empty(SolrTimeline.getInstance().timeline(
+                "hest", SolrTimeline.GRANULARITY.decade, "1666-01", "1700-01",
+                Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+    }
+
+    @Test
+    void testTimelineMonthLate() throws IOException {
+        empty(SolrTimeline.getInstance().timeline(
+                "hest", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
+                Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+    }
+
+    @Test
     void testTimelineStar() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
                 "*:*", SolrTimeline.GRANULARITY.year, "1666", "1670",
                 Collections.singletonList(SolrTimeline.ELEMENT.pages), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 
-    // TODO: Enable when it works
+    @Test
     void testTimelineNoHits() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
                 "sdgfsgss", SolrTimeline.GRANULARITY.decade, "1666", "1700",
