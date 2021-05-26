@@ -40,7 +40,7 @@ class SolrTimelineTest {
 
     @BeforeAll
     static void setupConfig() throws IOException {
-        ServiceConfig.initialize("conf/labsapi.yaml");
+        ServiceConfig.initialize("conf/labsapi-*.yaml");
     }
 
     @Test

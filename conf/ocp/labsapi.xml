@@ -5,9 +5,8 @@
         value="/app/conf/logback.xml"
         type="java.lang.String"
         override="false"/>
-    <!-- TODO: Expand with alternative configurations ($HOME/conf/labsapi.yaml) -->
     <Environment name="application-config"
-        value="/app/conf/labsapi.yaml"
+        value="/app/conf/labsapi-*.yaml"
         type="java.lang.String"
         override="false"/>
 
