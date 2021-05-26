@@ -1,6 +1,8 @@
 package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
@@ -79,6 +82,41 @@ class SolrTimelineTest {
     }
 
     @Test
+    void testTimelineGranularityMonth() throws IOException {
+        String response = toString(SolrTimeline.getInstance().timeline(
+                "hest", SolrTimeline.GRANULARITY.month, "1800-10", "1801-12",
+                Collections.singletonList(
+                        SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+
+        String firstTimestamp = getFirstTimestamp(response);
+        if (firstTimestamp.length() != 7) {
+            fail("The first timestamp should be of length 7 (YYYY-MM) but was '" + firstTimestamp + "'");
+        }
+    }
+
+    @Test
+    void testTimelineGranularityYear() throws IOException {
+        String response = toString(SolrTimeline.getInstance().timeline(
+                "hest", SolrTimeline.GRANULARITY.year, "1800-10", "1801-12",
+                Collections.singletonList(
+                        SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+
+        String firstTimestamp = getFirstTimestamp(response);
+        if (firstTimestamp.length() != 4) {
+            fail("The first timestamp should be of length 4 (YYYY) but was '" + firstTimestamp + "'");
+        }
+    }
+
+    private String getFirstTimestamp(String response) throws IOException {
+        JSONArray entries = new JSONArray(response).getJSONObject(0).getJSONArray("entries");
+        if (entries.isEmpty()) {
+            fail("There should be at least 1 entry in the timeline");
+        }
+        String firstTimestamp = entries.getJSONObject(0).getString("timestamp");
+        return firstTimestamp;
+    }
+
+    @Test
     void testTimelineStar() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
                 "*:*", SolrTimeline.GRANULARITY.year, "1666", "1670",
@@ -92,9 +130,13 @@ class SolrTimelineTest {
                 Arrays.asList(SolrTimeline.ELEMENT.values()), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 
-    private void empty(StreamingOutput hest) throws IOException {
-        OutputStream os = new ByteArrayOutputStream();
-        hest.write(os);
-        log.info("Got " + os.toString());
+    private void empty(StreamingOutput content) throws IOException {
+        log.info("Got " + toString(content));
+    }
+
+    private String toString(StreamingOutput content) throws IOException {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        content.write(os);
+        return os.toString(StandardCharsets.UTF_8);
     }
 }

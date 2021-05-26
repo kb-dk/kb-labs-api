@@ -37,6 +37,7 @@ import org.apache.solr.common.params.HighlightParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -45,6 +46,8 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -134,7 +137,8 @@ public class SolrTimeline extends SolrBase {
                 .requestTime(requestTime)
                 .elements(elements.stream()
                                   .map(e -> e.toString().toUpperCase(Locale.ROOT))
-                                  .map(TimelineRequestDto.ElementsEnum::valueOf).collect(Collectors.toList()))
+                                  .map(TimelineRequestDto.ElementsEnum::valueOf)
+                                  .collect(Collectors.toList()))
                 .granularity(TimelineRequestDto.GranularityEnum.valueOf(granularity.toString().toUpperCase(Locale.ROOT)));
         return makeTimeline(request, elements, response);
     }
@@ -259,7 +263,7 @@ public class SolrTimeline extends SolrBase {
                         .getBucketBasedFacets("timeline")
                         .getBuckets()
                         .stream()
-                        .map(e -> solrEntryToDto(e, elements))
+                        .map(e -> solrEntryToDto(e, elements, request.getGranularity()))
                         .peek(e -> updateTotal(total, e, elements))
                         //.sorted(Comparator.comparing(e -> e.getTimestamp())) // Order is already handled by Solr
                         .collect(Collectors.toList());
@@ -307,10 +311,16 @@ public class SolrTimeline extends SolrBase {
         return entry;
     }
 
-    private static TimelineEntryDto solrEntryToDto(BucketJsonFacet bucket, Collection<ELEMENT> elements) {
+    private static final DateTimeFormatter YYYY = DateTimeFormatter.ofPattern("yyyy", Locale.ROOT);
+    private static final DateTimeFormatter YYYY_MM = DateTimeFormatter.ofPattern("yyyy-MM", Locale.ROOT);
+
+    private static TimelineEntryDto solrEntryToDto(
+            BucketJsonFacet bucket, Collection<ELEMENT> elements, String granularity) {
         // TODO: Use granularity to adjust to either YYYY or YYYY-MM
-        String timestamp = Integer.toString(
-                Instant.ofEpochMilli(((Date)bucket.getVal()).getTime()).atZone(Z).getYear());
+        ZonedDateTime zonedDate = Instant.ofEpochMilli(((Date)bucket.getVal()).getTime()).atZone(Z);
+
+        String timestamp = "YEAR".equals(granularity.toUpperCase(Locale.ROOT)) ?
+                YYYY.format(zonedDate) : YYYY_MM.format(zonedDate);
         TimelineEntryDto entry =  createBlankEntry(timestamp, elements);
         elements.forEach(e -> {
             Object num = e == ELEMENT.articles ? bucket.getCount() : bucket.getStatValue(e.toString());

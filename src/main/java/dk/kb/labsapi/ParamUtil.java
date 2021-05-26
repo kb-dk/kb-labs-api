@@ -123,7 +123,7 @@ public class ParamUtil {
             }
             if (month > 12) {
                 throw new IllegalArgumentException(
-                        "The month in '" + time + "' was " + month + " which is not valid under the GregorianCalendar");
+                        "The month in '" + time + "' was " + month + " which is not valid under the Gregorian Calendar");
             }
             int day = Integer.parseInt(matcher.group(3).replaceAll("^0", ""));
             try {
