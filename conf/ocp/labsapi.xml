@@ -6,7 +6,7 @@
         type="java.lang.String"
         override="false"/>
     <Environment name="application-config"
-        value="/app/conf/labsapi-*.yaml"
+        value="/app/conf/labsapi*.yaml"
         type="java.lang.String"
         override="false"/>
 
