@@ -2,7 +2,6 @@ package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
 import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -11,11 +10,9 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -79,6 +76,35 @@ class SolrTimelineTest {
         empty(SolrTimeline.getInstance().timeline(
                 "hest", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
                 Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+    }
+
+    @Test
+    void testCache() throws IOException {
+        long fTime = -System.nanoTime();
+        toString(SolrTimeline.getInstance().timeline(
+                "hest", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
+                Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+        fTime += System.nanoTime();
+
+        long sTime = -System.nanoTime();
+        toString(SolrTimeline.getInstance().timeline(
+                "hest", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
+                Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+        sTime += System.nanoTime();
+
+        assertTrue(sTime < 5_000_000 && fTime > 5_000_000,
+                   "First call should take > 5ms (but was " + fTime/1000000 + "), while second call should " +
+                   "take < 5ms (but was " + sTime/1000000 + ")");
+    }
+
+    // Temporary test for checking how normalisations should occur
+    //@Test
+    void testTimelineManual() throws IOException {
+        String response = toString(SolrTimeline.getInstance().timeline(
+                "*:*", SolrTimeline.GRANULARITY.year, "1848", "1848",
+                Collections.singletonList(
+                        SolrTimeline.ELEMENT.articles), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+        System.out.println(response);
     }
 
     @Test

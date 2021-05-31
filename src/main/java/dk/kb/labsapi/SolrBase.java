@@ -37,6 +37,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Super class for the Solr-using parts of the API.
@@ -46,6 +47,7 @@ public class SolrBase {
     protected final SolrClient solrClient;
     private final int maxConnections;
     protected final Semaphore connection;
+    private final TimeCache<QueryResponse> solrCache;
 
     public SolrBase(String configRoot) {
         this(resolveConfig(configRoot));
@@ -54,6 +56,10 @@ public class SolrBase {
         solrClient = createClient(conf);
         maxConnections = conf.getInteger(".solr.connections", 3);
         connection = new Semaphore(maxConnections, true);
+        solrCache = new TimeCache<>(
+                    conf.getInteger(".solr.cache.maxEntries", 50),
+                    conf.getInteger(".solr.cache.maxAgeMS", 1*60*1000)
+            );
     }
 
     private static YAML resolveConfig(String configRoot) {
@@ -103,9 +109,9 @@ public class SolrBase {
         ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
         AtomicLong counter = new AtomicLong(0);
         while (max == -1 || counter.get() < max) {
+            int rows = (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get());
             request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark);
-            request.set(CommonParams.ROWS,
-                        (int) Math.min(pageSize, max == -1 ? Integer.MAX_VALUE : max - counter.get()));
+            request.set(CommonParams.ROWS, rows);
             QueryResponse response;
             response = callSolr(request);
             response.getResults().stream()
@@ -144,40 +150,47 @@ public class SolrBase {
      * Performs a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
      * @param request the request to Solr.
      * @return the response from Solr.
-     * @throws SolrServerException if Solr threw an Exception.
-     * @throws IOException if a general IOException occurred.
+     * @throws RuntimeException if the Solr call could not be completed.
      */
     protected QueryResponse callSolr(SolrParams request) throws SolrServerException, IOException {
-        QueryResponse response;
-        try {
-            connection.acquire();
-            response = solrClient.query(request);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while trying to acquire a connection", e);
-        } finally {
-            connection.release();
-        }
-        return response;
+        return cachedSolrCall(request.toString(), () -> { // request.toString represents the full request per JavaDoc
+            try {
+                return solrClient.query(request);
+            } catch (SolrServerException | IOException e) {
+                throw new RuntimeException("Exception while executing SolrClient query " + request, e);
+            }
+        });
     }
 
     /**
      * Performs a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
      * @param request the request to Solr.
      * @return the response from Solr.
-     * @throws SolrServerException if Solr threw an Exception.
-     * @throws IOException if a general IOException occurred.
+     * @throws RuntimeException if the Solr call could not be completed.
      */
-    protected QueryResponse callSolr(QueryRequest request) throws SolrServerException, IOException {
-        QueryResponse response;
-        try {
-            connection.acquire();
-            response = request.process(solrClient);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while trying to acquire a connection", e);
-        } finally {
-            connection.release();
-        }
-        return response;
+    protected QueryResponse callSolr(QueryRequest request) {
+        return cachedSolrCall(request.getParams().toString(), () -> {
+            try {
+                return request.process(solrClient);
+            } catch (SolrServerException | IOException e) {
+                throw new RuntimeException("Exception while executing Solr request " + request, e);
+            }
+        });
+    }
+
+    protected QueryResponse cachedSolrCall(String key, Supplier<QueryResponse> solrCall) {
+        return solrCache.get(key, () -> {
+            QueryResponse response;
+            try {
+                connection.acquire();
+                response = solrCall.get();
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while trying to acquire a connection", e);
+            } finally {
+                connection.release();
+            }
+            return response;
+        });
     }
 
     /**
