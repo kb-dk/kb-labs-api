@@ -93,7 +93,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param query: Optional query for the timeline statistics. If no query is given, all data are selected. The output will be a number of timeslices with the given granularity, followed by a summary.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.  Note: Queries other than &#39;*:*&#39; will cause the numbers for pages and editions to be approximate. 
      * 
-     * @param filter: Optional filter for the timeline statistics. Filter restricts the result set, just as query does, with the differences that filters are always qualified, e.g. &#x60;lplace:København&#x60; and that filter is also used when calculating the percentage.  The filter &#x60;*:*&#x60; mimicks the behaviour at [Smurf](http://labs.statsbiblioteket.dk/smurf/) while the filter &#x60;recordBase:doms_aviser&#x60; restricts to newspaper articles, as opposed to both articles (which contains fulltext) and pages (which only contains other metadata). 
+     * @param filter: Optional filter for the timeline statistics. Filter restricts the result set, just as query does, with the differences that filter is always qualified, e.g. &#x60;lplace:København&#x60; and that filter is also used when calculating the percentage.  The match-all filter &#x60;*:*&#x60; mimicks the behaviour of [Smurf](http://labs.statsbiblioteket.dk/smurf/) while the filter &#x60;recordBase:doms_aviser&#x60; restricts to newspaper articles, as opposed to both articles (which contains fulltext) and pages (which only contains other metadata). Specifying an empty filter causes &#x60;recordBase:doms_aviser&#x60; to be used. 
      * 
      * @param granularity: The granularity of the timeline. The finer the granularity, the longer the processing time.
      * 
@@ -254,7 +254,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "S0Nej3";
+            String response = "pqVW2e7HX4";
         return response;
         } catch (Exception e){
             throw handleException(e);

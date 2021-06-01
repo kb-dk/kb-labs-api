@@ -299,7 +299,7 @@ paths:
           required: false
           description: |
                       Optional filter for the timeline statistics. Filter restricts the result set, just as query does,
-                      with the differences that filters are always qualified, e.g. `lplace:København` and that filter
+                      with the differences that filter is always qualified, e.g. `lplace:København` and that filter
                       is also used when calculating the percentage.
 
                       The match-all filter `*:*` mimicks the behaviour of [Smurf](http://labs.statsbiblioteket.dk/smurf/)
@@ -312,10 +312,10 @@ paths:
           examples:
             smurf:
               value: '*:*'
-              summary: 'All content, including non-text. Numbers compatible with Smurf'
+              summary: 'All content, including non-text (compatible with Smurf)'
             articles:
               value: 'recordBase:doms_aviser'
-              summary: 'Only articles with fulltext'
+              summary: 'Only articles with fulltext (recommended)'
 
         - name: granularity
           in: query
@@ -641,3 +641,31 @@ components:
           description: 'The number of unique newspaper titles in the slice of time'
           type: integer
           format: int64
+        characters_percentage:
+          description: 'The percentage of characters in the matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        words_percentage:
+          description: 'The percentage of words in the matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        paragraphs_percentage:
+          description: 'The percentage of paragraphs in the matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        articles_percentage:
+          description: 'The percentage of matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        pages_percentage:
+          description: 'The percentage of matched pages in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        editions_percentage:
+          description: 'The percentage of matched editions in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        unique_titles_percentage:
+          description: 'The percentage of matched unique newspaper titles in the slice of time, relative to the full corpus'
+          type: number
+          format: double

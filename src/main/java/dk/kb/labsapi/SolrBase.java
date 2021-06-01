@@ -16,10 +16,12 @@ package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.util.yaml.YAML;
+import dk.kb.webservice.exception.InternalServiceException;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.QueryRequest;
+import org.apache.solr.client.solrj.request.json.JsonQueryRequest;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.params.CommonParams;
@@ -31,7 +33,9 @@ import org.apache.solr.common.params.SolrParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
@@ -168,8 +172,25 @@ public class SolrBase {
      * @return the response from Solr.
      * @throws RuntimeException if the Solr call could not be completed.
      */
-    protected QueryResponse callSolr(QueryRequest request) {
-        return cachedSolrCall(request.getParams().toString(), () -> {
+    protected QueryResponse callSolr(JsonQueryRequest request) {
+        return cachedSolrCall(getKey(request), () -> {
+            try {
+                return request.process(solrClient);
+            } catch (SolrServerException | IOException e) {
+                throw new RuntimeException("Exception while executing Solr request " + request, e);
+            }
+        });
+    }
+
+    /**
+     * Performs a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
+     * @param key the request identifier for caching (cannot be reliably derived from request).
+     * @param request the request to Solr.
+     * @return the response from Solr.
+     * @throws RuntimeException if the Solr call could not be completed.
+     */
+    protected QueryResponse callSolr(String key, QueryRequest request) {
+        return cachedSolrCall(key, () -> {
             try {
                 return request.process(solrClient);
             } catch (SolrServerException | IOException e) {
@@ -192,6 +213,22 @@ public class SolrBase {
             return response;
         });
     }
+
+    /**
+     * Calculate a key for the given query.
+     * @param query a Solr query.
+     * @return a key for the query, intended for the caching map.
+     */
+    static String getKey(JsonQueryRequest query) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            query.getContentWriter(null).write(out);
+        } catch (IOException e) {
+            throw new InternalServiceException("Unable to create key for query", e);
+        }
+        return out.toString(StandardCharsets.UTF_8) + query.getParams() + query.getQueryParams();
+    }
+
 
     /**
      * Sanitize the given Solr query against the most obvious tricks (regexp bombs and behaviour modification).

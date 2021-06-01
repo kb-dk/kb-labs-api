@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.StreamingOutput;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
@@ -123,10 +124,14 @@ public class SolrTimeline extends SolrBase {
         String trueEndTime = parseTime(endTime, maxYear, false);
         JsonQueryRequest jQuery =
                 getTimelineRequest(granularity, elements, trueQuery, trueFilter, trueStartTime, trueEndTime);
+        JsonQueryRequest jQueryAll =
+                getTimelineRequest(granularity, elements, "*:*", trueFilter, trueStartTime, trueEndTime);
 
         QueryResponse response;
+        QueryResponse responseAll;
         try {
             response = callSolr(jQuery);
+            responseAll = callSolr(jQueryAll);
         } catch (Exception e) {
             log.warn("Exception calling Solr for timeline(" + query + ")", e);
             throw new InternalServiceException(
@@ -148,7 +153,7 @@ public class SolrTimeline extends SolrBase {
                                   .map(TimelineRequestDto.ElementsEnum::valueOf)
                                   .collect(Collectors.toList()))
                 .granularity(TimelineRequestDto.GranularityEnum.valueOf(granularity.toString().toUpperCase(Locale.ROOT)));
-        return makeTimeline(request, elements, response);
+        return makeTimeline(request, elements, response, responseAll);
     }
 
     private StreamingOutput streamTimeline(TimelineDto timeline, Set<STRUCTURE> structure, TIMELINE_FORMAT format) {
@@ -172,8 +177,9 @@ public class SolrTimeline extends SolrBase {
     private StreamingOutput streamTimelineCSV(TimelineDto timeline, Set<STRUCTURE> structure) {
         final TimelineRequestDto req = timeline.getRequest();
         final String[] headers = Stream.concat(
-                Stream.of("timestamp"),
-                req.getElements().stream().map(Object::toString))
+                Stream.concat(Stream.of("timestamp"),
+                              req.getElements().stream().map(Object::toString)),
+                req.getElements().stream().map(o -> o + "_percentage"))
                 .toArray(String[]::new);
 
         return output -> {
@@ -216,47 +222,83 @@ public class SolrTimeline extends SolrBase {
     private static List<Object> rowToCells(TimelineEntryDto entry, List<TimelineRequestDto.ElementsEnum> elements) {
         List<Object> cells = new ArrayList<>(elements.size() + 1);
         cells.add(entry.getTimestamp()); // Mandatory
+        addCells(entry, elements, cells, false);
+        addCells(entry, elements, cells, true);
+        return cells;
+    }
+
+    private static void addCells(TimelineEntryDto entry, List<TimelineRequestDto.ElementsEnum> elements,
+                                 List<Object> cells, boolean percentage) {
         elements.forEach(element -> {
             switch (element) {
                 case CHARACTERS: {
-                    cells.add(entry.getCharacters());
+                    if (percentage) {
+                        cells.add(entry.getCharactersPercentage());
+                    } else {
+                        cells.add(entry.getCharacters());
+                    }
                     break;
                 }
                 case WORDS: {
-                    cells.add(entry.getWords());
+                    if (percentage) {
+                        cells.add(entry.getWordsPercentage());
+                    } else {
+                        cells.add(entry.getWords());
+                    }
                     break;
                 }
                 case PARAGRAPHS: {
-                    cells.add(entry.getParagraphs());
+                    if (percentage) {
+                        cells.add(entry.getParagraphsPercentage());
+                    } else {
+                        cells.add(entry.getParagraphs());
+                    }
                     break;
                 }
                 case PAGES: {
-                    cells.add(entry.getPages());
+                    if (percentage) {
+                        cells.add(entry.getPagesPercentage());
+                    } else {
+                        cells.add(entry.getPages());
+                    }
                     break;
                 }
                 case ARTICLES: {
-                    cells.add(entry.getArticles());
+                    if (percentage) {
+                        cells.add(entry.getArticlesPercentage());
+                    } else {
+                        cells.add(entry.getArticles());
+                    }
                     break;
                 }
                 case EDITIONS: {
-                    cells.add(entry.getEditions());
+                    if (percentage) {
+                        cells.add(entry.getEditionsPercentage());
+                    } else {
+                        cells.add(entry.getEditions());
+                    }
                     break;
                 }
                 case UNIQUE_TITLES: {
-                    cells.add(entry.getUniqueTitles());
+                    if (percentage) {
+                        cells.add(entry.getUniqueTitlesPercentage());
+                    } else {
+                        cells.add(entry.getUniqueTitles());
+                    }
                     break;
                 }
                 default: throw new UnsupportedOperationException("Unknown element '" + element + "'");
             }
         });
-        return cells;
     }
 
-    private TimelineDto makeTimeline(TimelineRequestDto request, Collection<ELEMENT> elements, QueryResponse response) {
+    private TimelineDto makeTimeline(TimelineRequestDto request, Collection<ELEMENT> elements,
+                                     QueryResponse response, QueryResponse responseAll) {
         TimelineDto timeline = new TimelineDto();
         timeline.setRequest(request);
 
         TimelineEntryDto total = createBlankEntry("total", elements);
+        TimelineEntryDto totalAll = createBlankEntry("total", elements);
 
         if (response.getJsonFacetingResponse() == null) { // No hits at all
             // TODO: Add support for zero-timeline
@@ -264,22 +306,80 @@ public class SolrTimeline extends SolrBase {
                     "Sorry, no hits with the given constraints and zero-timeline support has not been added yet");
         }
         BucketBasedJsonFacet buckets = response.getJsonFacetingResponse().getBucketBasedFacets("timeline");
+        BucketBasedJsonFacet bucketsAll = responseAll.getJsonFacetingResponse().getBucketBasedFacets("timeline");
 
         // TODO: Consider filling in the blanks
-        List<TimelineEntryDto> entries = buckets == null ? Collections.emptyList() :
-                response.getJsonFacetingResponse()
-                        .getBucketBasedFacets("timeline")
-                        .getBuckets()
+        List<TimelineEntryDto> entries = bucketsToEntries(request, elements, total, buckets);
+        List<TimelineEntryDto> entriesAll = bucketsToEntries(request, elements, totalAll, bucketsAll);
+        enrichWithPercentages(elements, entries, entriesAll);
+        // TODO: Handle unique publishers
+         setPercentages(elements, total, totalAll);
+        
+        timeline.setTotal(total);
+        timeline.setEntries(entries);
+        return timeline;
+    }
+
+    private void enrichWithPercentages(
+            Collection<ELEMENT> elements, List<TimelineEntryDto> entries, List<TimelineEntryDto> entriesAll) {
+        // Create fast lookup
+        Map<String, TimelineEntryDto> cache = entriesAll.stream()
+                .collect(Collectors.toMap(TimelineEntryDto::getTimestamp, e -> e));
+        entries.forEach(e -> setPercentages(elements, e, cache.get(e.getTimestamp())));
+    }
+
+    private void setPercentages(Collection<ELEMENT> elements, TimelineEntryDto entry, TimelineEntryDto entryAll) {
+        if (entryAll == null) {
+            throw new InternalServiceException(
+                    "Error: Attempting to calculate percentages for entry without a corresponding normaliser");
+        }
+        elements.forEach(e -> {
+            switch (e) {
+                case characters: {
+                    entry.setCharactersPercentage(percentage(entry.getCharacters(), entryAll.getCharacters()));
+                    break;
+                }
+                case words: {
+                    entry.setWordsPercentage(percentage(entry.getWords(), entryAll.getWords()));
+                    break;
+                }
+                case paragraphs: {
+                    entry.setParagraphsPercentage(percentage(entry.getParagraphs(), entryAll.getParagraphs()));
+                    break;
+                }
+                case articles: {
+                    entry.setArticlesPercentage(percentage(entry.getArticles(), entryAll.getArticles()));
+                    break;
+                }
+                case pages: {
+                    entry.setPagesPercentage(percentage(entry.getPages(), entryAll.getPages()));
+                    break;
+                }
+                case editions: {
+                    entry.setEditionsPercentage(percentage(entry.getEditions(), entryAll.getEditions()));
+                    break;
+                }
+                case unique_titles: {
+                    entry.setUniqueTitlesPercentage(percentage(entry.getUniqueTitles(), entryAll.getUniqueTitles()));
+                    break;
+                }
+            }
+        });
+    }
+
+    private Double percentage(Long count, Long countAll) {
+        return countAll == 0 ? 0.0 : count * 100.0 / countAll;
+    }
+
+    private List<TimelineEntryDto> bucketsToEntries(TimelineRequestDto request, Collection<ELEMENT> elements,
+                                                    TimelineEntryDto total, BucketBasedJsonFacet buckets) {
+        return buckets == null ? Collections.emptyList() :
+                buckets.getBuckets()
                         .stream()
                         .map(e -> solrEntryToDto(e, elements, request.getGranularity()))
                         .peek(e -> updateTotal(total, e, elements))
                         //.sorted(Comparator.comparing(e -> e.getTimestamp())) // Order is already handled by Solr
                         .collect(Collectors.toList());
-        // TODO: Handle unique publishers
-
-        timeline.setTotal(total);
-        timeline.setEntries(entries);
-        return timeline;
     }
 
     private static TimelineEntryDto createBlankEntry(String timestamp, Collection<ELEMENT> elements) {
@@ -288,30 +388,37 @@ public class SolrTimeline extends SolrBase {
             switch (e) {
                 case characters: {
                     entry.setCharacters(0L);
+                    entry.setCharactersPercentage(0.0);
                     break;
                 }
                 case words: {
                     entry.setWords(0L);
+                    entry.setWordsPercentage(0.0);
                     break;
                 }
                 case paragraphs: {
                     entry.setParagraphs(0L);
+                    entry.setParagraphsPercentage(0.0);
                     break;
                 }
                 case articles: {
                     entry.setArticles(0L);
+                    entry.setArticlesPercentage(0.0);
                     break;
                 }
                 case pages: {
                     entry.setPages(0L);
+                    entry.setPagesPercentage(0.0);
                     break;
                 }
                 case editions: {
                     entry.setEditions(0L);
+                    entry.setEditionsPercentage(0.0);
                     break;
                 }
                 case unique_titles: {
                     entry.setUniqueTitles(0L);
+                    entry.setUniqueTitlesPercentage(0.0);
                     break;
                 }
             }
@@ -396,7 +503,7 @@ public class SolrTimeline extends SolrBase {
                     break;
                 }
                 case unique_titles: {
-                    total.setUniqueTitles(null);
+                    total.setUniqueTitles(0L); // Does not make sense for the total
                     break;
                 }
             }
@@ -417,7 +524,6 @@ public class SolrTimeline extends SolrBase {
             default: throw new UnsupportedOperationException("The granilarity '" + granularity + "' is unsupported");
         }
         // recordBase: doms_aviser (article), doms_aviser_page, doms_aviser_authority
-
         JsonQueryRequest jQuery = new JsonQueryRequest()
                 .setQuery(trueQuery)
                 // Filter is added automatically by the SolrClient
