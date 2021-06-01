@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import dk.kb.labsapi.model.ErrorDto;
 import java.util.List;
 import java.util.Map;
+import dk.kb.labsapi.model.TimelineEntryDto;
 
 import dk.kb.webservice.exception.ServiceException;
 import dk.kb.webservice.exception.InternalServiceException;
@@ -88,6 +89,48 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
 
 
     /**
+     * Extract statistics for the newspaper corpus at http://mediestream.dk/
+     * 
+     * @param query: Optional query for the timeline statistics. If no query is given, all data are selected. The output will be a number of timeslices with the given granularity, followed by a summary.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.  Note: Queries other than &#39;*:*&#39; will cause the numbers for pages and editions to be approximate. 
+     * 
+     * @param filter: Optional filter for the timeline statistics. Filter restricts the result set, just as query does, with the differences that filter is always qualified, e.g. &#x60;lplace:København&#x60; and that filter is also used when calculating the percentage.  The match-all filter &#x60;*:*&#x60; mimicks the behaviour of [Smurf](http://labs.statsbiblioteket.dk/smurf/) while the filter &#x60;recordBase:doms_aviser&#x60; restricts to newspaper articles, as opposed to both articles (which contains fulltext) and pages (which only contains other metadata). Specifying an empty filter causes &#x60;recordBase:doms_aviser&#x60; to be used. 
+     * 
+     * @param granularity: The granularity of the timeline. The finer the granularity, the longer the processing time.
+     * 
+     * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM. This cannot be earlier than 1666. 
+     * 
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013. 
+     * 
+     * @param elements: The elements for the timeline. The element &#39;unique_titles&#39; is special as it, as the name signals, the number of unique titles and not the sum of instances. 
+     * 
+     * @param structure: The major parts of the delivery.  * comments: Metadata for the timeline (query, export time...), prefixed with # in CSV * header: The export field names. Only relevant for CSV as it is implicit in JSON * content: The export content itself 
+     * 
+     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of TimelineEntrys 
+     * 
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = TimelineEntryDto.class, responseContainer = "List"</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * Extracts a timeline of statistical elements, optionally based on a query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)).  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract. Patience is adviced. 
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public javax.ws.rs.core.StreamingOutput aviserStatsTimeline(String query, String filter, String granularity, String startTime, String endTime, List<String> elements, List<String> structure, String format) throws ServiceException {
+        // TODO: Implement...
+    
+        
+        try{ 
+            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
+            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    
+    }
+
+    /**
      * Export data from old newspapers at http://mediestream.dk/
      * 
      * @param query: A query for the newspapers to export metadata for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied 
@@ -131,7 +174,11 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param query: A query for the newspapers to export aggregates facet statistics for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied 
      * 
-     * @param field: The field to facet. Note that it is case sensitive.  * pu: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published * familyId: The name of the newspaper : py: Publication year 
+     * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. This cannot be earlier than 1666. 
+     * 
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013. 
+     * 
+     * @param field: The field to facet. Note that it is case sensitive.  * familyId: The general name of the newspaper * lvx: The specific name of the newspaper * lplace: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published : py: Publication year 
      * 
      * @param sort: The sort order of the facet content.
      * 
@@ -144,12 +191,12 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       *   </ul>
       * @throws ServiceException when other http codes should be returned
       *
-      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;pu&#x60; delivers a list of all \&quot;publishing locations\&quot; for all the articles matching the query. The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The data are restricted to newspapers older than 140 years and will be sorted by publication date.&#39; 
+      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;familyID&#x60; delivers a list of all unique general newspaper titles for all the articles matching the query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The data are restricted to newspapers older than 140 years and will be sorted by publication date.&#39; 
       *
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput facet(String query, String field, String sort, Integer limit, String format) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput facet(String query, String startTime, String endTime, String field, String sort, Integer limit, String format) throws ServiceException {
         // TODO: Implement...
     
         
@@ -207,7 +254,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "Xgm5PllHb";
+            String response = "pqVW2e7HX4";
         return response;
         } catch (Exception e){
             throw handleException(e);

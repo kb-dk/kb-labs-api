@@ -182,6 +182,28 @@ paths:
           schema:
             type: string
             example: 'Sletterhage fyr'
+        - name: startTime
+          in: query
+          required: false
+          description: |
+                      The starting point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+                      This cannot be earlier than 1666.
+          schema:
+            type: string
+            default: '1666'
+            example: '1666'
+        - name: endTime
+          in: query
+          required: false
+          description: |
+                      The ending point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+                      If blank, the current point in time is used.
+
+                      Note: As of 2021, Mediestream does not contain newspapers later than 2013.
+          schema:
+            type: string
+            default: ''
+            example: '2021'
         - name: field
           in: query
           required: false
@@ -239,6 +261,157 @@ paths:
               schema:
                 description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
                 type: string
+
+  /aviser/stats/timeline:
+    get:
+      tags:
+        - "${project.name}"
+      summary: 'Extract statistics for the newspaper corpus at http://mediestream.dk/'
+      description: |
+                  Extracts a timeline of statistical elements, optionally based on a query.
+
+                  The data are from articles in the newspaper collection at http://mediestream.dk/
+                  (a part of the [Royal Danish Library](https://kb.dk)).
+
+                  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract.
+                  Patience is adviced.
+      operationId: aviserStatsTimeline
+
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: |
+                      Optional query for the timeline statistics. If no query is given, all data are selected.
+                      The output will be a number of timeslices with the given granularity, followed by a summary.
+
+                      The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis
+                      for a more interactive result.
+
+                      Note: Queries other than '*:*' will cause the numbers for pages and editions to be approximate.
+          schema:
+            type: string
+            example: '(cykel OR cikle) AND lplace:København'
+            default: '*:*'
+
+        - name: filter
+          in: query
+          required: false
+          description: |
+                      Optional filter for the timeline statistics. Filter restricts the result set, just as query does,
+                      with the differences that filter is always qualified, e.g. `lplace:København` and that filter
+                      is also used when calculating the percentage.
+
+                      The match-all filter `*:*` mimicks the behaviour of [Smurf](http://labs.statsbiblioteket.dk/smurf/)
+                      while the filter `recordBase:doms_aviser` restricts to newspaper articles, as opposed to both
+                      articles (which contains fulltext) and pages (which only contains other metadata).
+                      Specifying an empty filter causes `recordBase:doms_aviser` to be used.
+          schema:
+            type: string
+            default: 'recordBase:doms_aviser'
+          examples:
+            smurf:
+              value: '*:*'
+              summary: 'All content, including non-text (compatible with Smurf)'
+            articles:
+              value: 'recordBase:doms_aviser'
+              summary: 'Only articles with fulltext (recommended)'
+
+        - name: granularity
+          in: query
+          description: 'The granularity of the timeline. The finer the granularity, the longer the processing time.'
+          schema:
+            type: string
+            enum: ['decade', 'year', 'month']
+            default: 'year'
+            example: 'year'
+
+        - name: startTime
+          in: query
+          required: false
+          description: |
+                      The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM.
+                      This cannot be earlier than 1666.
+          schema:
+            type: string
+            default: '1666'
+            example: '1666'
+
+        - name: endTime
+          in: query
+          required: false
+          description: |
+                      The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM.
+                      If blank, the current point in time is used.
+
+                      Note: As of 2021, Mediestream does not contain newspapers later than 2013.
+          schema:
+            type: string
+            default: ''
+            example: '2021'
+
+        - name: elements
+          in: query
+          required: false
+          description: |
+                    The elements for the timeline. The element 'unique_titles' is special as it, as the name
+                    signals, the number of unique titles and not the sum of instances.
+          schema:
+            type: array
+            items:
+              type: string
+              enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
+            default: ['articles', 'pages', 'editions']
+            example: ['articles', 'pages', 'editions']
+
+        - name: structure
+          in: query
+          required: false
+          # TODO: Figure out how to deliver the comments with JSON
+          description: |
+                      The major parts of the delivery.
+
+                      * comments: Metadata for the timeline (query, export time...), prefixed with # in CSV
+                      * header: The export field names. Only relevant for CSV as it is implicit in JSON
+                      * content: The export content itself
+          schema:
+            type: array
+            items:
+              type: string
+              enum:  ['comments', 'header', 'content']
+            default: ['header', 'content']
+            example: ['header', 'content']
+
+        - name: format
+          in: query
+          required: false
+          description: |
+                      The delivery format.
+
+                      * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes
+                      * JSON: Valid JSON in the form of a single array of TimelineEntrys
+          schema:
+            type: string
+            enum:  ['CSV', 'JSON']
+            default: 'CSV'
+            example: 'JSON'
+
+      x-streamingOutput: true
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/json:
+              schema:
+                description: 'JSON-compliant representation of TimelineEntry'
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimelineEntry'
+            text/csv:
+              schema:
+                description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
+                type: string
+
 
   /aviser/hits:
     get:
@@ -377,3 +550,122 @@ components:
           description: 'Coordinates for places from location_name'
           type: string
 
+    Timeline:
+      type: object
+      properties:
+        request:
+          $ref: '#/components/schemas/TimelineRequest'
+        total:
+          $ref: '#/components/schemas/TimelineEntry'
+        # TODO: total100plus, total140plus
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEntry'
+
+    TimelineRequest:
+      type: object
+      required:
+        - requestTime
+        - query
+        - granularity
+        - startTime
+        - endTime
+        - elements
+      properties:
+        requestTime:
+          description: 'The calendar date + time when the request was issued and the timeline exported. YYYY-MM-DD hh:mm'
+          type: string
+          example: '2021-03-01 13:45'
+        query:
+          description: 'Query for the timeline (*:* means all available data)'
+          type: string
+          example: '(cykel OR cikle) AND lplace:København'
+        granularity:
+          description: 'The granularity of the timeline'
+          type: string
+          enum: ['decade', 'year', 'month']
+          example: 'year'
+        startTime:
+          description: 'The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
+          type: string
+          example: '1666-01'
+        endTime:
+          description: 'The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM'
+          type: string
+          example: '1999-12'
+        elements:
+          description: |
+                The elements for the timeline. The element 'unique_publishers' is special as it, as the name
+                signals, the number of unique puslishers and not the sum of instances.
+          type: array
+          items:
+            type: string
+            enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
+          example: ['articles', 'pages', 'editions']
+
+    TimelineEntry:
+      type: object
+      required:
+        - timestamp
+      properties:
+        timestamp:
+          description: 'Timestamp for the timeline element, expressed either as YYYY or YYYY-MM, depending on granularity.'
+          type: string
+          example: '1800-01'
+        characters:
+          description: 'The total number of characters in the articles in the slice of time'
+          type: integer
+          format: int64
+        words:
+          description: 'The total number of words in the articles in the slice of time'
+          type: integer
+          format: int64
+        paragraphs:
+          description: 'The total number of paragraphs in the articles in the slice of time'
+          type: integer
+          format: int64
+        articles:
+          description: 'The total number of articles in the slice of time'
+          type: integer
+          format: int64
+        pages:
+          description: 'The total number of pages in the slice of time'
+          type: integer
+          format: int64
+        editions:
+          description: 'The total number of editions in the slice of time'
+          type: integer
+          format: int64
+        unique_titles:
+          description: 'The number of unique newspaper titles in the slice of time'
+          type: integer
+          format: int64
+        characters_percentage:
+          description: 'The percentage of characters in the matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        words_percentage:
+          description: 'The percentage of words in the matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        paragraphs_percentage:
+          description: 'The percentage of paragraphs in the matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        articles_percentage:
+          description: 'The percentage of matched articles in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        pages_percentage:
+          description: 'The percentage of matched pages in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        editions_percentage:
+          description: 'The percentage of matched editions in the slice of time, relative to the full corpus'
+          type: number
+          format: double
+        unique_titles_percentage:
+          description: 'The percentage of matched unique newspaper titles in the slice of time, relative to the full corpus'
+          type: number
+          format: double

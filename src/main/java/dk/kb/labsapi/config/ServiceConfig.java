@@ -26,7 +26,7 @@ public class ServiceConfig {
      * @throws IOException if the configuration could not be loaded or parsed.
      */
     public static synchronized void initialize(String configFile) throws IOException {
-        serviceConfig = new YAML(configFile);
+        serviceConfig = YAML.resolveLayeredConfigs(configFile);
     }
 
     /**
