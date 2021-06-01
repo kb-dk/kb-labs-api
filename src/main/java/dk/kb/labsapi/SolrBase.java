@@ -47,7 +47,7 @@ public class SolrBase {
     protected final SolrClient solrClient;
     private final int maxConnections;
     protected final Semaphore connection;
-    private final TimeCache<QueryResponse> solrCache;
+    final TimeCache<QueryResponse> solrCache;
 
     public SolrBase(String configRoot) {
         this(resolveConfig(configRoot));
@@ -199,6 +199,9 @@ public class SolrBase {
      * @return a hopefully more safe Solr query.
      */
     protected static String sanitize(String query) {
+        if (query == null) {
+            return null;
+        }
         if ("*".equals(query)) {
             query = "*:*";
         }

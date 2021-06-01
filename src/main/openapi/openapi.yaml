@@ -293,6 +293,30 @@ paths:
             type: string
             example: '(cykel OR cikle) AND lplace:København'
             default: '*:*'
+
+        - name: filter
+          in: query
+          required: false
+          description: |
+                      Optional filter for the timeline statistics. Filter restricts the result set, just as query does,
+                      with the differences that filters are always qualified, e.g. `lplace:København` and that filter
+                      is also used when calculating the percentage.
+
+                      The match-all filter `*:*` mimicks the behaviour of [Smurf](http://labs.statsbiblioteket.dk/smurf/)
+                      while the filter `recordBase:doms_aviser` restricts to newspaper articles, as opposed to both
+                      articles (which contains fulltext) and pages (which only contains other metadata).
+                      Specifying an empty filter causes `recordBase:doms_aviser` to be used.
+          schema:
+            type: string
+            default: 'recordBase:doms_aviser'
+          examples:
+            smurf:
+              value: '*:*'
+              summary: 'All content, including non-text. Numbers compatible with Smurf'
+            articles:
+              value: 'recordBase:doms_aviser'
+              summary: 'Only articles with fulltext'
+
         - name: granularity
           in: query
           description: 'The granularity of the timeline. The finer the granularity, the longer the processing time.'
@@ -301,6 +325,7 @@ paths:
             enum: ['decade', 'year', 'month']
             default: 'year'
             example: 'year'
+
         - name: startTime
           in: query
           required: false
@@ -311,6 +336,7 @@ paths:
             type: string
             default: '1666'
             example: '1666'
+
         - name: endTime
           in: query
           required: false
@@ -323,6 +349,7 @@ paths:
             type: string
             default: ''
             example: '2021'
+
         - name: elements
           in: query
           required: false
@@ -336,6 +363,7 @@ paths:
               enum: ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
             default: ['articles', 'pages', 'editions']
             example: ['articles', 'pages', 'editions']
+
         - name: structure
           in: query
           required: false
@@ -353,6 +381,7 @@ paths:
               enum:  ['comments', 'header', 'content']
             default: ['header', 'content']
             example: ['header', 'content']
+
         - name: format
           in: query
           required: false

@@ -46,62 +46,61 @@ class SolrTimelineTest {
     @Test
     void testTimeline() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.decade, "1666", "1700",
+                "hest", "*:*", SolrTimeline.GRANULARITY.decade, "1666", "1700",
                 Arrays.asList(SolrTimeline.ELEMENT.values()), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.csv));
     }
 
     @Test
     void testTimelineLimited() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.decade, "1666", "1700",
+                "hest", "*:*", SolrTimeline.GRANULARITY.decade, "1666", "1700",
                 Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 
     @Test
     void testTimelineMonthShort() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.decade, "1666-1", "1700-1",
+                "hest", "*:*", SolrTimeline.GRANULARITY.decade, "1666-1", "1700-1",
                 Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 
     @Test
     void testTimelineMonthEarly() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.decade, "1666-01", "1700-01",
+                "hest", "*:*", SolrTimeline.GRANULARITY.decade, "1666-01", "1700-01",
                 Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 
     @Test
     void testTimelineMonthLate() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
+                "hest", "*:*", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
                 Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 
     @Test
     void testCache() throws IOException {
-        long fTime = -System.nanoTime();
-        toString(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
-                Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
-        fTime += System.nanoTime();
+        final String query = "bonde";
+        final long preHits = SolrTimeline.getInstance().solrCache.getHits();
 
-        long sTime = -System.nanoTime();
         toString(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
+                query, "*:*", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
                 Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
-        sTime += System.nanoTime();
 
-        assertTrue(sTime < 5_000_000 && fTime > 5_000_000,
-                   "First call should take > 5ms (but was " + fTime/1000000 + "), while second call should " +
-                   "take < 5ms (but was " + sTime/1000000 + ")");
+        toString(SolrTimeline.getInstance().timeline(
+                query, "*:*", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
+                Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
+
+        final long postHits = SolrTimeline.getInstance().solrCache.getHits();
+
+        assertTrue(preHits < postHits, "The number of cache hits should be incremented, but was unchanged at " + preHits);
     }
 
     // Temporary test for checking how normalisations should occur
     //@Test
     void testTimelineManual() throws IOException {
         String response = toString(SolrTimeline.getInstance().timeline(
-                "*:*", SolrTimeline.GRANULARITY.year, "1848", "1848",
+                "*:*", "*:*", SolrTimeline.GRANULARITY.year, "1848", "1848",
                 Collections.singletonList(
                         SolrTimeline.ELEMENT.articles), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
         System.out.println(response);
@@ -110,7 +109,7 @@ class SolrTimelineTest {
     @Test
     void testTimelineGranularityMonth() throws IOException {
         String response = toString(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.month, "1800-10", "1801-12",
+                "hest", "*:*", SolrTimeline.GRANULARITY.month, "1800-10", "1801-12",
                 Collections.singletonList(
                         SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
 
@@ -123,7 +122,7 @@ class SolrTimelineTest {
     @Test
     void testTimelineGranularityYear() throws IOException {
         String response = toString(SolrTimeline.getInstance().timeline(
-                "hest", SolrTimeline.GRANULARITY.year, "1800-10", "1801-12",
+                "hest", "*:*", SolrTimeline.GRANULARITY.year, "1800-10", "1801-12",
                 Collections.singletonList(
                         SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
 
@@ -138,21 +137,20 @@ class SolrTimelineTest {
         if (entries.isEmpty()) {
             fail("There should be at least 1 entry in the timeline");
         }
-        String firstTimestamp = entries.getJSONObject(0).getString("timestamp");
-        return firstTimestamp;
+        return entries.getJSONObject(0).getString("timestamp");
     }
 
     @Test
     void testTimelineStar() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
-                "*:*", SolrTimeline.GRANULARITY.year, "1666", "1670",
+                "*:*", "*:*", SolrTimeline.GRANULARITY.year, "1666", "1670",
                 Collections.singletonList(SolrTimeline.ELEMENT.pages), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 
     @Test
     void testTimelineNoHits() throws IOException {
         empty(SolrTimeline.getInstance().timeline(
-                "sdgfsgss", SolrTimeline.GRANULARITY.decade, "1666", "1700",
+                "sdgfsgss", "*:*", SolrTimeline.GRANULARITY.decade, "1666", "1700",
                 Arrays.asList(SolrTimeline.ELEMENT.values()), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
     }
 

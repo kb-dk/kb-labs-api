@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -37,6 +38,8 @@ public class TimeCache<O> implements Map<String, O> {
     private final LinkedHashMap<String, TimeEntry<O>> inner;
     private final int maxCapacity;
     private final long maxAge;
+    private final AtomicLong calls = new AtomicLong(0);
+    private final AtomicLong hits = new AtomicLong(0);
 
     /**
      *
@@ -54,7 +57,6 @@ public class TimeCache<O> implements Map<String, O> {
             }
         };
     }
-
 
     /**
      * Get the object with the given key from the cache. If the object is not available, attempt to create a new one
@@ -85,6 +87,7 @@ public class TimeCache<O> implements Map<String, O> {
         if (!(key instanceof String)) {
             return null;
         }
+        calls.incrementAndGet();
         TimeEntry<O> o = inner.get(key);
         if (o == null) {
             return null;
@@ -93,6 +96,7 @@ public class TimeCache<O> implements Map<String, O> {
             inner.remove(key);
             return null;
         }
+        hits.incrementAndGet();
         inner.put((String)key, o);
         return o.getValue();
     }
@@ -100,6 +104,20 @@ public class TimeCache<O> implements Map<String, O> {
     @Override
     public O getOrDefault(Object key, O defaultValue) {
         return Optional.ofNullable(get(key)).orElse(defaultValue);
+    }
+
+    /**
+     * The number of times a value was requested from the cache.
+     */
+    public long getCalls() {
+        return calls.get();
+    }
+
+    /**
+     * The number of hits (the value was available) in the cache.
+     */
+    public long getHits() {
+        return hits.get();
     }
 
     @Override

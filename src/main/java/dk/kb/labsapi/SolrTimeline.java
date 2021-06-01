@@ -79,6 +79,8 @@ public class SolrTimeline extends SolrBase {
     private final int maxYear;
 
     private static final SolrTimeline instance = new SolrTimeline();
+    private final String defaultTimelineFilter;
+
     public static SolrTimeline getInstance() {
         return instance;
     }
@@ -91,6 +93,7 @@ public class SolrTimeline extends SolrBase {
         maxYear = "NOW".equals(conf.getString(".maxYear", null)) ?
                 nowYear :
                 conf.getInteger(".maxYear", nowYear);
+        defaultTimelineFilter = conf.getString(".defaultFilter", "recordBase:doms_aviser");
     }
     public SolrTimeline(YAML generalConf) {
         super(generalConf);
@@ -100,21 +103,26 @@ public class SolrTimeline extends SolrBase {
         maxYear = "NOW".equals(conf.getString(".maxYear", null)) ?
                 nowYear :
                 conf.getInteger(".maxYear", nowYear);
+        defaultTimelineFilter = conf.getString(".defaultFilter", "recordBase:doms_aviser");
     }
 
     public StreamingOutput timeline(
-            String query, GRANULARITY granularity, String startTime, String endTime, Collection<ELEMENT> elements,
+            String query, String filter, GRANULARITY granularity,
+            String startTime, String endTime, Collection<ELEMENT> elements,
             Set<STRUCTURE> structure, TIMELINE_FORMAT format) {
-        TimelineDto timeline = getTimeline(query, granularity, startTime, endTime, elements);
+        TimelineDto timeline = getTimeline(query, filter, granularity, startTime, endTime, elements);
         return streamTimeline(timeline, structure, format);
     }
 
     TimelineDto getTimeline(
-            String query, GRANULARITY granularity, String startTime, String endTime, Collection<ELEMENT> elements) {
+            String query, String filter, GRANULARITY granularity,
+            String startTime, String endTime, Collection<ELEMENT> elements) {
         String trueQuery = sanitize(query);
+        String trueFilter = filter == null || filter.isBlank() ? defaultTimelineFilter : sanitize(filter);
         String trueStartTime = parseTime(startTime, minYear, true);
         String trueEndTime = parseTime(endTime, maxYear, false);
-        JsonQueryRequest jQuery = getTimelineRequest(granularity, elements, trueQuery, trueStartTime, trueEndTime);
+        JsonQueryRequest jQuery =
+                getTimelineRequest(granularity, elements, trueQuery, trueFilter, trueStartTime, trueEndTime);
 
         QueryResponse response;
         try {
@@ -397,7 +405,7 @@ public class SolrTimeline extends SolrBase {
 
     private JsonQueryRequest getTimelineRequest(
             GRANULARITY granularity, Collection<ELEMENT> elements,
-            String trueQuery, String trueStartTime, String trueEndTime) {
+            String trueQuery, String trueFilter, String trueStartTime, String trueEndTime) {
         String gap;
         switch (granularity) {
             case decade: gap = "+10YEARS";
@@ -412,7 +420,6 @@ public class SolrTimeline extends SolrBase {
 
         JsonQueryRequest jQuery = new JsonQueryRequest()
                 .setQuery(trueQuery)
-                .withFilter("recordBase:doms_aviser") // Articles only
                 // Filter is added automatically by the SolrClient
                 .withParam(FacetParams.FACET, "true") // Need this for JSON faceting
                 .withParam(FacetParams.FACET_FIELD, "py") // Fairly cheap field. Needed to override the default of many fields
@@ -420,6 +427,10 @@ public class SolrTimeline extends SolrBase {
                 .withParam(GroupParams.GROUP, "false")
                 .withParam(HighlightParams.HIGHLIGHT, "false")
                 .withParam(CommonParams.ROWS, Integer.toString(0));
+        if (!"*:*".equals(trueFilter)) {
+            // Default is "recordBase:doms_aviser" (articles only)
+            jQuery = jQuery.withFilter(trueFilter);
+        }
 
         Map<String, Object> elementCalls = new HashMap<>();
         if (elements.contains(ELEMENT.characters)) {

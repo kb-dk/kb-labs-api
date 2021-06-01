@@ -80,29 +80,33 @@ public class LabsapiService implements LabsapiApi {
     /**
      * Extract statistics for the newspaper corpus at http://mediestream.dk/
      *
-     * @param query: Optional query for the timeline statistics. If no query is given, all data are selected. The output will be a number of timeslices with the given granularity, followed by a summary.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.
+     * @param query: Optional query for the timeline statistics. If no query is given, all data are selected. The output will be a number of timeslices with the given granularity, followed by a summary.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.  Note: Queries other than &#39;*:*&#39; will cause the numbers for pages and editions to be approximate.
+     *
+     * @param filter: Optional filter for the timeline statistics. Filter restricts the result set, just as query does, with the differences that filters are always qualified, e.g. &#x60;lplace:København&#x60; and that filter is also used when calculating the percentage.  The filter &#x60;*:*&#x60; mimicks the behaviour at [Smurf](http://labs.statsbiblioteket.dk/smurf/) while the filter &#x60;recordBase:doms_aviser&#x60; restricts to newspaper articles, as opposed to both articles (which contains fulltext) and pages (which only contains other metadata).
      *
      * @param granularity: The granularity of the timeline. The finer the granularity, the longer the processing time.
      *
      * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM. This cannot be earlier than 1666.
      *
-     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM. If blank, the current point in time is used.  Note: As of 2021, Mediestream does nok contain newspapers from the last 8 years.
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013.
      *
-     * @param elements: The elements for the timeline. The element &#39;unique_publishers&#39; is special as it, as the name signals, the number of unique puslishers and not the sum of instances.
+     * @param elements: The elements for the timeline. The element &#39;unique_titles&#39; is special as it, as the name signals, the number of unique titles and not the sum of instances.
      *
-     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of Documents * JSONL: Newline separated single-line JSON representations of Documents
+     * @param structure: The major parts of the delivery.  * comments: Metadata for the timeline (query, export time...), prefixed with # in CSV * header: The export field names. Only relevant for CSV as it is implicit in JSON * content: The export content itself
+     *
+     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of TimelineEntrys
      *
      * @return <ul>
-      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   <li>code = 200, message = "OK", response = TimelineEntryDto.class, responseContainer = "List"</li>
       *   </ul>
       * @throws ServiceException when other http codes should be returned
       *
-      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;familyID&#x60; delivers a list of all unique general newspaper titles for all the articles matching the query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)).  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract. Patience is adviced.
+      * Extracts a timeline of statistical elements, optionally based on a query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)).  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract. Patience is adviced.
       *
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public StreamingOutput aviserStatsTimeline(String query, String granularity, String startTime, String endTime, List<String> elements, List<String> structure, String format) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput aviserStatsTimeline(String query, String filter, String granularity, String startTime, String endTime, List<String> elements, List<String> structure, String format) throws ServiceException {
         if (elements.isEmpty()) {
             log.debug("No timeline elements defined, using default " + SolrTimeline.DEFAULT_TIMELINE_ELEMENTS);
             elements = SolrTimeline.DEFAULT_TIMELINE_ELEMENTS.stream().map(Enum::toString).collect(Collectors.toList());
@@ -131,12 +135,13 @@ public class LabsapiService implements LabsapiApi {
         }
 
         log.debug(String.format(Locale.ENGLISH,
-                                "Timeline elements %s with structure=%s in format=%s for query '%s'",
-                                trueElements, trueStructure.toString(), format, query));
+                                "Timeline elements %s with structure=%s in format=%s for query '%s' and filter '%s'",
+                                trueElements, trueStructure.toString(), format, query, filter));
         try{
             httpServletResponse.setHeader("Content-Disposition",
                                           "inline; filename=\"mediestream_timeline_" + getCurrentTimeISO() + "." + trueFormat + "\"");
-            return SolrTimeline.getInstance().timeline(query, trueGranularity, startTime, endTime, trueElements, trueStructure, trueFormat);
+            return SolrTimeline.getInstance().timeline(
+                    query, filter, trueGranularity, startTime, endTime, trueElements, trueStructure, trueFormat);
         } catch (Exception e){
             throw handleException(e);
         }

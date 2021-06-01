@@ -75,6 +75,7 @@ labsapi:
           maxAgeMS: 3600000 # 1 hour
       minYear: 1666 # Optional. Default is 1666
       maxYear: NOW # Optional. Valid values are YYYY or NOW
+      defaultFilter: 'recordBase:doms_aviser'
       elements: # Optional, defaults are ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
         - characters
         - words
