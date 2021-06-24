@@ -132,8 +132,19 @@ public class LabsapiService implements LabsapiApi {
                                 "Exporting fields %s with max=%d and structure=%s in format=%s for query '%s'",
                                 eFields, max, structureSet.toString(), format, query));
         try{
-            httpServletResponse.setHeader("Content-Disposition",
-                                          "inline; filename=\"mediestream_" + getCurrentTimeISO() + ".csv\"");
+            String filename = "mediestream_" + getCurrentTimeISO() + "." + trueFormat;
+            if (trueMax == -1 || trueMax > 50) {
+                // Show download link in Swagger UI, inline when opened directly in browser
+                // https://github.com/swagger-api/swagger-ui/issues/3832
+                httpServletResponse.setHeader(
+                        "Content-Disposition", "inline; swaggerDownload=\"attachment\"; filename=\"" + filename + "\"");
+                // Show download link in Swagger UI, download dialog when opened directly in browser
+                // httpServletResponse.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            } else {
+                // Show inline in Swagger UI, inline when opened directly in browser
+                httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"" + filename + "\"");
+            }
+
             return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);
