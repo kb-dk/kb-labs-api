@@ -1,17 +1,24 @@
 package dk.kb.labsapi.api.impl;
 
-import dk.kb.labsapi.SolrBridge;
+import dk.kb.labsapi.SolrExport;
+import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
+import org.apache.cxf.jaxrs.ext.MessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -35,13 +42,108 @@ public class LabsapiService implements LabsapiApi {
     private transient HttpServletResponse httpServletResponse;
 
     final static SimpleDateFormat FILENAME_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HHmm", Locale.ENGLISH);
+    ;
+
     final static Set<String> allowedAviserExportFields = new HashSet<>();
+    final static Set<SolrTimeline.ELEMENT> allowedTimelineElements = new HashSet<>();
+
+    final static Set<String> allowedFacetFields = new HashSet<>();
+    private static final Integer facetLimitMax;
+
     static {
+        final YAML conf = ServiceConfig.getConfig();
+        
         String key = ".labsapi.aviser.export.fields";
         try {
-            allowedAviserExportFields.addAll(ServiceConfig.getConfig().getList(key));
+            allowedAviserExportFields.addAll(conf.getList(key));
         } catch (Exception e) {
             log.error("Unable to retrieve list of export fields from {} in config. Export is not possible", key);
+        }
+
+        String eKey = ".labsapi.aviser.timeline.elements";
+        if (!conf.containsKey(eKey)) {
+            log.info("No '{}' key in configuration, using default elements {} for timeline", eKey, SolrTimeline.DEFAULT_TIMELINE_ELEMENTS);
+            allowedTimelineElements.addAll(SolrTimeline.DEFAULT_TIMELINE_ELEMENTS);
+        } else {
+            allowedTimelineElements.addAll(conf.getList(eKey));
+        }
+
+        key = ".labsapi.aviser.facet.fields";
+        try {
+            allowedFacetFields.addAll(conf.getList(key));
+        } catch (Exception e) {
+            log.error("Unable to retrieve list of facet fields from {} in config. Facet is not possible", key);
+        }
+        facetLimitMax = ServiceConfig.getConfig().getInteger(".labsapi.aviser.facet.limit.max", 1000);
+    }
+
+    /**
+     * Extract statistics for the newspaper corpus at http://mediestream.dk/
+     *
+     * @param query: Optional query for the timeline statistics. If no query is given, all data are selected. The output will be a number of timeslices with the given granularity, followed by a summary.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.  Note: Queries other than &#39;*:*&#39; will cause the numbers for pages and editions to be approximate.
+     *
+     * @param filter: Optional filter for the timeline statistics. Filter restricts the result set, just as query does, with the differences that filters are always qualified, e.g. &#x60;lplace:København&#x60; and that filter is also used when calculating the percentage.  The filter &#x60;*:*&#x60; mimicks the behaviour at [Smurf](http://labs.statsbiblioteket.dk/smurf/) while the filter &#x60;recordBase:doms_aviser&#x60; restricts to newspaper articles, as opposed to both articles (which contains fulltext) and pages (which only contains other metadata).
+     *
+     * @param granularity: The granularity of the timeline. The finer the granularity, the longer the processing time.
+     *
+     * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY or YYYY-MM. This cannot be earlier than 1666.
+     *
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY or YYYY-MM. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013.
+     *
+     * @param elements: The elements for the timeline. The element &#39;unique_titles&#39; is special as it, as the name signals, the number of unique titles and not the sum of instances.
+     *
+     * @param structure: The major parts of the delivery.  * comments: Metadata for the timeline (query, export time...), prefixed with # in CSV * header: The export field names. Only relevant for CSV as it is implicit in JSON * content: The export content itself
+     *
+     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of TimelineEntrys
+     *
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = TimelineEntryDto.class, responseContainer = "List"</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * Extracts a timeline of statistical elements, optionally based on a query.  The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)).  Note: Depending on query and granularity, the timeline stats can take up to a few minutes to extract. Patience is adviced.
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public javax.ws.rs.core.StreamingOutput aviserStatsTimeline(String query, String filter, String granularity, String startTime, String endTime, List<String> elements, List<String> structure, String format) throws ServiceException {
+        if (elements.isEmpty()) {
+            log.debug("No timeline elements defined, using default " + SolrTimeline.DEFAULT_TIMELINE_ELEMENTS);
+            elements = SolrTimeline.DEFAULT_TIMELINE_ELEMENTS.stream().map(Enum::toString).collect(Collectors.toList());
+        }
+        SolrTimeline.GRANULARITY trueGranularity = SolrTimeline.GRANULARITY.lenientParse(granularity);
+        Set<SolrTimeline.ELEMENT> trueElements = ensureValids(
+                elements, Arrays.stream(SolrTimeline.ELEMENT.values()).map(Enum::toString).collect(Collectors.toSet()),
+                "timeline").stream()
+                .map(SolrTimeline.ELEMENT::valueOf)
+                .collect(Collectors.toSet());
+        log.info("trueElements: " + trueElements + " from " + elements);
+        Set<SolrTimeline.STRUCTURE> trueStructure = SolrTimeline.STRUCTURE.valueOf(structure);
+        SolrTimeline.TIMELINE_FORMAT trueFormat = SolrTimeline.TIMELINE_FORMAT.lenientParse(format);
+
+        switch (trueFormat) {
+            case csv: {
+                httpServletResponse.setContentType("text/csv");
+                break;
+            }
+            case json: {
+                httpServletResponse.setContentType("application/json");
+                break;
+            }
+            default: throw new InternalServiceException(
+                    "Internal exception: format '" + trueFormat + "' could not be converted to MIME type");
+        }
+
+        log.debug(String.format(Locale.ENGLISH,
+                                "Timeline elements %s with structure=%s in format=%s for query '%s' and filter '%s'",
+                                trueElements, trueStructure.toString(), format, query, filter));
+        try{
+            httpServletResponse.setHeader("Content-Disposition",
+                                          "inline; filename=\"mediestream_timeline_" + getCurrentTimeISO() + "." + trueFormat + "\"");
+            return SolrTimeline.getInstance().timeline(
+                    query, filter, trueGranularity, startTime, endTime, trueElements, trueStructure, trueFormat);
+        } catch (Exception e){
+            throw handleException(e);
         }
     }
 
@@ -69,7 +171,7 @@ public class LabsapiService implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure, String format) throws ServiceException {
+    public StreamingOutput exportFields(String query, List<String> fields, Long max, List<String> structure, String format) throws ServiceException {
         if (allowedAviserExportFields.isEmpty()) {
             log.error("Error: No allowed export fields defined in properties");
             throw new InternalServiceException(
@@ -80,48 +182,27 @@ public class LabsapiService implements LabsapiApi {
             throw new InvalidArgumentServiceException(
                     "Error: No export fields defined. Valid fields are " + allowedAviserExportFields);
         }
-        Set<String> eFields = fields.stream().
-                filter(Objects::nonNull).
-                filter(field -> !field.isEmpty()).
-                map(field -> Arrays.asList(field.split(", *"))).
-                flatMap(Collection::stream).
-                collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> eFields = ensureValids(fields, allowedAviserExportFields, "export");
 
-        if (!allowedAviserExportFields.containsAll(eFields)) {
-            eFields.removeAll(allowedAviserExportFields);
-            throw new InvalidArgumentServiceException(
-                    "Error: Unsupported export fields " + eFields + ": . " +
-                    "Valid fields are " + allowedAviserExportFields);
-        }
-        long trueMax = max == null ? 10 : max < 0 ? -1 : max;
-        Set<SolrBridge.STRUCTURE> structureSet = SolrBridge.STRUCTURE.valueOf(structure);
-        SolrBridge.FORMAT trueFormat;
-        try {
-            // TODO: Also consider the "Accept"-header
-            trueFormat = format == null || format.isEmpty() ?
-                    SolrBridge.FORMAT.getDefault() :
-                    SolrBridge.FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new InvalidArgumentServiceException(
-                    "Error: The format '" + format + "' is unsupported. " +
-                    "Supported formats are " + Arrays.toString(SolrBridge.FORMAT.values()));
-        }
-        if (trueFormat != SolrBridge.FORMAT.csv && structureSet.contains(SolrBridge.STRUCTURE.comments)) {
+        long trueMax = max == null ? 10 : (max < 0 ? -1 : max);
+        Set<SolrExport.STRUCTURE> structureSet = SolrExport.STRUCTURE.valueOf(structure);
+        SolrExport.EXPORT_FORMAT trueFormat = SolrExport.EXPORT_FORMAT.lenientParse(format);
+        if (trueFormat != SolrExport.EXPORT_FORMAT.csv && structureSet.contains(SolrExport.STRUCTURE.comments)) {
             log.warn("Requested export in format {} with structure {}, " +
                      "which is not possible: Comments will not be delivered",
-                     trueFormat, SolrBridge.STRUCTURE.comments);
+                     trueFormat, SolrExport.STRUCTURE.comments);
         }
-        switch (trueFormat) { // TODO: This does not seem to work. Why not?
+        switch (trueFormat) {
             case csv: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "text/csv");
+                httpServletResponse.setContentType("text/csv");
                 break;
             }
             case json: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+                httpServletResponse.setContentType("application/json");
                 break;
             }
             case jsonl: {
-                httpServletResponse.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-ndjson");
+                httpServletResponse.setContentType( "application/x-ndjson");
                 break;
             }
             default: throw new InternalServiceException(
@@ -133,7 +214,7 @@ public class LabsapiService implements LabsapiApi {
                                 eFields, max, structureSet.toString(), format, query));
         try{
             String filename = "mediestream_" + getCurrentTimeISO() + "." + trueFormat;
-            if (trueMax == -1 || trueMax > 50) {
+            if (trueMax == -1 || trueMax > 20) {
                 // Show download link in Swagger UI, inline when opened directly in browser
                 // https://github.com/swagger-api/swagger-ui/issues/3832
                 httpServletResponse.setHeader(
@@ -145,14 +226,93 @@ public class LabsapiService implements LabsapiApi {
                 httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"" + filename + "\"");
             }
 
-            return SolrBridge.export(query, eFields, trueMax, structureSet, trueFormat);
+            return SolrExport.getInstance().export(query, eFields, trueMax, structureSet, trueFormat);
         } catch (Exception e){
             throw handleException(e);
         }
     }
+
+    /**
+     * Splits candidates on comma and ensured that all candidates are in valids.
+     * @param candidates  candidate elements.
+     * @param valids      all valid elements.
+     * @param designation the type of elements, used when raising an excaption.
+     * @return the sanitized candidates.
+     * @throws InvalidArgumentServiceException if one or more candidates are not in valids.
+     */
+    private Set<String> ensureValids(List<String> candidates, Set<String> valids, String designation) {
+        Set<String> parsed = candidates.stream().
+                filter(Objects::nonNull).
+                filter(field -> !field.isEmpty()).
+                map(field -> Arrays.asList(field.split("\\s*,\\s*"))).
+                flatMap(Collection::stream).
+                map(String::trim).
+                collect(Collectors.toCollection(LinkedHashSet::new));
+        if (!valids.containsAll(parsed)) {
+            parsed.removeAll(allowedAviserExportFields);
+            throw new InvalidArgumentServiceException(
+                    "Error: Unsupported " + designation + " elements '" + parsed + "': . " +
+                    "Valid fields are " + valids);
+        }
+        return parsed;
+    }
+
     private synchronized static String getCurrentTimeISO() {
         return FILENAME_ISO.format(new Date());
     }
+
+    /**
+     * Facet on one or more fields for newspapers data from http://mediestream.dk/
+     *
+     * @param query: A query for the newspapers to export aggregates facet statistics for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied
+     *
+     * @param startTime: The starting point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. This cannot be earlier than 1666.
+     *
+     * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013.
+     *
+     * @param field: The field to facet. Note that it is case sensitive.  * pu: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published * familyId: The name of the newspaper : py: Publication year
+     *
+     * @param sort: The sort order of the facet content.
+     *
+     * @param limit: The maximum number of entries to return for a facet field.
+     *
+     * @param format: The delivery format.  * CSV: Comma separated, strings encapsulated in quotes
+     *
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * Faceting aggregates statistics for a given field based on a query. E.g. faceting on &#x60;pu&#x60; delivers a list of all \&quot;publishing locations\&quot; for all the articles matching the query. The data are from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The data are restricted to newspapers older than 140 years and will be sorted by publication date.&#39;
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public javax.ws.rs.core.StreamingOutput facet(String query, String startTime, String endTime, String field, String sort, Integer limit, String format) throws ServiceException {
+        SolrExport.FACET_SORT eSort = sort == null || sort.isEmpty() ?
+                SolrExport.FACET_SORT.getDefault() :
+                SolrExport.FACET_SORT.valueOf(sort.toLowerCase(Locale.ROOT));
+        if (eSort == null) {
+            throw new InvalidArgumentServiceException("Unknown sort '" + sort + "'");
+        }
+        SolrExport.FACET_FORMAT eFormat = format == null || format.isEmpty() ?
+                SolrExport.FACET_FORMAT.getDefault() :
+                SolrExport.FACET_FORMAT.valueOf(format.toLowerCase(Locale.ROOT));
+        if (eFormat == null) {
+            throw new InvalidArgumentServiceException("Unknown delivery format '" + format + "'");
+        }
+        if (!allowedFacetFields.contains(field)) {
+            throw new InvalidArgumentServiceException(
+                    "Cannot facet on field '" + field + "', only " + allowedFacetFields + " are acceptable");
+        }
+
+        try {
+            return SolrExport.getInstance().facet(query, startTime, endTime, field, eSort, limit, eFormat);
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    }
+
 
     /**
      * Perform a search with the given query, returning only the number of hits. Typically used to get an estimate for the result size for an export
@@ -169,7 +329,7 @@ public class LabsapiService implements LabsapiApi {
      */
     @Override
     public javax.ws.rs.core.StreamingOutput hitCount(String query) throws ServiceException {
-        return output -> output.write(Long.toString(SolrBridge.countHits(query)).getBytes(StandardCharsets.UTF_8));
+        return output -> output.write(Long.toString(SolrExport.getInstance().countHits(query)).getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -203,6 +363,19 @@ public class LabsapiService implements LabsapiApi {
             log.error("ServiceException(HTTP 500):", e); //You probably want to log this.
             return new InternalServiceException(e.getMessage());
         }
+    }
+
+    /**
+     * This method just redirects gets to WEBAPP/api to the swagger UI /WEBAPP/api/api-docs?url=WEBAPP/api/openapi.yaml
+     */
+    @GET
+    @Path("/")
+    public Response redirect(@Context MessageContext request){
+        String path = request.get("org.apache.cxf.message.Message.PATH_INFO").toString();
+        if (path != null && !path.endsWith("/")){
+            path = path + "/";
+        }
+        return Response.temporaryRedirect(URI.create(request.get("org.apache.cxf.request.url") + "/api-docs?url=" + path + "openapi.yaml")).build();
     }
 
 }

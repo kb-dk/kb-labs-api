@@ -14,8 +14,10 @@
  */
 package dk.kb;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import io.swagger.util.Json;
 import org.slf4j.Logger;
@@ -31,7 +33,12 @@ import java.io.Writer;
  */
 public class JSONStreamWriter extends RuntimeWriter {
     private static final Logger log = LoggerFactory.getLogger(JSONStreamWriter.class);
-    private final ObjectWriter jsonWriter = Json.mapper().writer(new MinimalPrettyPrinter());
+    private final ObjectWriter jsonWriter;
+    {
+        ObjectMapper mapper = Json.mapper();
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        jsonWriter = mapper.writer(new MinimalPrettyPrinter());
+    }
 
     public enum FORMAT { json, jsonl }
 

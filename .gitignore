@@ -5,3 +5,4 @@
 
 .openapi-generator/
 LabsapiApiServiceImpl
+labsapi-local.yaml

@@ -13,8 +13,13 @@ labsapi:
       # maxConnection exports running at the same time as they will interleave their paging.
       # Default is 5
       connections: 3
-
+      # The Solr cache is essential for proper performance with normalising. Set it to at least 10 seconds
+      cache:
+        maxEntries: 50
+        maxAgeMS: 3600000 # 1 hour
     facet:
+      minYear: 1666 # Optional. Default is 1666
+      maxYear: NOW # Optional. Valid values are YYYY or NOW
       # Maximum field.limit
       # Defaults to 1000
       limit:
@@ -24,7 +29,6 @@ labsapi:
         - lvx
         - lplace
         - py
-
     export:
       solr:
         # Defaults to 500
@@ -53,7 +57,6 @@ labsapi:
         - lplace
         - location_name
         - location_coordinates
-
     timeline:
       solr: # Timeline does not have the same restrictions as facet, hits and export.
         # Mandatory, no default
@@ -66,8 +69,13 @@ labsapi:
         connections: 3
         # filter is optional here
         #filter: 'recordBase:doms_aviser AND py:[* TO 1880]'
+        # The Solr cache is essential for proper performance with normalising. Set it to at least 10 seconds
+        cache:
+          maxEntries: 50
+          maxAgeMS: 3600000 # 1 hour
       minYear: 1666 # Optional. Default is 1666
-      maxYear: NOW # Optional. Valid values is YYYY or NOW
+      maxYear: NOW # Optional. Valid values are YYYY or NOW
+      defaultFilter: 'recordBase:doms_aviser'
       elements: # Optional, defaults are ['characters', 'words', 'paragraphs', 'articles', 'pages', 'editions', 'unique_titles']
         - characters
         - words
