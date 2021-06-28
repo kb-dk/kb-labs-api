@@ -81,7 +81,7 @@ class SolrTimelineTest {
     @Test
     void testCache() throws IOException {
         final String query = "bonde";
-        final long preHits = SolrTimeline.getInstance().solrCache.getHits();
+        final long preHits = SolrTimeline.getInstance().solrClient.getHits();
 
         toString(SolrTimeline.getInstance().timeline(
                 query, "*:*", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
@@ -91,7 +91,7 @@ class SolrTimelineTest {
                 query, "*:*", SolrTimeline.GRANULARITY.decade, "1666-10", "1700-10",
                 Collections.singletonList(SolrTimeline.ELEMENT.words), SolrTimeline.STRUCTURE.ALL, SolrTimeline.TIMELINE_FORMAT.json));
 
-        final long postHits = SolrTimeline.getInstance().solrCache.getHits();
+        final long postHits = SolrTimeline.getInstance().solrClient.getHits();
 
         assertTrue(preHits < postHits, "The number of cache hits should be incremented, but was unchanged at " + preHits);
     }

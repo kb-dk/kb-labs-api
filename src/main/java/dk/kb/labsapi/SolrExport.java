@@ -297,9 +297,9 @@ public class SolrExport extends SolrBase {
             String query, String startTime, String endTime, String field, FACET_SORT sort, Integer limit,
             FACET_FORMAT outFormat) {
 
+        // TODO: Why are start and end not used?
         String trueStartTime = ParamUtil.parseTimeYearMonth(startTime, minYear, minYear, maxYear, true);
         String trueEndTime = ParamUtil.parseTimeYearMonth(endTime, maxYear, minYear, maxYear, false);
-
 
         SolrParams request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
@@ -313,14 +313,11 @@ public class SolrExport extends SolrBase {
                 CommonParams.ROWS, Integer.toString(0));
         QueryResponse response;
         try {
-            connection.acquire();
             response = solrClient.query(request);
         } catch (Exception e) {
             log.warn("Exception calling Solr for countHits(" + query + ")", e);
             throw new InternalServiceException(
                     "Internal error counting hits for query '" + query + "': " + e.getMessage());
-        } finally {
-            connection.release();
         }
         CSVFormat csvFormat = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.NON_NUMERIC).withHeader(field, "count");
 

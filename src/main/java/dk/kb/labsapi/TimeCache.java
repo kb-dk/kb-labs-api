@@ -19,18 +19,13 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.AbstractMap;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * Special purpose cache for Solr requests.
+ * Special purpose cache for Solr requests. Supports max entry count and max age.
  */
 public class TimeCache<O> implements Map<String, O> {
     private static final Logger log = LoggerFactory.getLogger(TimeCache.class);
@@ -40,6 +35,8 @@ public class TimeCache<O> implements Map<String, O> {
     private final long maxAge;
     private final AtomicLong calls = new AtomicLong(0);
     private final AtomicLong hits = new AtomicLong(0);
+
+    private final Set<TimeCache<?>> linkedCaches = new HashSet<>();
 
     /**
      *
@@ -53,9 +50,35 @@ public class TimeCache<O> implements Map<String, O> {
         this.inner = new LinkedHashMap<String, TimeEntry<O>>() {
             @Override
             protected boolean removeEldestEntry(Map.Entry<String, TimeEntry<O>> eldest) {
-                return size() > maxCapacity || eldest.getValue().isTooOld();
+                int totalSize = size() + linkedCaches.stream().mapToInt(TimeCache::size).sum();
+                return totalSize > maxCapacity || eldest.getValue().isTooOld();
             }
         };
+    }
+
+    /**
+     * Create a new cache, typically with another type, that is linked to this cached.
+     * Linked cache has shared capacity.
+     * @param <T> the type of the cache.
+     * @return a new cache with limits (max count and age) shared with this cache.
+     */
+    public <T> TimeCache<T> createLinked() {
+        TimeCache<T> other = new TimeCache<T>(maxCapacity, maxAge);
+        other.link(this);
+        return other;
+    }
+    
+    /**
+     * Link this cache to the other cache. maxCapacity must be equal and current capacity will be the sum.
+     * More than 2 caches can be linked.
+     * @param other another cache to link to.
+     */
+    private void link(TimeCache<?> other) {
+        if (linkedCaches.contains(other)) {
+            return; // Already linked. Needed to avoid endless loop
+        }
+        linkedCaches.add(other);
+        linkedCaches.forEach(c -> link(this));
     }
 
     /**
@@ -123,6 +146,14 @@ public class TimeCache<O> implements Map<String, O> {
     @Override
     public int size() {
         return inner.size();
+    }
+
+    public int capacity() {
+        return maxCapacity;
+    }
+
+    public long getMaxAge() {
+        return maxAge;
     }
 
     @Override
