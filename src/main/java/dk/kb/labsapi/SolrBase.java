@@ -48,22 +48,19 @@ import java.util.function.Supplier;
  */
 public class SolrBase {
     private static final Logger log = LoggerFactory.getLogger(SolrBase.class);
-    protected final SolrClient solrClient;
-    private final int maxConnections;
-    protected final Semaphore connection;
-    final TimeCache<QueryResponse> solrCache;
+    protected final CachingSolrClient solrClient;
 
     public SolrBase(String configRoot) {
         this(resolveConfig(configRoot));
     }
     public SolrBase(YAML conf) {
-        solrClient = createClient(conf);
-        maxConnections = conf.getInteger(".solr.connections", 3);
-        connection = new Semaphore(maxConnections, true);
-        solrCache = new TimeCache<>(
-                    conf.getInteger(".solr.cache.maxEntries", 50),
-                    conf.getInteger(".solr.cache.maxAgeMS", 1*60*1000)
-            );
+        SolrClient innerSolrClient = createClient(conf);
+        solrClient = new CachingSolrClient(
+                innerSolrClient,
+                conf.getInteger(".solr.connections", 3),
+                conf.getInteger(".solr.cache.maxEntries", 50),
+                conf.getInteger(".solr.cache.maxAgeMS", 1*60*1000)/1000
+        );
     }
 
     private static YAML resolveConfig(String configRoot) {
@@ -157,13 +154,7 @@ public class SolrBase {
      * @throws RuntimeException if the Solr call could not be completed.
      */
     protected QueryResponse callSolr(SolrParams request) throws SolrServerException, IOException {
-        return cachedSolrCall(request.toString(), () -> { // request.toString represents the full request per JavaDoc
-            try {
-                return solrClient.query(request);
-            } catch (SolrServerException | IOException e) {
-                throw new RuntimeException("Exception while executing SolrClient query " + request, e);
-            }
-        });
+        return solrClient.query(request);
     }
 
     /**
@@ -173,62 +164,8 @@ public class SolrBase {
      * @throws RuntimeException if the Solr call could not be completed.
      */
     protected QueryResponse callSolr(JsonQueryRequest request) {
-        return cachedSolrCall(getKey(request), () -> {
-            try {
-                return request.process(solrClient);
-            } catch (SolrServerException | IOException e) {
-                throw new RuntimeException("Exception while executing Solr request " + request, e);
-            }
-        });
+        return solrClient.callSolr(request);
     }
-
-    /**
-     * Performs a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
-     * @param key the request identifier for caching (cannot be reliably derived from request).
-     * @param request the request to Solr.
-     * @return the response from Solr.
-     * @throws RuntimeException if the Solr call could not be completed.
-     */
-    protected QueryResponse callSolr(String key, QueryRequest request) {
-        return cachedSolrCall(key, () -> {
-            try {
-                return request.process(solrClient);
-            } catch (SolrServerException | IOException e) {
-                throw new RuntimeException("Exception while executing Solr request " + request, e);
-            }
-        });
-    }
-
-    protected QueryResponse cachedSolrCall(String key, Supplier<QueryResponse> solrCall) {
-        return solrCache.get(key, () -> {
-            QueryResponse response;
-            try {
-                connection.acquire();
-                response = solrCall.get();
-            } catch (InterruptedException e) {
-                throw new RuntimeException("Interrupted while trying to acquire a connection", e);
-            } finally {
-                connection.release();
-            }
-            return response;
-        });
-    }
-
-    /**
-     * Calculate a key for the given query.
-     * @param query a Solr query.
-     * @return a key for the query, intended for the caching map.
-     */
-    static String getKey(JsonQueryRequest query) {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try {
-            query.getContentWriter(null).write(out);
-        } catch (IOException e) {
-            throw new InternalServiceException("Unable to create key for query", e);
-        }
-        return out.toString(StandardCharsets.UTF_8) + query.getParams() + query.getQueryParams();
-    }
-
 
     /**
      * Sanitize the given Solr query against the most obvious tricks (regexp bombs and behaviour modification).
