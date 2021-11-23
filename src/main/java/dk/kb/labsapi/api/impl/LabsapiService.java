@@ -1,5 +1,6 @@
 package dk.kb.labsapi.api.impl;
 
+import dk.kb.labsapi.DataExport;
 import dk.kb.labsapi.SolrExport;
 import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
@@ -152,7 +153,7 @@ public class LabsapiService implements LabsapiApi {
      *
      * @param query: A query for the newspapers to export metadata for.\\n The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis\\n A filter restricting the result to newspapers older than 100 years will be automatically applied
      *
-     * @param fields: The fields to export.\\n * link: A hyperlink to the Mediestream page for the article\\n * recordID: The unique ID of the article in the Mediestream system\\n * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS\\n * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100\\n * cer: \\n * fulltext_org: The original OCR text for the article\\n * pageUUID: The ID for the page that the article appears on\\n * editionUUID: The ID for the edition that the page with the article belongs to\\n * editionId: Human readable version of the edition\\n * titleUUID: TODO: Explain this\\n * familyId: TODO: Explain this\\n * newspaper_page: The page number of the addition that the article appears on\\n * newspaper_edition: TODO: Explain this\\n * lplace: TODO: Explain this\\n * location_name: Location names extracted from the text (low quality entity recognition)\\n * location_coordinates: Coordinates for places from location_name
+     * @param fields: The fields to export.  * link: A hyperlink to the Mediestream page for the article * recordID: The unique ID of the article in the Mediestream system * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100 * cer: * fulltext_org: The original OCR text for the article * pageUUID: The ID for the page that the article appears on * editionUUID: The ID for the edition that the page with the article belongs to * editionId: Human readable version of the edition * editionPDF: A hyperlink to a PDF with scanned pages for the full newspaper edition that the article belongs to. Use newspaper_page to navigate * titleUUID: TODO: Explain this * familyId: TODO: Explain this * newspaper_page: The page number of the addition that the article appears on * newspaper_edition: The newspaper edition that the article belongs to * lplace: TODO: Explain this * location_name: Location names extracted from the text (low quality entity recognition) * location_coordinates: Coordinates for places from location_name
      *
      * @param max: The maximum number of articles to return, -1 to return all articles. *WARNING* setting this to more than 50 when using the Swagger-UI to test will probably result in the browser locking up
      *
@@ -192,6 +193,8 @@ public class LabsapiService implements LabsapiApi {
                      "which is not possible: Comments will not be delivered",
                      trueFormat, SolrExport.STRUCTURE.comments);
         }
+        https://www2.statsbiblioteket.dk/newspaper-pdf/b/a/8/4/ba845c25-d733-48c4-bb8c-6d347fe62f93.pdf?ticket=86cf4478-8580-4494-b04f-568d8b71bfc1&filename=Ki%C3%B8benhavns_Kongelig_alene_priviligerede_Adresse-Contoirs_Efterretninger_(1759-1854)_-_1829-10-31.pdf
+
         switch (trueFormat) {
             case csv: {
                 httpServletResponse.setContentType("text/csv");
@@ -227,6 +230,43 @@ public class LabsapiService implements LabsapiApi {
             }
 
             return SolrExport.getInstance().export(query, eFields, trueMax, structureSet, trueFormat);
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    }
+
+    /**
+     * Export a PDF with scans for a complete newspaper edition from http://mediestream.dk/
+     *
+     * @param identifier: An identifier for the edition. The export service is lenient and accepts different identifiers,
+     * matching fields from the &#x60;aviser/export/fields&#x60; service:  
+     
+     * editionId: dagbladetkoebenhavn1851 1855-09-17 001
+     * editionUUID: doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611 or uuid:15e8ea25-a194-4f23-bcae-a938c0292611 or 15e8ea25-a194-4f23-bcae-a938c0292611
+     * recordID: doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19
+     * pageUUID: doms_aviser_page:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76  Note that all of these identifiers will resolve to the same PDF.
+     *
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   <li>code = 400, message = "Bad Request", response = String.class</li>
+      *   <li>code = 403, message = "Forbidden", response = String.class</li>
+      *   <li>code = 404, message = "Not Found", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * If a given newspaper edition is public available at http://mediestream.dk/ it can be downloaded as a PDF, containing scans of all pages and overlays with OCR text. The scans are reduced and compressed to keep the size of the PDF manageable. The export is restricted to newspapers older than 140 years.
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public javax.ws.rs.core.StreamingOutput exportPDF(String identifier) throws ServiceException {
+        String editionUUID = DataExport.getInstance().pdfIdentifierToEditionUUID(identifier);
+        log.debug("exportPDF: Resolved identifier '{}' to editionUUID '{}'", identifier, editionUUID);
+        try{
+            // httpServletResponse.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            // TODO: Mimic the nice filename from the Mediestream download functionality
+            httpServletResponse.setHeader("Content-Disposition", "attachment; filename=\"edition_" + editionUUID + ".pdf\"");
+            return DataExport.getInstance().exportPDF(editionUUID);
         } catch (Exception e){
             throw handleException(e);
         }

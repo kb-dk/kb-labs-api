@@ -43,15 +43,10 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Solr data export handling.
@@ -61,6 +56,7 @@ public class SolrExport extends SolrBase {
 
     final static SimpleDateFormat HUMAN_TIME = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ENGLISH);
     final static SimpleDateFormat EXPORT_ISO = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ENGLISH);
+    // TODO: Add editionPDF as pseudo-field
     final static String LINK = "link"; // Pseudo field with link to Mediestream webpage
     final static String LINK_PREFIX_DEFAULT = "http://www2.statsbiblioteket.dk/mediestream/avis/record/";
     final static String TIMESTAMP = "timestamp";
@@ -145,6 +141,38 @@ public class SolrExport extends SolrBase {
             log.warn("Exception calling Solr for countHits(" + query + ")", e);
             throw new InternalServiceException(
                     "Internal error counting hits for query '" + query + "': " + e.getMessage());
+        }
+    }
+
+    /**
+     * Perform a search and requrn the content of the given field.
+     * @param query a Solr query. thiw will be sanitized (LocalParms escaped, regexps disabled etc.).
+     * @param field the field to retrieve.
+     * @param rows the maximum number of documents to retrieve.
+     * @return a list of the content of the given field.
+     */
+    public Set<String> getSingleField(String query, String field, int rows) {
+        query = sanitize(query);
+
+        SolrParams request = new SolrQuery(
+                CommonParams.Q, sanitize(query),
+                CommonParams.FL, field,
+                FacetParams.FACET, "false",
+                GroupParams.GROUP, "false",
+                HighlightParams.HIGHLIGHT, "false",
+                // Filter is added automatically by the SolrClient
+                CommonParams.ROWS, Integer.toString(rows));
+        try {
+            QueryResponse response = callSolr(request);
+            return response.getResults().stream().
+                    map(doc -> doc.getFieldValues(field)).
+                    flatMap(Collection::stream).
+                    map(Object::toString).
+                    collect(Collectors.toSet());
+        } catch (Exception e) {
+            String des = "getSingleField(query='" + query + "', field='" + field + "', rows=" + rows + ")";
+            log.warn("Exception calling Solr for " + des, e);
+            throw new InternalServiceException("Internal error calling " + des + "': " + e.getMessage());
         }
     }
 

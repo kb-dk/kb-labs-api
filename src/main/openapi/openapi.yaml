@@ -3,7 +3,11 @@ info:
   version: "${project.version}"
   title: "${project.name}"
   description: |
-    ${project.description}
+    Experimental API for publicly available data and metadata at the Royal Danish Library
+
+    Current focus is newspapers from [Mediestream](https://www2.statsbiblioteket.dk/mediestream/avis).
+
+    Bug reports and suggestions can be created as _issues_ at https://github.com/kb-dk/kb-labs-api/
   license:
     name: "${license.name}"
     url: "${license.url}"
@@ -51,10 +55,11 @@ paths:
                       * pageUUID: The ID for the page that the article appears on
                       * editionUUID: The ID for the edition that the page with the article belongs to
                       * editionId: Human readable version of the edition
+                      * editionPDF: A hyperlink to a PDF with scanned pages for the full newspaper edition that the article belongs to. Use newspaper_page to navigate
                       * titleUUID: TODO: Explain this
                       * familyId: TODO: Explain this
                       * newspaper_page: The page number of the addition that the article appears on
-                      * newspaper_edition: TODO: Explain this
+                      * newspaper_edition: The newspaper edition that the article belongs to
                       * lplace: TODO: Explain this
                       * location_name: Location names extracted from the text (low quality entity recognition)
                       * location_coordinates: Coordinates for places from location_name
@@ -62,9 +67,9 @@ paths:
             type: array
             items:
               type: string
-              enum:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
-            default:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
-            example:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
+              enum:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'editionPDF', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
+            default:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'editionPDF', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
+            example:  ['link', 'recordID', 'timestamp', 'pwa', 'cer', 'fulltext_org', 'pageUUID', 'editionUUID', 'titleUUID', 'editionId', 'editionPDF', 'familyId', 'newspaper_page', 'newspaper_edition', 'lplace', 'location_name', 'location_coordinates']
         - name: max
           in: query
           required: false
@@ -150,6 +155,66 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           description: 'Internal Error'
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /aviser/export/pdf:
+    get:
+      tags:
+        - "${project.name}"
+      summary: Export a PDF with scans for a complete newspaper edition from http://mediestream.dk/
+      description: |
+                  If a given newspaper edition is public available at http://mediestream.dk/ it can be downloaded
+                  as a PDF, containing scans of all pages and overlays with OCR text.
+                  The scans are reduced and compressed to keep the size of the PDF manageable.
+                  The export is restricted to newspapers older than 140 years.
+      operationId: exportPDF
+
+      parameters:
+        - name: identifier
+          in: query
+          required: true
+          description: |
+                      An identifier for the edition. The export service is lenient and accepts different identifiers,
+                      matching fields from the `aviser/export/fields` service:
+
+                      * editionId: `dagbladetkoebenhavn1851 1855-09-17 001`
+                      * editionUUID: `doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611` or `uuid:15e8ea25-a194-4f23-bcae-a938c0292611` or `15e8ea25-a194-4f23-bcae-a938c0292611`
+                      * recordID: `doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19`
+                      * pageUUID: `doms_aviser_page:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76`
+
+                      Note that all of these identifiers will resolve to the same PDF.
+          schema:
+            type: string
+            example: 'doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611'
+
+      x-streamingOutput: true
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            # application/x-jsonlines is another possibility. Potayto, potahto
+            application/x-ndjson:
+              schema:
+                description: 'Newline separated single-line JSON representations of Documents.\n
+                              See https://github.com/ndjson/ndjson-spec or https://jsonlines.org/ for the format'
+                type: string
+        '400':
+          description: 'Bad Request'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: 'Forbidden'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: 'Not Found'
           content:
             text/plain:
               schema:
@@ -412,7 +477,6 @@ paths:
                 description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
                 type: string
 
-
   /aviser/hits:
     get:
       tags:
@@ -451,7 +515,6 @@ paths:
             text/plain:
               schema:
                 type: string
-
 
   /ping:
     get:
@@ -527,6 +590,9 @@ components:
           type: string
         editionId:
           description: 'Human readable version of the edition'
+          type: string
+        editionPDF:
+          description: 'A PDF containing scans of all pages for the edition that the article belongs to'
           type: string
         titleUUID:
           description: 'TODO: Explain this'
