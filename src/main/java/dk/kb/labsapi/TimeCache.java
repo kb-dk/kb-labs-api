@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * Special purpose cache for Solr requests. Supports max entry count and max age.
  */
 public class TimeCache<O> implements Map<String, O> {
-    private static final Logger log = LoggerFactory.getLogger(TimeCache.class);
+    private static final Logger log = LoggerFactory.getLogger(CachingSolrClient.class);
 
     private final LinkedHashMap<String, TimeEntry<O>> inner;
     private final int maxCapacity;
@@ -47,7 +47,7 @@ public class TimeCache<O> implements Map<String, O> {
         super();
         this.maxCapacity = maxCapacity;
         this.maxAge = maxAgeMS;
-        this.inner = new LinkedHashMap<String, TimeEntry<O>>() {
+        this.inner = new LinkedHashMap<>() {
             @Override
             protected boolean removeEldestEntry(Map.Entry<String, TimeEntry<O>> eldest) {
                 int totalSize = size() + linkedCaches.stream().mapToInt(TimeCache::size).sum();
@@ -63,7 +63,7 @@ public class TimeCache<O> implements Map<String, O> {
      * @return a new cache with limits (max count and age) shared with this cache.
      */
     public <T> TimeCache<T> createLinked() {
-        TimeCache<T> other = new TimeCache<T>(maxCapacity, maxAge);
+        TimeCache<T> other = new TimeCache<>(maxCapacity, maxAge);
         other.link(this);
         return other;
     }
