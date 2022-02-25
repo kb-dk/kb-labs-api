@@ -64,7 +64,18 @@ public class DataExport {
         connection = new Semaphore(maxConnections == -1 ? Integer.MAX_VALUE : maxConnections, true);
     }
 
-    // TODO: Put a limiter on this to guard against massively threaded downloads
+    /**
+     * Combines {@link #pdfIdentifierToEditionUUID(String)}, {@link #resolveTicket(String)} and
+     * {@link #exportPDF(String)} for the overall goal of getting a PDF belonging to a free form identifier.
+     * @param identifier free form identifier: See {@link #pdfIdentifierToEditionUUID(String)} for details.
+     * @return the content pf a PDF matching the identifier.
+     * @throws ServiceException if the request could not be served.
+     */
+    public StreamingOutput exportPDF(String identifier) {
+        String editionUUID = pdfIdentifierToEditionUUID(identifier);
+        String ticket = resolveTicket(editionUUID);
+        return exportPDF(editionUUID, ticket);
+    }
 
     /**
      * Transforms a given free-form identifier to proper newspaper editionUUID. Recognized forms are
@@ -89,7 +100,7 @@ public class DataExport {
 
         for (Pattern pattern: EDITION_UUID_PATTERNS) {
             if ((match = getMatch(identifier, pattern)) != null) {
-                return match;
+                return "doms_aviser_edition:uuid:" + match;
             }
         }
 
@@ -108,6 +119,14 @@ public class DataExport {
                 "Check the API definition for examples of identifiers");
     }
 
+    /**
+     * Resolve editionUUID by search in the Solr responsible for newspaper data.
+     * @param identifier free form identifier provided by the caller of the service.
+     *                   Used for logging and error messages.
+     * @param query      concrete query for Solr.
+     * @return the editionUUID for the query.
+     * @throws NotFoundServiceException if the query did not match anything or did not match exactly 1 document.
+     */
     private String searchEditionUUID(String identifier, String query) {
         Set<String> editionUUIDs =
                 SolrExport.getInstance().getSingleField(query, EDITION_UUID_FIELD, 2);
@@ -134,13 +153,25 @@ public class DataExport {
         return matcher.group(1);
     }
 
-    // http://<server>:<port>/ticket-system-service/tickets/issueTicket?ipAddress=62.107.214.23&id=doms_aviser_edition:uuid:4d0c2976-0324-4f72-bbcc-edc0030d3503&type=Download&everybody=yes
+    
 
-    // 1963: doms_aviser_edition:uuid:69b4d5c4-ac19-4fea-837b-688c7ba0178a
-    // 1829: doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611
+    /**
+     * Requests a ticket for the given editionUUID from the ticket service. No special privileges are passed to
+     * the ticket service: The only way to get escalated privileges is to call the service from an IP-address that
+     * allows them.
+     * @param editionUUID in the form {@code doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611}
+     * @return the ticket for the editionUUID.
+     * @throws InternalServiceException if it was not possible to call the ticket service.
+     * @throws ForbiddenServiceException if the IP-address did not grant privileges to download the resource.
+     */
     public String resolveTicket(String editionUUID) {
+        // 1963: doms_aviser_edition:uuid:69b4d5c4-ac19-4fea-837b-688c7ba0178a
+        // 1829: doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611
+
+        // http://<server>:<port>/ticket-system-service/tickets/issueTicket?ipAddress=62.107.214.23&id=doms_aviser_edition:uuid:4d0c2976-0324-4f72-bbcc-edc0030d3503&type=Download&everybody=yes
         URI ticketCall;
         try {
+            // TODO: We need the IP of the caller here, to avoid requesting tickets with inhouse privileges
             ticketCall = new URIBuilder(ticketServiceURL + "issueTicket")
                     .addParameter("ipAddress", "0.0.0.0") // TODO: Use forwarded remote IP here
                     .addParameter("id", editionUUID)
@@ -181,20 +212,57 @@ public class DataExport {
     }
 
     // https://www2.statsbiblioteket.dk/newspaper-pdf/b/a/8/4/ba845c25-d733-48c4-bb8c-6d347fe62f93.pdf?ticket=dfb8388d-d7c4-4ecc-ac83-db34d0339c82&filename=Ki%C3%B8benhavns_Kongelig_alene_priviligerede_Adresse-Contoirs_Efterretninger_(1759-1854)_-_1829-10-31.pdf
-    public StreamingOutput exportPDF(String editionUUID) {
+
+    // TODO: Add export through redirect with ticket requested from forwarded IP
+
+    /**
+     * Streams a PDF for the given editionUUID from the content server, authorizing assess using the provided ticket.
+     * @param editionUUID UUID in the format {@code 1620bf3b-7801-4a34-b2b9-fd8db9611b76}. Prefixes are ignored.
+     * @param ticket issued from the ticket server for the specific edition.
+     * @return a lazy stream with the PDF data.
+     */
+    public StreamingOutput exportPDF(String editionUUID, String ticket) {
+        Matcher m = EDITION_UUID_SPLITTER.matcher(editionUUID);
+        if (!m.matches()) {
+            throw new InvalidArgumentServiceException("The editionUUID '" + editionUUID + "' could not be parsed");
+        }
+
+        URI resourceCall;
+        try {
+            resourceCall = new URIBuilder(
+                    pdfServiceURL + m.group(2) + "/" + m.group(3) + "/" + m.group(4) + "/" + m.group(5) + "/" +
+                    m.group(1) + ".pdf")
+                    .addParameter("ticket", ticket)
+                    .addParameter("filename", "editionUUID_" + m.group(1) + "_through_labsapi.pdf")
+                    .build();
+        } catch (URISyntaxException e) {
+            log.error("Internal error: Cannot build URI for PDF download", e);
+            throw new InternalServiceException("Unable to construct URI for PDF download");
+        }
+
         return output -> {
             try {
                 connection.acquire();
-                // TODO: Implement this
-                output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                log.info("Proxying PDF download for editionUUID='{}' from URI '{}'", editionUUID, resourceCall);
+                try (InputStream in = resourceCall.toURL().openStream()){
+                    IOUtils.copyAndCloseInput(in, output);
+                } catch (IOException e) {
+                    log.warn("Exception piping content from PDF service with URI '" + resourceCall +
+                             "' for edition '" + editionUUID + "'", e);
+                    throw new InternalServiceException(
+                            "Unable to proxy PDF download for edition '" + editionUUID + "'");
+                }
             } catch (InterruptedException e) {
                 throw new InternalServiceException(
-                        "Interrupted while trying to acquire an export connection for edition '" + editionUUID + "'", e);
+                        "Interrupted while trying to acquire a PDF export connection for edition '" +
+                        editionUUID + "'", e);
             } finally {
                 connection.release();
             }
         };
     }
+    private static final Pattern EDITION_UUID_SPLITTER = Pattern.compile(
+            ".*(([0-9a-f])([0-9a-f])([0-9a-f])([0-9a-f])([0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))");
     
     // doms_aviser_page:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76
     private static final Pattern PAGE_UUID_PATTERN = Pattern.compile(
@@ -214,10 +282,17 @@ public class DataExport {
     private static final Pattern[] EDITION_UUID_PATTERNS = new Pattern[] {
             EDITION_UUID_PATTERN_FULL, EDITION_UUID_PATTERN_2, EDITION_UUID_PATTERN_3
     };
+
     // dagbladetkoebenhavn1851 1855-09-17 001
     private static final Pattern EDITION_ID_PATTERN = Pattern.compile(
             "^([a-z0-9]+.* [0-9]+)$");
 
+    /**
+     * Given a str and a pattern, return the first matching group.
+     * @param str any String.
+     * @param pattern a pattern with at least 1 group.
+     * @return the first matching group or null if there are no match.
+     */
     private String getMatch(String str, Pattern pattern) {
         Matcher matcher = pattern.matcher(str);
         return matcher.matches() ? matcher.group(1) : null;

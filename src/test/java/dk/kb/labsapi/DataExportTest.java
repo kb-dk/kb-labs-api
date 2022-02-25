@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.StreamingOutput;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,6 +30,9 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class DataExportTest {
     private static final Logger log = LoggerFactory.getLogger(DataExportTest.class);
+
+    final String OKAY = "doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611"; // 1829
+    final String NOGO = "doms_aviser_edition:uuid:69b4d5c4-ac19-4fea-837b-688c7ba0178a"; // 1963
 
     @BeforeAll
     static void setupConfig() throws IOException {
@@ -58,8 +63,6 @@ class DataExportTest {
 
     @Test
     void testTicketResolver() {
-        final String OKAY = "doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611"; // 1829
-        final String NOGO = "doms_aviser_edition:uuid:69b4d5c4-ac19-4fea-837b-688c7ba0178a"; // 1963
 
         String downloadOK = DataExport.getInstance().resolveTicket(OKAY);
         assertFalse(downloadOK.isEmpty(), "Some ticket should be returned for edition '" + OKAY + "'");
@@ -68,5 +71,16 @@ class DataExportTest {
         assertThrows(ForbiddenServiceException.class, () -> {
             DataExport.getInstance().resolveTicket(NOGO);
         }, "Requesting ticket for NOGO '" + NOGO + "' should fail");
+    }
+
+    @Test
+    void testPDFDownload() throws IOException {
+        StreamingOutput resultProvider = DataExport.getInstance().exportPDF(OKAY);
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        // https://www2.statsbiblioteket.dk/newspaper-pdf/b/a/8/4/ba845c25-d733-48c4-bb8c-6d347fe62f93.pdf?ticket=dfb8388d-d7c4-4ecc-ac83-db34d0339c82&filename=Ki%C3%B8benhavns_Kongelig_alene_priviligerede_Adresse-Contoirs_Efterretninger_(1759-1854)_-_1829-10-31.pdf
+        // https://www2.statsbiblioteket.dk/newspaper-pdf/1/5/e/8/15e8ea25-a194-4f23-bcae-a938c0292611.pdf?ticket=890c6b70-a364-4108-bfd9-a6c8639b9e31&filename=editionUUID_doms_aviser_edition%3Auuid%3A15e8ea25-a194-4f23-bcae-a938c0292611_through_labsapi.pdf
+        resultProvider.write(result);
+        assertTrue(result.size() > 1000,
+                   "There should be more than 1000 bytes written, but there was only " + result.size());
     }
 }
