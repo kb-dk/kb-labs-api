@@ -195,7 +195,9 @@ public class SolrTimeline extends SolrBase {
                     os.write("# matched articles: " + timeline.getTotal().getArticles() + "\n");
                 }
 
-                CSVFormat csvFormat = CSVFormat.DEFAULT.withQuoteMode(QuoteMode.NON_NUMERIC);
+                CSVFormat csvFormat = CSVFormat.DEFAULT
+                        .withQuoteMode(QuoteMode.NON_NUMERIC)
+                        .withRecordSeparator("\n");
                 if (structure.contains(STRUCTURE.header)) {
                     csvFormat = csvFormat.withHeader(headers);
                 }

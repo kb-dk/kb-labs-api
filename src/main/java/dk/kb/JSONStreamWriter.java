@@ -34,11 +34,6 @@ import java.io.Writer;
 public class JSONStreamWriter extends RuntimeWriter {
     private static final Logger log = LoggerFactory.getLogger(JSONStreamWriter.class);
     private final ObjectWriter jsonWriter;
-    {
-        ObjectMapper mapper = Json.mapper();
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        jsonWriter = mapper.writer(new MinimalPrettyPrinter());
-    }
 
     public enum FORMAT { json, jsonl }
 
@@ -48,18 +43,36 @@ public class JSONStreamWriter extends RuntimeWriter {
     /**
      * Wrap the given inner Writer in the JSONStreamWriter. Calls to {@link #writeJSON} writes directly to inner,
      * so the JSONStreamWriter holds no cached data. The inner {@link Writer#flush()} is not called.
+     * null-values in objects given to {@link #writeJSON(Object)} will not be written. To control this, use
+     * the {@link JSONStreamWriter(Writer, FORMAT, boolean)} constructor.
      * @param inner  the Writer to send te result to.
      * @param format Valid JSON or JSON Lines.
      */
     public JSONStreamWriter(Writer inner, FORMAT format) {
+        this(inner, format, false);
+    }
+
+    /**
+     * Wrap the given inner Writer in the JSONStreamWriter. Calls to {@link #writeJSON} writes directly to inner,
+     * so the JSONStreamWriter holds no cached data. The inner {@link Writer#flush()} is not called.
+     * @param inner  the Writer to send te result to.
+     * @param format Valid JSON or JSON Lines.
+     * @param writeNulls if true, null values are written as {@code "key" : null}, if false they are skipped.
+     */
+    public JSONStreamWriter(Writer inner, FORMAT format, boolean writeNulls) {
         super(inner);
         this.format = format;
         if (inner == null) {
-            throw new IllegalArgumentException("inner Writer was null, but must be defined");
+            throw new IllegalArgumentException("Inner Writer was null, but must be defined");
         }
         if (format == null) {
-            throw new IllegalArgumentException("format was null, but must be defined");
+            throw new IllegalArgumentException("Format was null, but must be defined");
         }
+        ObjectMapper mapper = Json.mapper();
+        if (!writeNulls) {
+            mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        }
+        jsonWriter = mapper.writer(new MinimalPrettyPrinter());
     }
 
     /**
@@ -73,11 +86,11 @@ public class JSONStreamWriter extends RuntimeWriter {
             jsonStr = jsonStr.replace("\n", " ");
         }
 
-        if (first && format == FORMAT.json) {
-            write("[\n");
+        if (first) {
+            super.write(format == FORMAT.json ? "[\n" : "");
             first = false;
         } else {
-            write(format == FORMAT.json ? ",\n" : "\n");
+            super.write(format == FORMAT.json ? ",\n" : "\n");
         }
         write(jsonStr);
     }
@@ -96,7 +109,7 @@ public class JSONStreamWriter extends RuntimeWriter {
     }
 
     /**
-     * Finishes the JSON stream by writing closing statements.
+     * Finishes the JSON stream by writing closing statements (if needed).
      */
     @Override
     public void close() {
