@@ -18,18 +18,14 @@ import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.client.solrj.request.json.JsonQueryRequest;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.params.CursorMarkParams;
-import org.apache.solr.common.params.GroupParams;
-import org.apache.solr.common.params.HighlightParams;
-import org.apache.solr.common.params.ModifiableSolrParams;
-import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.params.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,6 +161,30 @@ public class SolrBase {
      */
     protected QueryResponse callSolr(JsonQueryRequest request) {
         return solrClient.callSolr(request);
+    }
+
+    /**
+     * Performs the fastest possible request ({@code rows=0&facet=false...} to Solr and return the number of hits.
+     * Typically used to get an idea of the size of a full export.
+     * @param query a Solr query.
+     * @return the number of hits for the query.
+     */
+    public long countHits(String query) {
+        SolrParams request = new SolrQuery(
+                CommonParams.Q, sanitize(query),
+                FacetParams.FACET, "false",
+                GroupParams.GROUP, "false",
+                HighlightParams.HIGHLIGHT, "false",
+                // Filter is added automatically by the SolrClient
+                CommonParams.ROWS, Integer.toString(0));
+        try {
+            QueryResponse response = callSolr(request);
+            return response.getResults().getNumFound();
+        } catch (Exception e) {
+            log.warn("Exception calling Solr for countHits(" + query + ")", e);
+            throw new InternalServiceException(
+                    "Internal error counting hits for query '" + query + "': " + e.getMessage());
+        }
     }
 
     /**

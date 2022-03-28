@@ -4,6 +4,7 @@ import dk.kb.labsapi.SolrExport;
 import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.labsapi.model.HitsDto;
 import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
@@ -328,8 +329,10 @@ public class LabsapiService implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput hitCount(String query) throws ServiceException {
-        return output -> output.write(Long.toString(SolrExport.getInstance().countHits(query)).getBytes(StandardCharsets.UTF_8));
+    public HitsDto hitCount(String query) throws ServiceException {
+        long pub = SolrExport.getInstance().countHits(query);   // >= 140 years old
+        long all = SolrTimeline.getInstance().countHits(query); // No age restriction
+        return new HitsDto()._public(pub).restricted(all-pub);
     }
 
     /**

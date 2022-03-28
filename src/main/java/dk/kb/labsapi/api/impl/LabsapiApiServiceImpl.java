@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import dk.kb.labsapi.model.ErrorDto;
 import java.util.List;
 import java.util.Map;
+
+import dk.kb.labsapi.model.HitsDto;
 import dk.kb.labsapi.model.TimelineEntryDto;
 
 import dk.kb.webservice.exception.ServiceException;
@@ -223,13 +225,13 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public javax.ws.rs.core.StreamingOutput hitCount(String query) throws ServiceException {
+    public HitsDto hitCount(String query) throws ServiceException {
         // TODO: Implement...
     
         
         try{ 
             httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
-            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return new HitsDto()._public(-1L).restricted(-1L);
         } catch (Exception e){
             throw handleException(e);
         }

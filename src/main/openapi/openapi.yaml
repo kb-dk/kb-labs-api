@@ -417,7 +417,8 @@ paths:
     get:
       tags:
         - "${project.name}"
-      summary: 'Perform a search with the given query, returning only the number of hits.
+      summary: 'Perform a search with the given query, returning only the number of hits,
+                divided into publicly available data (> 140 years) and restricted data.
                 Typically used to get an estimate for the result size for an export'
       operationId: hitCount
 
@@ -430,28 +431,23 @@ paths:
 
                       The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis
                       for a more interactive result.
-            
-                      A filter restricting the result to newspapers older than 140 years will be automatically applied'
           schema:
             type: string
             example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1899]'
 
-      x-streamingOutput: true
       responses:
         '200':
           description: 'OK'
           content:
-            text/plain:
+            application/json:
               schema:
-                type: integer
-                format: int64
+                $ref: '#/components/schemas/Hits'
         '500':
           description: 'Internal Error'
           content:
             text/plain:
               schema:
                 type: string
-
 
   /ping:
     get:
@@ -494,6 +490,19 @@ components:
           format: int32
         message:
           type: string
+
+    Hits:
+      type: object
+      # Note that none of the fields are required
+      properties:
+        public:
+          description: 'Number of hits in the publicly available data (>= 140 years old)'
+          type: integer
+          format: int64
+        restricted:
+          description: 'Number of hits in the restricted data (< 140 years old)'
+          type: integer
+          format: int64
 
     Document:
       type: object
