@@ -40,7 +40,7 @@ paths:
           in: query
           required: true
           description: |
-                      |The fields to export.|Describtion|
+                      |The fields to export|Describtion|
                       |--- |---|
                       |Link|A hyperlink to the Mediestream page for the article|
                       |recordID|The unique ID of the article in the Mediestream system|
@@ -83,11 +83,11 @@ paths:
           required: false
           # TODO: Figure out how to deliver the comments with JSON
           description: |
-                      The major parts of the delivery.
-
-                      * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON
-                      * header: The export field names. Only relevant for CSV
-                      * content: The export content itself
+                      |The major parts of the delivery| |
+                      |---|---|
+                      |comments|Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON|
+                      |header|The export field names. Only relevant for CSV|
+                      |content|The export content itself|
           schema:
             type: array
             items:
@@ -100,11 +100,11 @@ paths:
           required: false
           # TODO: Figure out how to deliver the comments with JSON
           description: |
-                      The delivery format.
-
-                      * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes
-                      * JSON: Valid JSON in the form of a single array of Documents
-                      * JSONL: Newline separated single-line JSON representations of Documents
+                      |The delivery format| |
+                      |---|---|
+                      |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes|
+                      |JSON|Valid JSON in the form of a single array of Documents|
+                      |JSONL|Newline separated single-line JSON representations of Documents|
           schema:
             type: string
             enum:  ['CSV', 'JSON', 'JSONL']
@@ -208,12 +208,12 @@ paths:
           in: query
           required: false
           description: |
-                      The field to facet. Note that it is case sensitive.
-
-                      * familyId: The general name of the newspaper
-                      * lvx: The specific name of the newspaper
-                      * lplace: "Udgivelsessted" / publication location. Where the paper was published
-                      : py: Publication year
+                      |The field to facet|Note that it is case sensitive|
+                      |---|---|
+                      |familyId|The general name of the newspaper|
+                      |lvx|The specific name of the newspaper|
+                      |lplace|"Udgivelsessted" / publication location. Where the paper was published|
+                      |py|Publication year|
           schema:
             type: string
             enum:  ['familyId', 'lvx', 'lplace', 'py']
