@@ -40,24 +40,24 @@ paths:
           in: query
           required: true
           description: |
-                      The fields to export.
-
-                      * link: A hyperlink to the Mediestream page for the article
-                      * recordID: The unique ID of the article in the Mediestream system
-                      * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS
-                      * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100
-                      * cer:
-                      * fulltext_org: The original OCR text for the article
-                      * pageUUID: The ID for the page that the article appears on
-                      * editionUUID: The ID for the edition that the page with the article belongs to
-                      * editionId: Human readable version of the edition
-                      * titleUUID: TODO: Explain this
-                      * familyId: TODO: Explain this
-                      * newspaper_page: The page number of the addition that the article appears on
-                      * newspaper_edition: TODO: Explain this
-                      * lplace: TODO: Explain this
-                      * location_name: Location names extracted from the text (low quality entity recognition)
-                      * location_coordinates: Coordinates for places from location_name
+                      |The fields to export.|Describtion|
+                      |--- |---|
+                      |Link|A hyperlink to the Mediestream page for the article|
+                      |recordID|The unique ID of the article in the Mediestream system|
+                      |timestamp|The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS|
+                      |pwa|Predicted Word Accuracy for the OCR text on a scale from 0 to 100|
+                      |cer| |
+                      |fulltext_org|The original OCR text for the article|
+                      |pageUUID|The ID for the page that the article appears on|
+                      |editionUUID|The ID for the edition that the page with the article belongs to|
+                      |editionId|Human readable version of the edition|
+                      |titleUUID|TODO: Explain this|
+                      |familyId|TODO: Explain this|
+                      |newspaper_page|The page number of the addition that the article appears on|
+                      |newspaper_edition|TODO: Explain this|
+                      |lplace|TODO: Explain this|
+                      |location_name|Location names extracted from the text (low quality entity recognition)|
+                      |location_coordinates|Coordinates for places from location_name|
           schema:
             type: array
             items:
