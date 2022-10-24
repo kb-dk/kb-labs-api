@@ -46,7 +46,7 @@ paths:
                       |recordID|The unique ID of the article in the Mediestream system.|
                       |timestamp|The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS|
                       |pwa|Predicted Word Accuracy for the OCR text on a scale from 0 to 100.|
-                      |cer|#TODO: Explain |
+                      |cer|Character Error Rate (estimated) of the OCR on a scale from 0 to 1, where 0 is perfect|
                       |fulltext_org|The original OCR text for the article.|
                       |pageUUID|The ID for the page that the article appears on.|
                       |editionUUID|The ID for the edition that the page with the article belongs to.|
@@ -54,7 +54,7 @@ paths:
                       |titleUUID|The ID for the title of the newspaper, which the article is from.|
                       |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little.|
                       |newspaper_page|The page number of the addition that the article appears on.|
-                      |newspaper_edition|#TODO: Explain this|
+                      |newspaper_edition|The edition of the newspaper. Newspapers can change during the day, this data tells if the edition has changed.|
                       |lplace|Place of publication. Where the paper was published.|
                       |location_name|Location names extracted from the text (low quality entity recognition).|
                       |location_coordinates|Coordinates for places from location_name.|
@@ -541,13 +541,13 @@ components:
           description: 'The ID for the title of the newspaper, which the article is from.'
           type: string
         familyId:
-          description: '	The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little'
+          description: 'The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little'
           type: string
         newspaper_page:
           description: 'The page number of the addition that the article appears on'
           type: integer
         newspaper_edition:
-          description: '#TODO: Explain this'
+          description: 'The edition of the newspaper. Newspapers can change during the day, this data tells if the edition has changed.'
           type: integer
         lplace:
           description: 'Place of publication. Where the paper was published.'
