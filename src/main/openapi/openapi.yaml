@@ -40,24 +40,24 @@ paths:
           in: query
           required: true
           description: |
-                      |The fields to export|Describtion|
+                      |The fields to export.|Describtion.|
                       |--- |---|
-                      |Link|A hyperlink to the Mediestream page for the article|
-                      |recordID|The unique ID of the article in the Mediestream system|
+                      |Link|A hyperlink to the Mediestream page for the article.|
+                      |recordID|The unique ID of the article in the Mediestream system.|
                       |timestamp|The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS|
-                      |pwa|Predicted Word Accuracy for the OCR text on a scale from 0 to 100|
-                      |cer| |
-                      |fulltext_org|The original OCR text for the article|
-                      |pageUUID|The ID for the page that the article appears on|
-                      |editionUUID|The ID for the edition that the page with the article belongs to|
-                      |editionId|Human readable version of the edition|
-                      |titleUUID|TODO: Explain this|
-                      |familyId|TODO: Explain this|
-                      |newspaper_page|The page number of the addition that the article appears on|
-                      |newspaper_edition|TODO: Explain this|
-                      |lplace|TODO: Explain this|
-                      |location_name|Location names extracted from the text (low quality entity recognition)|
-                      |location_coordinates|Coordinates for places from location_name|
+                      |pwa|Predicted Word Accuracy for the OCR text on a scale from 0 to 100.|
+                      |cer|#TODO: Explain |
+                      |fulltext_org|The original OCR text for the article.|
+                      |pageUUID|The ID for the page that the article appears on.|
+                      |editionUUID|The ID for the edition that the page with the article belongs to.|
+                      |editionId|Human readable version of the edition.|
+                      |titleUUID|The ID for the title of the newspaper, which the article is from.|
+                      |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little.|
+                      |newspaper_page|The page number of the addition that the article appears on.|
+                      |newspaper_edition|#TODO: Explain this|
+                      |lplace|Place of publication. Where the paper was published.|
+                      |location_name|Location names extracted from the text (low quality entity recognition).|
+                      |location_coordinates|Coordinates for places from location_name.|
           schema:
             type: array
             items:
@@ -100,11 +100,11 @@ paths:
           required: false
           # TODO: Figure out how to deliver the comments with JSON
           description: |
-                      |The delivery format| |
+                      |The delivery format.| |
                       |---|---|
-                      |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes|
-                      |JSON|Valid JSON in the form of a single array of Documents|
-                      |JSONL|Newline separated single-line JSON representations of Documents|
+                      |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes.|
+                      |JSON|Valid JSON in the form of a single array of Documents.|
+                      |JSONL|Newline separated single-line JSON representations of Documents.|
           schema:
             type: string
             enum:  ['CSV', 'JSON', 'JSONL']
@@ -208,12 +208,12 @@ paths:
           in: query
           required: false
           description: |
-                      |The field to facet|Note that it is case sensitive|
+                      |The field to facet.|Note that it is case sensitive.|
                       |---|---|
-                      |familyId|The general name of the newspaper|
-                      |lvx|The specific name of the newspaper|
-                      |lplace|"Udgivelsessted" / publication location. Where the paper was published|
-                      |py|Publication year|
+                      |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little.|
+                      |lvx|The specific name of the newspaper.|
+                      |lplace|Place of publication. Where the paper was published.|
+                      |py|Publication year.|
           schema:
             type: string
             enum:  ['familyId', 'lvx', 'lplace', 'py']
@@ -369,11 +369,11 @@ paths:
           required: false
           # TODO: Figure out how to deliver the comments with JSON
           description: |
-                      The major parts of the delivery.
-
-                      * comments: Metadata for the timeline (query, export time...), prefixed with # in CSV
-                      * header: The export field names. Only relevant for CSV as it is implicit in JSON
-                      * content: The export content itself
+                      |The major parts of the delivery.| |
+                      |---|---|
+                      |comments|Metadata for the timeline (query, export time...), prefixed with # in CSV.|
+                      |header|The export field names. Only relevant for CSV as it is implicit in JSON.|
+                      |content|The export content itself.|
           schema:
             type: array
             items:
@@ -386,10 +386,10 @@ paths:
           in: query
           required: false
           description: |
-                      The delivery format.
-
-                      * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes
-                      * JSON: Valid JSON in the form of a single array of TimelineEntrys
+                      |The delivery format.| |
+                      |---|---|
+                      |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes.|
+                      |JSON|Valid JSON in the form of a single array of TimelineEntrys.|
           schema:
             type: string
             enum:  ['CSV', 'JSON']
@@ -538,19 +538,19 @@ components:
           description: 'Human readable version of the edition'
           type: string
         titleUUID:
-          description: 'TODO: Explain this'
+          description: 'The ID for the title of the newspaper, which the article is from.'
           type: string
         familyId:
-          description: 'TODO: Explain this'
+          description: '	The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little'
           type: string
         newspaper_page:
           description: 'The page number of the addition that the article appears on'
           type: integer
         newspaper_edition:
-          description: 'TODO: Explain this'
+          description: '#TODO: Explain this'
           type: integer
         lplace:
-          description: 'TODO: Explain this'
+          description: 'Place of publication. Where the paper was published.'
           type: string
         location_name:
           description: 'Location names extracted from the text (low quality entity recognition)'
