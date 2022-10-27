@@ -4,6 +4,8 @@ info:
   title: "${project.name}"
   description: |
     ${project.description}
+    
+    If you have any ideas or experience any issues please report them at the projects github issues [page](https://github.com/kb-dk/kb-labs-api/issues).
   license:
     name: "${license.name}"
     url: "${license.url}"
@@ -20,7 +22,7 @@ paths:
       description: |
                   Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/
                   (a part of the [Royal Danish Library](https://kb.dk)). The export is restricted to newspapers older than 140 years
-                  and will be sorted by publication date.'
+                  and will be sorted by publication date.
       operationId: exportFields
 
       parameters:
@@ -57,7 +59,7 @@ paths:
                       |newspaper_edition|The edition of the newspaper. Newspapers can change during the day, this data tells if the edition has changed.|
                       |lplace|Place of publication. Where the paper was published.|
                       |location_name|Location names extracted from the text (low quality entity recognition).|
-                      |location_coordinates|Coordinates for places from location_name.|
+                      |location_coordinates |Coordinates for places from location_name.|
           schema:
             type: array
             items:
