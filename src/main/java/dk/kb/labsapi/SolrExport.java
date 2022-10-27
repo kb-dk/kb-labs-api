@@ -40,9 +40,12 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -52,6 +55,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.text.SimpleDateFormat;
 
 /**
  * Solr data export handling.
@@ -271,14 +275,13 @@ public class SolrExport extends SolrBase {
 
     public StreamingOutput facet(
             String query, String startTime, String endTime, String field, FACET_SORT sort, Integer limit,
-            FACET_FORMAT outFormat) {
+            FACET_FORMAT outFormat) throws ParseException {
 
-        // TODO: Why are start and end not used?
         String trueStartTime = ParamUtil.parseTimeYearMonth(startTime, minYear, minYear, maxYear, true);
         String trueEndTime = ParamUtil.parseTimeYearMonth(endTime, maxYear, minYear, maxYear, false);
 
         SolrParams request = new SolrQuery(
-                CommonParams.Q, sanitize(query),
+                CommonParams.Q, sanitize(query + " AND timestamp:[" + trueStartTime + " TO " + trueEndTime + "]"),
                 FacetParams.FACET, "true",
                 FacetParams.FACET_FIELD, field,
                 FacetParams.FACET_LIMIT, limit.toString(),
