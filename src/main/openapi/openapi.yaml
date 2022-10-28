@@ -510,7 +510,6 @@ components:
       type: object
       # Note that none of the fields are required
       # Examples has been made from this newspaper: https://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page%3Auuid%3A1620bf3b-7801-4a34-b2b9-fd8db9611b76/query/cykel%20AND%20lplace%3AK%C3%B8benhavn%20AND%20py%3A%5B1850%20TO%201870%5D
-
       properties:
         link:
           description: 'A hyperlink to the Mediestream page for the article'
