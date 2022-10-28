@@ -414,6 +414,31 @@ paths:
                 description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
                 type: string
 
+  /aviser/export/voyant:
+    get:
+      tags:
+        - "${project.name}"
+      summary: "Return fulltext from query as plain text for text analysis in Voyant"
+      operationId: voyantExport
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: | 
+                      A query for newspaper articles
+            
+                      The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis
+                      for a more interactive result.
+          schema:
+            type: string
+            example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1880]'
+
+      responses:
+        description: 'OK'
+        content:
+          text/plain:
+            schema:
+              type: string
 
   /aviser/hits:
     get:
