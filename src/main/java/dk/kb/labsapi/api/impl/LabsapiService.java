@@ -206,6 +206,10 @@ public class LabsapiService implements LabsapiApi {
                 httpServletResponse.setContentType( "application/x-ndjson");
                 break;
             }
+            case text: {
+                httpServletResponse.setContentType("text/plain");
+                break;
+            }
             default: throw new InternalServiceException(
                     "Internal exception: format '" + trueFormat + "' could not be converted to MIME type");
         }

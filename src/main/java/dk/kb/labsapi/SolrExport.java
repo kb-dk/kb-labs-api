@@ -108,7 +108,7 @@ public class SolrExport extends SolrBase {
                     vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
         }
     }
-    public enum EXPORT_FORMAT { csv, json, jsonl;
+    public enum EXPORT_FORMAT { csv, json, jsonl, text;
       public static EXPORT_FORMAT getDefault() {
           return csv;
       }
@@ -226,7 +226,28 @@ public class SolrExport extends SolrBase {
             }
         };
     }
+    // TODO: Make this export return text, currently it j
+    private StreamingOutput streamExportTEXT(
+            SolrParams request, String query, Set<String> fields, long max, Set<STRUCTURE> structure,
+            EXPORT_FORMAT format){
+        return output -> {
+            try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
+                 JSONStreamWriter jw = new JSONStreamWriter(osw, JSONStreamWriter.FORMAT.valueOf(format.toString()))) {
+                Consumer<SolrDocument> docWriter = doc -> jw.writeJSON(
+                        fields.stream()
+                                .filter(doc::containsKey)
+                                // TODO: Convert to DocumentDTO
+                                .collect(Collectors.toMap(
+                                        field -> field, field -> flattenStringList(doc.get(field)))));
 
+                if (structure.contains(STRUCTURE.content)) {
+                    searchAndProcess(request, pageSize, max, docWriter, null);
+                }
+            } catch (SolrServerException e) {
+                throw new RuntimeException("SolrException writing " + format + " for " + request, e);
+            }
+        };
+    }
     private Set<String> expandRequestFields(Set<String> fields) {
         if (fields.contains(LINK) && !fields.contains("pageUUID")) { // link = URL to the page
             Set<String> expanded = new LinkedHashSet<>(fields);
