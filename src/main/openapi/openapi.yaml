@@ -42,12 +42,12 @@ paths:
           in: query
           required: true
           description: |
-                      |The fields to export.|Describtion.|
+                      |The fields to export.|Description.|
                       |--- |---|
                       |Link|A hyperlink to the Mediestream page for the article.|
                       |recordID|The unique ID of the article in the Mediestream system.|
                       |timestamp|The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS|
-                      |pwa|Predicted Word Accuracy for the OCR text on a scale from 0 to 100.|
+                      |pwa|Predicted Word Accuracy for the OCR text on a scale from 0 to 100, where 100 is perfect.|
                       |cer|Character Error Rate (estimated) of the OCR on a scale from 0 to 1, where 0 is perfect|
                       |fulltext_org|The original OCR text for the article.|
                       |pageUUID|The ID for the page that the article appears on.|
@@ -55,7 +55,7 @@ paths:
                       |editionId|Human readable version of the edition.|
                       |titleUUID|The ID for the title of the newspaper, which the article is from.|
                       |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little.|
-                      |newspaper_page|The page number of the addition that the article appears on.|
+                      |newspaper_page|The page number of the edition that the article appears on.|
                       |newspaper_edition|The edition of the newspaper. Newspapers can change during the day, this data tells if the edition has changed.|
                       |lplace|Place of publication. Where the paper was published.|
                       |location_name|Location names extracted from the text (low quality entity recognition).|
@@ -509,57 +509,75 @@ components:
     Document:
       type: object
       # Note that none of the fields are required
+      # Examples has been made from this newspaper: https://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page%3Auuid%3A1620bf3b-7801-4a34-b2b9-fd8db9611b76/query/cykel%20AND%20lplace%3AK%C3%B8benhavn%20AND%20py%3A%5B1850%20TO%201870%5D
+
       properties:
         link:
           description: 'A hyperlink to the Mediestream page for the article'
           type: string
+          example: "http://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page%3Auuid%3A1620bf3b-7801-4a34-b2b9-fd8db9611b76"
         recordID:
           description: 'The unique ID of the article in the Mediestream system'
           type: string
+          example: "doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19"
         timestamp:
           description: 'The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS'
           type: string
+          example: "1855-09-17T01:00:00"
         pwa:
           description: 'Predicted Word Accuracy for the OCR text on a scale from 0 to 100, where 100 is perfect'
           type: number
           format: float
+          example: 55.7
         cer:
           description: 'OCR error rate (estimated) on a scale from 0 to 1, where 0 is perfect'
           type: number
           format: float
+          example: 0.443
         fulltext_org:
           description: 'The original OCR text for the article'
           type: string
+          example: "Skonn. \"Dvagmaii\", E. S iostvand, W-sterwk. H. L. Roos Sen- nev 190? Slaugev Jern og Tvalast. Sko. 3 jo. Bvande. Baad Nr. 21, P. Potte>sso», Landscvona. Pedalen & Srpbel 110 Tdv. Rnq. Baad No. 0, H. P. Hansson. Malme. D. Halbovstadt & Co. 160 Tdv. Rug. Ravn 10 Tdv. Tjave. Baad Nv. iO, C. Bengtsson. Holsingbovg. Malling «Sr Lund 114 Tdv. Havne og 15 Tdv. Hvede. C'. FuiS 5 Tdv. Rug. Baad -Maria--, C. I. Borjesson, Wavbevg. C. Hall Tvalast. Baag Nv 23, P. Andeisson. Landscvona. E. A Kolding 12 Slkr tomme Ionstagov. Bvig Haidre--, I. Henderson, St. Davids. Ordre 202 TouS 1 Cent. Stoeiikiil. Jagt \"Tvine Margrethe\", A. Bie. Malme. Jorge« Jensen 153\", Tdv. s. Sild. Baad Nv. 1, N. Swensson, Malme. Pedellen & T cykel 120 Tdv. Rug. Dampstib Hulrnc-, I. A. Horstrom, Stockholm. A. Asoegreen 2! Slkv. Kobberp lader og Bunde. C. A. Ramos, 34 Kister jevnpla- der. Tb. Hvem 20 Kister Jevuvladev. I. S. Aarestrup 707 Ergr. Jern. N. H. Hoffding 480 Stgr. Jern. Skonnertbrig »jnno--, N. E. Hnlibevg , Pitea. P. j. Groot Tvalast. Sko- 1 Fv. Brande. Dakrbaad »Johanna Sophia\", M. Swensson, Gerhebvrg. Skp. Tvalast. Jagt .Anna Catharina , S. Cronbevg, Gesie. ovgen Jensen 3020 Slanger Jern. sti. F. Heffting 777 Stanger Jern. Udklarcrede."
         pageUUID:
           description: 'The ID for the page that the article appears on'
           type: string
+          example: "doms_aviser_page:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76"
         editionUUID:
           description: 'The ID for the edition that the page with the article belongs to'
           type: string
+          example: "doms_aviser_edition:uuid:15e8ea25-a194-4f23-bcae-a938c0292611"
         editionId:
           description: 'Human readable version of the edition'
           type: string
+          example: "dagbladetkoebenhavn1851 1855-09-17 001"
         titleUUID:
           description: 'The ID for the title of the newspaper, which the article is from.'
           type: string
+          example: "doms_aviser_title:uuid:d55892ba-d236-4e90-bb83-4454b3c3607d"
         familyId:
           description: 'The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little'
           type: string
+          example: "dagbladetkoebenhavn1851"
         newspaper_page:
           description: 'The page number of the addition that the article appears on'
           type: integer
+          example: 4
         newspaper_edition:
           description: 'The edition of the newspaper. Newspapers can change during the day, this data tells if the edition has changed.'
           type: integer
+          example: 1
         lplace:
           description: 'Place of publication. Where the paper was published.'
           type: string
+          example: "København"
         location_name:
           description: 'Location names extracted from the text (low quality entity recognition)'
           type: string
+          example: "Kolding\nRoos\nAarestrup\nMalling\nLund\nNo\nBrande"
         location_coordinates:
           description: 'Coordinates for places from location_name'
           type: string
+          example: "9.48351672776,55.5011822473\n9.48145698254,55.4906590038\n9.01849750893,55.1784894711\n9.74668748111,56.8191193494\n10.1942433332,56.0386370614\n10.1914794517,56.0374956525\n10.1882211989,56.4215787195\n9.56832946,56.5979811936\n9.01733446905,57.1072883932\n10.1909048942,57.4798999721\n11.6533343812,55.2797073299\n8.98410016235,56.5697565282\n9.05108101716,54.9578749722\n8.72753339538,55.7514965432\n10.0047703593,57.3762878597\n9.24078022916,56.6036820747\n9.76685976966,55.8929134847\n12.3014101074,55.2413854707\n10.792793466,56.3541528476\n8.31789315769,56.1120215288\n9.46459476649,56.0983677668\n9.12172723295,55.9431494909"
 
     Timeline:
       type: object
