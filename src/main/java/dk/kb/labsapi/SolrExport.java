@@ -280,6 +280,7 @@ public class SolrExport extends SolrBase {
         String trueStartTime = ParamUtil.parseTimeYearMonth(startTime, minYear, minYear, maxYear, true);
         String trueEndTime = ParamUtil.parseTimeYearMonth(endTime, maxYear, minYear, maxYear, false);
         //TODO: Timestamp is currently added in query. Needs to be filter query, but baseParams from SolrBase.createClient overwrites the filter query
+        // Filterquery cant be in invariance, cause it then gets overwritten
         SolrQuery request = new SolrQuery(
                 CommonParams.Q, sanitize("("+ query + ")" + "AND timestamp:[" + trueStartTime + " TO " + trueEndTime + "]"),
                 FacetParams.FACET, "true",
