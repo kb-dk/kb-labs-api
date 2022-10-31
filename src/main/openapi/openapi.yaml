@@ -101,14 +101,12 @@ paths:
           in: query
           required: false
           # TODO: Figure out how to deliver the comments with JSON
-          # TODO: Update description for txt output
           description: |
                       |The delivery format.| |
                       |---|---|
                       |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes.|
                       |JSON|Valid JSON in the form of a single array of Documents.|
                       |JSONL|Newline separated single-line JSON representations of Documents.|
-                      |TXT| Raw text output. <br /> Can be useful when extracting fulltext_org for analysis in text analysis tools such as Voyant.<br />|
           schema:
             type: string
             enum:  ['CSV', 'JSON', 'JSONL', 'TXT']
@@ -415,6 +413,7 @@ paths:
               schema:
                 description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
                 type: string
+
 
   /aviser/hits:
     get:
