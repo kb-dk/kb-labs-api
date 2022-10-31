@@ -101,15 +101,17 @@ paths:
           in: query
           required: false
           # TODO: Figure out how to deliver the comments with JSON
+          # TODO: Update description for txt output
           description: |
                       |The delivery format.| |
                       |---|---|
                       |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes.|
                       |JSON|Valid JSON in the form of a single array of Documents.|
                       |JSONL|Newline separated single-line JSON representations of Documents.|
+                      |TXT| Raw text output. <br /> Can be useful when extracting fulltext_org for analysis in text analysis tools such as Voyant.<br />|
           schema:
             type: string
-            enum:  ['CSV', 'JSON', 'JSONL']
+            enum:  ['CSV', 'JSON', 'JSONL', 'TXT']
             default: 'CSV'
             example: 'JSON'
 
@@ -413,32 +415,6 @@ paths:
               schema:
                 description: 'Comma Separated Values, with strings quoted and newline as the string\\n'
                 type: string
-
-  /aviser/export/voyant:
-    get:
-      tags:
-        - "${project.name}"
-      summary: "Return fulltext from query as plain text for text analysis in Voyant"
-      operationId: voyantExport
-      parameters:
-        - name: query
-          in: query
-          required: true
-          description: | 
-                      A query for newspaper articles
-            
-                      The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis
-                      for a more interactive result.
-          schema:
-            type: string
-            example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1880]'
-
-      responses:
-        description: 'OK'
-        content:
-          text/plain:
-            schema:
-              type: string
 
   /aviser/hits:
     get:

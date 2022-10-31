@@ -206,7 +206,7 @@ public class LabsapiService implements LabsapiApi {
                 httpServletResponse.setContentType( "application/x-ndjson");
                 break;
             }
-            case text: {
+            case txt: {
                 httpServletResponse.setContentType("text/plain");
                 break;
             }
@@ -355,6 +355,7 @@ public class LabsapiService implements LabsapiApi {
     public String ping() throws ServiceException {
         return "pong";
     }
+
 
 
     /**
