@@ -160,15 +160,13 @@ public class SolrExport extends SolrBase {
                 CommonParams.SORT, exportSort,
                  CommonParams.FL, String.join(",", expandRequestFields(fields)));
 
-        if (format == EXPORT_FORMAT.csv) {
-            return streamExportCSV(request, query, fields, max, structure);
-        } else if (format == EXPORT_FORMAT.json) {
-            return streamExportJSON(request, query, fields, max, structure, format);
-        } else if (format == EXPORT_FORMAT.jsonl) {
-            return streamExportJSON(request, query, fields, max, structure, format);
-        } else if (format == EXPORT_FORMAT.txt) {
-            return streamExportTXT(request,query, fields, max, structure, format);
-        } else return streamExportCSV(request, query, fields, max, structure);
+        switch (format) {
+            case csv:   return streamExportCSV( request, query, fields, max, structure);
+            case json:  return streamExportJSON(request, query, fields, max, structure, format);
+            case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
+            case txt:   return streamExportTXT( request, query, fields, max, structure, format);
+            default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
+        }
     }
 
     private StreamingOutput streamExportCSV(
