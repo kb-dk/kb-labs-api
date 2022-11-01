@@ -195,7 +195,7 @@ public class LabsapiService implements LabsapiApi {
         }
         switch (trueFormat) {
             case csv: {
-                httpServletResponse.setContentType("text/csv");
+                httpServletResponse.setContentType("text/csv;charset=UTF-8");
                 break;
             }
             case json: {
@@ -207,7 +207,7 @@ public class LabsapiService implements LabsapiApi {
                 break;
             }
             case txt: {
-                httpServletResponse.setContentType("text/plain");
+                httpServletResponse.setContentType("text/plain;charset=UTF-8");
                 break;
             }
             default: throw new InternalServiceException(
