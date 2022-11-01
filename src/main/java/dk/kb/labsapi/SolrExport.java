@@ -244,8 +244,7 @@ public class SolrExport extends SolrBase {
      * This can be useful, when loading data into a text analysis tool as Voyant.
      */
     private StreamingOutput streamExportTXT(
-            SolrParams request, String query, Set<String> fields, long max, Set<STRUCTURE> structure,
-            EXPORT_FORMAT format) {
+            SolrParams request, Set<String> fields, long max, Set<STRUCTURE> structure) {
         return output -> {
             try (OutputStreamWriter os = new OutputStreamWriter(output, "UTF-8")) {
                 // \n\n is used to create a simple distinction between results
