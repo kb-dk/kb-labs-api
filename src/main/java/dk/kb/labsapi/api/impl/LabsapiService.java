@@ -195,7 +195,7 @@ public class LabsapiService implements LabsapiApi {
         }
         switch (trueFormat) {
             case csv: {
-                httpServletResponse.setContentType("text/csv");
+                httpServletResponse.setContentType("text/csv;charset=UTF-8");
                 break;
             }
             case json: {
@@ -204,6 +204,10 @@ public class LabsapiService implements LabsapiApi {
             }
             case jsonl: {
                 httpServletResponse.setContentType( "application/x-ndjson");
+                break;
+            }
+            case txt: {
+                httpServletResponse.setContentType("text/plain;charset=UTF-8");
                 break;
             }
             default: throw new InternalServiceException(
@@ -351,6 +355,7 @@ public class LabsapiService implements LabsapiApi {
     public String ping() throws ServiceException {
         return "pong";
     }
+
 
 
     /**

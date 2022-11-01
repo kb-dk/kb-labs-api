@@ -35,9 +35,12 @@ import org.apache.solr.common.params.SolrParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.standard.PageRanges;
 import javax.ws.rs.core.StreamingOutput;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
+import java.awt.*;
+import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -56,6 +59,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.text.SimpleDateFormat;
+import java.awt.print.*;
+
+
 
 /**
  * Solr data export handling.
@@ -108,7 +114,7 @@ public class SolrExport extends SolrBase {
                     vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
         }
     }
-    public enum EXPORT_FORMAT { csv, json, jsonl;
+    public enum EXPORT_FORMAT { csv, json, jsonl, txt;
       public static EXPORT_FORMAT getDefault() {
           return csv;
       }
@@ -154,9 +160,13 @@ public class SolrExport extends SolrBase {
                 CommonParams.SORT, exportSort,
                  CommonParams.FL, String.join(",", expandRequestFields(fields)));
 
-        return format == EXPORT_FORMAT.csv ?
-                streamExportCSV(request, query, fields, max, structure) :
-                streamExportJSON(request, query, fields, max, structure, format);
+        switch (format) {
+            case csv:   return streamExportCSV( request, query, fields, max, structure);
+            case json:  return streamExportJSON(request, query, fields, max, structure, format);
+            case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
+            case txt:   return streamExportTXT( request, fields, max, structure);
+            default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
+        }
     }
 
     private StreamingOutput streamExportCSV(
@@ -223,6 +233,40 @@ public class SolrExport extends SolrBase {
                 }
             } catch (SolrServerException e) {
                 throw new RuntimeException("SolrException writing " + format + " for " + request, e);
+            }
+        };
+    }
+
+    /**
+     * Export Solr response as raw text.
+     * This can be useful, when loading data into a text analysis tool as Voyant.
+     */
+    private StreamingOutput streamExportTXT(
+            SolrParams request, Set<String> fields, long max, Set<STRUCTURE> structure) {
+        return output -> {
+            try (OutputStreamWriter os = new OutputStreamWriter(output, "UTF-8")) {
+                // \n\n is used to create a simple distinction between results
+                try (PrintWriter printer = new PrintWriter(os)) {
+                    Consumer<SolrDocument> docWriter = doc -> {
+                        printer.print(
+                                fields.stream()
+                                        .map(doc::get)
+                                        .map(SolrExport::flattenStringList)
+                                        .map(String::valueOf)
+                                        .collect(Collectors.joining("\n")) + "\n\n"
+                        );
+                    };
+                    if (structure.contains(STRUCTURE.content)) {
+                        long processed = 0;
+                        try {
+                            processed = searchAndProcess(
+                                    request, pageSize, max, docWriter, doc -> this.expandExportResponse(doc, fields));
+                        } catch (SolrServerException e) {
+                            log.error("SolrException during search for " + request);
+                        }
+                        log.debug("Wrote " + processed + " TXT entries for " + request);
+                    }
+                }
             }
         };
     }

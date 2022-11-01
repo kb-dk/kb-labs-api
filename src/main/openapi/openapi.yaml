@@ -107,9 +107,10 @@ paths:
                       |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes.|
                       |JSON|Valid JSON in the form of a single array of Documents.|
                       |JSONL|Newline separated single-line JSON representations of Documents.|
+                      |TXT|Plain text output. UTF-8 Encoded.|
           schema:
             type: string
-            enum:  ['CSV', 'JSON', 'JSONL']
+            enum:  ['CSV', 'JSON', 'JSONL', 'TXT']
             default: 'CSV'
             example: 'JSON'
 
