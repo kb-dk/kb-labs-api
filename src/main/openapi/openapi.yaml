@@ -438,7 +438,7 @@ paths:
                       for a more interactive result.
           schema:
             type: string
-            example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1899]'
+            example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1880]'
 
       responses:
         '200':
