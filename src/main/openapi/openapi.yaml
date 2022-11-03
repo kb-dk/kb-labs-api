@@ -37,6 +37,7 @@ paths:
                       A filter restricting the result to newspapers older than 140 years will be automatically applied
           schema:
             type: string
+            # TODO: Change example - confusing that the example lets py extend to 1899, while the application only allows py to 1880
             example: 'cykel AND lplace:København AND py:[1850 TO 1899]'
         - name: fields
           in: query
@@ -108,9 +109,11 @@ paths:
                       |JSON|Valid JSON in the form of a single array of Documents.|
                       |JSONL|Newline separated single-line JSON representations of Documents.|
                       |TXT|Plain text output. UTF-8 Encoded.|
+                      |XML|XML output. UTF-8 Encoded.|
           schema:
             type: string
             enum:  ['CSV', 'JSON', 'JSONL', 'TXT', 'XML']
+            # TODO: When default value is CSV it would make more sense to have the example value be CSV as well?
             default: 'CSV'
             example: 'JSON'
 
