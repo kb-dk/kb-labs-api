@@ -109,7 +109,7 @@ paths:
                       |JSON|Valid JSON in the form of a single array of Documents.|
                       |JSONL|Newline separated single-line JSON representations of Documents.|
                       |TXT|Plain text output. UTF-8 Encoded.|
-                      |XML|XML output. UTF-8 Encoded.|
+                      |XML|XML output. UTF-8 Encoded. <br/>This output format is [Voyant](https://voyant-tools.org/docs/#!/guide/about) compliant and makes it possible to export newspaper data directly to Voyant.|
           schema:
             type: string
             enum:  ['CSV', 'JSON', 'JSONL', 'TXT', 'XML']
