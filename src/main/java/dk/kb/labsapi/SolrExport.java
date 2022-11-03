@@ -271,10 +271,10 @@ public class SolrExport extends SolrBase {
                     writer.writeComment("query: " + query.replace("\n", "\\n"));
                     writer.writeComment("fields: " + fields.toString());
                     synchronized (HUMAN_TIME) {
-                        writer.writeComment("# export time: " + HUMAN_TIME.format(new Date()));
+                        writer.writeComment("export time: " + HUMAN_TIME.format(new Date()));
                     }
-                    writer.writeComment("# matched articles: " + countHits(query));
-                    writer.writeComment("# max articles returned: " + max);
+                    writer.writeComment("matched articles: " + countHits(query));
+                    writer.writeComment("max articles returned: " + max);
                 }
                 writer.writeStartElement("results");
                 // root <results>
