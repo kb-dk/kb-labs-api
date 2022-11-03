@@ -14,6 +14,7 @@
  */
 package dk.kb.labsapi;
 
+import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 import dk.kb.JSONStreamWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.util.yaml.YAML;
@@ -34,34 +35,20 @@ import org.apache.solr.common.params.HighlightParams;
 import org.apache.solr.common.params.SolrParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.print.attribute.HashPrintRequestAttributeSet;
-import javax.print.attribute.PrintRequestAttributeSet;
-import javax.print.attribute.standard.PageRanges;
 import javax.ws.rs.core.StreamingOutput;
-import java.awt.*;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.text.SimpleDateFormat;
-import java.awt.print.*;
-
-
 
 /**
  * Solr data export handling.
@@ -114,7 +101,7 @@ public class SolrExport extends SolrBase {
                     vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
         }
     }
-    public enum EXPORT_FORMAT { csv, json, jsonl, txt;
+    public enum EXPORT_FORMAT { csv, json, jsonl, txt, xml;
       public static EXPORT_FORMAT getDefault() {
           return csv;
       }
@@ -165,6 +152,7 @@ public class SolrExport extends SolrBase {
             case json:  return streamExportJSON(request, query, fields, max, structure, format);
             case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
             case txt:   return streamExportTXT( request, fields, max, structure);
+            case xml:   return streamExportXML( request, fields, max, structure);
             default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
         }
     }
@@ -270,6 +258,63 @@ public class SolrExport extends SolrBase {
             }
         };
     }
+
+    private StreamingOutput streamExportXML(SolrParams request, Set<String> fields, long max, Set<STRUCTURE> structure){
+        return output -> {
+            XMLOutputFactory out = XMLOutputFactory.newInstance();
+            XMLStreamWriter writer = null;
+            try {
+                writer = new IndentingXMLStreamWriter(out.createXMLStreamWriter(output));
+                writer.writeStartDocument();
+                writer.writeStartElement("results");
+                // root <results>
+            } catch (XMLStreamException e) {
+                throw new RuntimeException(e);
+            }
+            XMLStreamWriter finalWriter = writer;
+            Consumer<SolrDocument> docWriter = doc -> {
+
+                try {
+                    finalWriter.writeStartElement("result");
+                    fields.stream()
+                            .filter(doc::containsKey)
+                            .forEach(field -> {
+                            try {
+                                finalWriter.writeStartElement(field);
+                                finalWriter.writeCharacters(doc.getFieldValue(field).toString());
+                                finalWriter.writeEndElement();
+                            } catch (XMLStreamException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+                    finalWriter.writeEndElement();
+                } catch (XMLStreamException e) {
+                    throw new RuntimeException(e);
+                }
+
+            };
+            if (structure.contains(STRUCTURE.content)) {
+                long processed = 0;
+                try {
+                    processed = searchAndProcess(
+                            request, pageSize, max, docWriter, doc -> this.expandExportResponse(doc, fields));
+                } catch (SolrServerException e) {
+                    log.error("SolrException during search for " + request);
+                }
+                log.debug("Wrote " + processed + " TXT entries for " + request);
+            }
+            try {
+                // root </results>
+                writer.writeEndElement();
+                writer.writeEndDocument();
+                writer.flush();
+                writer.close();
+            } catch (XMLStreamException e) {
+                throw new RuntimeException(e);
+            }
+        };
+    }
+
 
     private Set<String> expandRequestFields(Set<String> fields) {
         if (fields.contains(LINK) && !fields.contains("pageUUID")) { // link = URL to the page

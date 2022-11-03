@@ -210,6 +210,10 @@ public class LabsapiService implements LabsapiApi {
                 httpServletResponse.setContentType("text/plain;charset=UTF-8");
                 break;
             }
+            case xml: {
+                httpServletResponse.setContentType("text/xml;charset=UTF-8");
+                break;
+            }
             default: throw new InternalServiceException(
                     "Internal exception: format '" + trueFormat + "' could not be converted to MIME type");
         }

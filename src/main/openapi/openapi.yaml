@@ -110,7 +110,7 @@ paths:
                       |TXT|Plain text output. UTF-8 Encoded.|
           schema:
             type: string
-            enum:  ['CSV', 'JSON', 'JSONL', 'TXT']
+            enum:  ['CSV', 'JSON', 'JSONL', 'TXT', 'XML']
             default: 'CSV'
             example: 'JSON'
 
