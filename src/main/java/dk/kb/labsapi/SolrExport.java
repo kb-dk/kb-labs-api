@@ -152,7 +152,7 @@ public class SolrExport extends SolrBase {
             case json:  return streamExportJSON(request, query, fields, max, structure, format);
             case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
             case txt:   return streamExportTXT( request, fields, max, structure);
-            case xml:   return streamExportXML( request, fields, max, structure);
+            case xml:   return streamExportXML( request, query, fields, max, structure);
             default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
         }
     }
@@ -259,13 +259,23 @@ public class SolrExport extends SolrBase {
         };
     }
 
-    private StreamingOutput streamExportXML(SolrParams request, Set<String> fields, long max, Set<STRUCTURE> structure){
+    private StreamingOutput streamExportXML(SolrParams request, String query, Set<String> fields, long max, Set<STRUCTURE> structure){
         return output -> {
             XMLOutputFactory out = XMLOutputFactory.newInstance();
             XMLStreamWriter writer = null;
             try {
                 writer = new IndentingXMLStreamWriter(out.createXMLStreamWriter(output));
                 writer.writeStartDocument();
+                if (structure.contains(STRUCTURE.comments)) {
+                    writer.writeComment("kb-labs-api export of Mediestream aviser data");
+                    writer.writeComment("query: " + query.replace("\n", "\\n"));
+                    writer.writeComment("fields: " + fields.toString());
+                    synchronized (HUMAN_TIME) {
+                        writer.writeComment("# export time: " + HUMAN_TIME.format(new Date()));
+                    }
+                    writer.writeComment("# matched articles: " + countHits(query));
+                    writer.writeComment("# max articles returned: " + max);
+                }
                 writer.writeStartElement("results");
                 // root <results>
             } catch (XMLStreamException e) {
