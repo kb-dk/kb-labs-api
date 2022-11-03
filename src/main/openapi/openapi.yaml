@@ -88,7 +88,7 @@ paths:
           description: |
                       |The major parts of the delivery| |
                       |---|---|
-                      |comments|Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON|
+                      |comments|Metadata for the export (query, export time...), prefixed with # in CSV, encapsulated in <--!XML comment--> in XML  and not shown in JSON|
                       |header|The export field names. Only relevant for CSV|
                       |content|The export content itself|
           schema:
