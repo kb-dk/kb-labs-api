@@ -34,7 +34,10 @@ paths:
 
                       The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis
 
-                      A filter restricting the result to newspapers older than 140 years will be automatically applied
+                      A filter restricting the result to newspapers older than 140 years will be automatically applied. This means that the API returns material from 1880 and before.
+                      
+                      Even though a query like '*cykel AND lplace:København*' might return more and newer results in a [Mediestream search](https://www2.statsbiblioteket.dk/mediestream/avis/search/cykel%20AND%20lplace%3AK%C3%B8benhavn)
+                      the query in the API is limited to material at least 140 years old.
           schema:
             type: string
             example: 'cykel AND lplace:København AND py:[1850 TO 1880]'
@@ -54,7 +57,7 @@ paths:
                       |editionUUID|The ID for the edition that the page with the article belongs to.|
                       |editionId|Human readable version of the edition.|
                       |titleUUID|The ID for the title of the newspaper, which the article is from.|
-                      |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little.|
+                      |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same even though the title of the newspaper changes a little.|
                       |newspaper_page|The page number of the edition that the article appears on.|
                       |newspaper_edition|The edition of the newspaper. Newspapers can change during the day, this data tells if the edition has changed.|
                       |lplace|Place of publication. Where the paper was published.|
@@ -215,7 +218,7 @@ paths:
           description: |
                       |The field to facet.|Note that it is case sensitive.|
                       |---|---|
-                      |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little.|
+                      |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same even though the title of the newspaper changes a little.|
                       |lvx|The specific name of the newspaper.|
                       |lplace|Place of publication. Where the paper was published.|
                       |py|Publication year.|
@@ -438,7 +441,7 @@ paths:
                       for a more interactive result.
           schema:
             type: string
-            example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1899]'
+            example: '(cykel OR cikle) AND lplace:København AND py:[1850 TO 1880]'
 
       responses:
         '200':
@@ -557,7 +560,7 @@ components:
           type: string
           example: "doms_aviser_title:uuid:d55892ba-d236-4e90-bb83-4454b3c3607d"
         familyId:
-          description: 'The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same eventhough the title of the newspaper changes a little'
+          description: 'The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same even though the title of the newspaper changes a little'
           type: string
           example: "dagbladetkoebenhavn1851"
         newspaper_page:
@@ -628,7 +631,7 @@ components:
         elements:
           description: |
                 The elements for the timeline. The element 'unique_publishers' is special as it, as the name
-                signals, the number of unique puslishers and not the sum of instances.
+                signals, the number of unique publishers and not the sum of instances.
           type: array
           items:
             type: string
