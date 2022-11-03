@@ -37,7 +37,7 @@ paths:
                       A filter restricting the result to newspapers older than 140 years will be automatically applied. This means that the API returns material from 1880 and before.
                       
                       Even though a query like '*cykel AND lplace:København*' might return more and newer results in a [Mediestream search](https://www2.statsbiblioteket.dk/mediestream/avis/search/cykel%20AND%20lplace%3AK%C3%B8benhavn)
-                      the query in the API is limited to material at least 140 years old.
+                      the response from the API is limited to material at least 140 years old.
           schema:
             type: string
             example: 'cykel AND lplace:København AND py:[1850 TO 1880]'
