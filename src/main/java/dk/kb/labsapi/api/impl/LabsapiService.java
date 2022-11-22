@@ -214,6 +214,10 @@ public class LabsapiService implements LabsapiApi {
                 httpServletResponse.setContentType("text/xml;charset=UTF-8");
                 break;
             }
+            case image: {
+                httpServletResponse.setContentType("image/png");
+                break;
+            }
             default: throw new InternalServiceException(
                     "Internal exception: format '" + trueFormat + "' could not be converted to MIME type");
         }
@@ -242,7 +246,7 @@ public class LabsapiService implements LabsapiApi {
     }
 
     @Override
-    public File exportImages(String query) {
+    public javax.ws.rs.core.StreamingOutput exportImages(String query) {
         return null;
     }
 

@@ -101,7 +101,7 @@ public class SolrExport extends SolrBase {
                     vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
         }
     }
-    public enum EXPORT_FORMAT { csv, json, jsonl, txt, xml;
+    public enum EXPORT_FORMAT { csv, json, jsonl, txt, xml, image;
       public static EXPORT_FORMAT getDefault() {
           return csv;
       }
@@ -153,6 +153,7 @@ public class SolrExport extends SolrBase {
             case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
             case txt:   return streamExportTXT( request, fields, max, structure);
             case xml:   return streamExportXML( request, query, fields, max, structure);
+            case image: return streamExportImages(request, fields, max, format);
             default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
         }
     }
@@ -321,6 +322,30 @@ public class SolrExport extends SolrBase {
                 writer.close();
             } catch (XMLStreamException e) {
                 throw new RuntimeException(e);
+            }
+        };
+    }
+
+    public StreamingOutput streamExportImages(SolrParams request,  Set<String> fields, long max, EXPORT_FORMAT format) {
+
+        Set<STRUCTURE> structure = new HashSet<>();
+        structure.add(STRUCTURE.valueOf("content"));
+
+        return output -> {
+            try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
+                 JSONStreamWriter jw = new JSONStreamWriter(osw, JSONStreamWriter.FORMAT.valueOf(format.toString()))) {
+                Consumer<SolrDocument> docWriter = doc -> jw.writeJSON(
+                        fields.stream()
+                                .filter(doc::containsKey)
+                                // TODO: Convert to DocumentDTO
+                                .collect(Collectors.toMap(
+                                        field -> field, field -> flattenStringList(doc.get(field)))));
+
+                if (structure.contains(STRUCTURE.content)) {
+                    searchAndProcess(request, pageSize, max, docWriter, null);
+                }
+            } catch (SolrServerException e) {
+                throw new RuntimeException("SolrException writing " + format + " for " + request, e);
             }
         };
     }
