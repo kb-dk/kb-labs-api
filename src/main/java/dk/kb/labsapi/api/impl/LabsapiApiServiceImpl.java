@@ -1,13 +1,10 @@
 package dk.kb.labsapi.api.impl;
 
 import dk.kb.labsapi.api.*;
-import java.util.ArrayList;
-import dk.kb.labsapi.model.ErrorDto;
+
 import java.util.List;
-import java.util.Map;
 
 import dk.kb.labsapi.model.HitsDto;
-import dk.kb.labsapi.model.TimelineEntryDto;
 
 import dk.kb.webservice.exception.ServiceException;
 import dk.kb.webservice.exception.InternalServiceException;
@@ -15,15 +12,7 @@ import dk.kb.webservice.exception.InternalServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.List;
-import java.util.Map;
 import java.io.File;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.*;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -35,13 +24,8 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Providers;
-import javax.ws.rs.core.MediaType;
-import org.apache.cxf.jaxrs.model.wadl.Description;
-import org.apache.cxf.jaxrs.model.wadl.DocTarget;
-import org.apache.cxf.jaxrs.ext.MessageContext;
-import org.apache.cxf.jaxrs.ext.multipart.*;
 
-import io.swagger.annotations.Api;
+import org.apache.cxf.jaxrs.ext.MessageContext;
 
 /**
  * labsapi
@@ -169,6 +153,11 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
             throw handleException(e);
         }
     
+    }
+
+    @Override
+    public File exportImages(String query) {
+        return null;
     }
 
     /**

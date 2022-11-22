@@ -19,8 +19,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import java.io.File;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
@@ -239,6 +239,11 @@ public class LabsapiService implements LabsapiApi {
         } catch (Exception e){
             throw handleException(e);
         }
+    }
+
+    @Override
+    public File exportImages(String query) {
+        return null;
     }
 
     /**
