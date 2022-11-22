@@ -156,7 +156,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     }
 
     @Override
-    public File exportImages(String query) {
+    public javax.ws.rs.core.StreamingOutput exportImages(String query) {
         return null;
     }
 
