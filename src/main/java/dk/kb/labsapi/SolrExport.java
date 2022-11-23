@@ -330,7 +330,6 @@ public class SolrExport extends SolrBase {
         // Sets fields to export
         Set<String> fields = new HashSet<>();
         fields.add("recordID");
-        fields.add("lplace");
         fields.add("alto_box");
         fields.add("illustration");
 
@@ -341,8 +340,14 @@ public class SolrExport extends SolrBase {
         ModifiableSolrParams finalRequest = new ModifiableSolrParams(request);
 
         // Add fields to SolrParams
+        // TODO: Currently it does not require results to have illustrations - They need to have it
         SolrParams manualParams = new SolrQuery(
-               CommonParams.FL, String.join(",", expandRequestFields(fields)));
+                //cykel AND py:[1850 TO 1880] AND illustration:[* TO *] this query works in the solr admin panel
+                CommonParams.Q, sanitize("illustration:[* TO *]"),
+                CommonParams.FL, String.join(",", expandRequestFields(fields))
+
+
+        );
 
         // Add extra SolrParams to final request
         finalRequest.add(manualParams);

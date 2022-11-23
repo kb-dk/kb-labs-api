@@ -36,6 +36,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static dk.kb.labsapi.SolrExport.EXPORT_FORMAT.image;
+
 /**
  * Implementation of the OpenAPI-generated {@link LabsapiApi}.
  */
@@ -201,12 +203,12 @@ public class LabsapiService implements LabsapiApi {
                 httpServletResponse.setContentType("text/csv;charset=UTF-8");
                 break;
             }
-            case json: {
+            case json:{
                 httpServletResponse.setContentType("application/json");
                 break;
             }
             case jsonl: {
-                httpServletResponse.setContentType( "application/x-ndjson");
+                httpServletResponse.setContentType("application/x-ndjson");
                 break;
             }
             case txt: {
