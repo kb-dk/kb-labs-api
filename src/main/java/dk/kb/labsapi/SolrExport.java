@@ -28,11 +28,7 @@ import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.response.FacetField;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.params.FacetParams;
-import org.apache.solr.common.params.GroupParams;
-import org.apache.solr.common.params.HighlightParams;
-import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.params.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.StreamingOutput;
@@ -153,7 +149,7 @@ public class SolrExport extends SolrBase {
             case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
             case txt:   return streamExportTXT( request, fields, max, structure);
             case xml:   return streamExportXML( request, query, fields, max, structure);
-            case image: return streamExportImages(request, fields, max, format);
+            case image: return streamExportImages(request);
             default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
         }
     }
@@ -326,9 +322,32 @@ public class SolrExport extends SolrBase {
         };
     }
 
-    public StreamingOutput streamExportImages(SolrParams request,  Set<String> fields, long max, EXPORT_FORMAT format) {
+    public StreamingOutput streamExportImages(SolrParams request) {
+        // Manually constructed SolrQuery that returns altobox and illustrations for each hit
 
-        Set<STRUCTURE> structure = new HashSet<>();
+        String format = "json";
+
+        // Sets fields to export
+        Set<String> fields = new HashSet<>();
+        fields.add("recordID");
+        fields.add("lplace");
+        fields.add("alto_box");
+        fields.add("illustration");
+
+        // Maximum number of documents to export
+        long max = 10;
+
+        // Makes the request modifialble
+        ModifiableSolrParams finalRequest = new ModifiableSolrParams(request);
+
+        // Add fields to SolrParams
+        SolrParams manualParams = new SolrQuery(
+               CommonParams.FL, String.join(",", expandRequestFields(fields)));
+
+        // Add extra SolrParams to final request
+        finalRequest.add(manualParams);
+
+        List<STRUCTURE> structure = new ArrayList<>(){};
         structure.add(STRUCTURE.valueOf("content"));
 
         return output -> {
@@ -342,7 +361,7 @@ public class SolrExport extends SolrBase {
                                         field -> field, field -> flattenStringList(doc.get(field)))));
 
                 if (structure.contains(STRUCTURE.content)) {
-                    searchAndProcess(request, pageSize, max, docWriter, null);
+                    searchAndProcess(finalRequest, pageSize, max, docWriter, null);
                 }
             } catch (SolrServerException e) {
                 throw new RuntimeException("SolrException writing " + format + " for " + request, e);

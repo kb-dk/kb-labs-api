@@ -20,6 +20,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -215,7 +218,7 @@ public class LabsapiService implements LabsapiApi {
                 break;
             }
             case image: {
-                httpServletResponse.setContentType("image/png");
+                httpServletResponse.setContentType("application/json");
                 break;
             }
             default: throw new InternalServiceException(
