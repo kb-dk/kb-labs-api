@@ -163,6 +163,44 @@ paths:
               schema:
                 type: string
 
+  /aviser/export/alto:
+    get:
+      tags:
+        - "${project.name}"
+      summary: 'Deliver ALTO XML for a single page from http://mediestream.dk/'
+      description: |
+                  This endpoint delivers [ALTO XML](https://www.loc.gov/standards/alto/) for newspaper material that is 140+ years old.
+        
+                  [ALTO XML](https://www.loc.gov/standards/alto/) contains OCR text with bounding boxes from sections 
+                  down to single word granularity. Where possible, sections are connected through attributes to form
+                  articles, which are the atomic documents discovered through [Mediestream](https://mediestream.dk/).
+        
+                  **Warning:** ALTO XML can be quite large. If the ALTO is requested through the OpenAPI GUI, 
+                  the browser might hang for a minute before showing the result.
+      operationId: getALTO
+
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: |
+                      The ID for the ALTO to retrieve. This can be 
+                      * a [Mediestream URL](https://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page:uuid:a9990f12-e9f0-4b1e-becc-e0d4bf514586/query/heste) to a search result
+                      * an `UUID`  such as `a9990f12-e9f0-4b1e-becc-e0d4bf514586`
+                      * a `recordID` for an article such as `doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19`
+          schema:
+            type: string
+            example: 'doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19'
+
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/xml:
+              schema:
+                description: 'ALTO-XML for a newspaper page'
+                type: string
+
   /aviser/query/facet:
     get:
       tags:

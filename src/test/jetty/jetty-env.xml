@@ -12,7 +12,7 @@
     <New id="config" class="org.eclipse.jetty.plus.jndi.EnvEntry">
         <Arg>application-config</Arg>
         <Arg type="java.lang.String">
-            ${user.home}/conf/labsapi-test.yaml;labsapi-test.yaml
+            ${user.home}/conf/labsapi-test.yaml;labsapi-test.yaml;${basedir}/conf/${project.artifactId}*.yaml
         </Arg>
         <Arg type="boolean">true</Arg>
     </New>
