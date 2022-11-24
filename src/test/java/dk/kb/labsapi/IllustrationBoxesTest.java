@@ -9,13 +9,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * IMPORTANT: All this only works with a proper setup and contact to Solr
  */
 public class IllustrationBoxesTest {
-    private static final Logger log = LoggerFactory.getLogger(SolrTimelineTest.class);
+    private static final Logger log = LoggerFactory.getLogger(IllustrationBoxesTest.class);
 
     @BeforeAll
     static void setupConfig() throws IOException {
@@ -29,11 +29,15 @@ public class IllustrationBoxesTest {
     }
 
     @Test
-    public void testRegex() throws IOException {
+    public void testRegexFormatting(){
+        String testString = "id=ART99-1_SUB,x=8380,y=7888,w=2596,h=448";
         IllustrationMetadata illustration = new IllustrationMetadata();
-        // illustration.setData();
-
-        // System.out.println(illustration.get);
+        illustration.setData(testString);
+        assertEquals("ART99-1_SUB", illustration.getId());
+        assertEquals(8380, illustration.getX());
+        assertEquals(7888, illustration.getY());
+        assertEquals(2596, illustration.getW());
+        assertEquals(448, illustration.getH());
     }
 
     @Test
