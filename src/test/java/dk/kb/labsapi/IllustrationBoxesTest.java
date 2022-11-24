@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
 
@@ -65,6 +67,22 @@ public class IllustrationBoxesTest {
         List<String> list = ImageExtractor.getIllustrationsList(testString);
 
         System.out.println(list.get(0));
+    }
+
+    @Test
+    public void testDefinitionOfRegions() throws MalformedURLException {
+        // img size 2169x2644
+        IllustrationMetadata illustration1 = new IllustrationMetadata();
+        illustration1.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200 :doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e");
+        IllustrationMetadata illustration2 = new IllustrationMetadata();
+        illustration2.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200 :doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e");
+
+        System.out.println(illustration1.getPageUUID());
+
+        URL test = ImageExtractor.createIllustrationLinks(illustration1);
+        System.out.println(test);
+
+
     }
 
 }

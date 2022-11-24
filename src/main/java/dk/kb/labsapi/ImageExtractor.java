@@ -6,6 +6,8 @@ import org.json.JSONObject;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
@@ -20,27 +22,19 @@ public class ImageExtractor {
      * @return an array of objects consisting of the id, x, y, w and h values that are used to extract illustrations.
      */
     static public List<IllustrationMetadata> getMetadataForIllustrations() throws IOException {
-
-        // Test SOLR call
+        List<IllustrationMetadata> illustrations = new ArrayList<>();
+        // Test SOLR call - This will probably be given as method input/argument
         String jsonString = solrCall();
-
         // Parse result from query and save into a list of strings
         List<String> illustrationList = getIllustrationsList(jsonString);
-
-        List<IllustrationMetadata> illustrations = new ArrayList<>();
-
 
         for (String s : illustrationList) {
             // Create Illustration metadata object
             IllustrationMetadata singleIllustration = new IllustrationMetadata();
             singleIllustration.setData(s);
-            // TODO: Figure how to set Page UUID in a convenient way
-            // singleIllustration.setPageUUID();
-
             // Add object to list of object
             illustrations.add(singleIllustration);
         }
-
         return illustrations;
     }
 
@@ -59,21 +53,35 @@ public class ImageExtractor {
             JSONObject document = responseArray.getJSONObject(i);
             String illustration = document.getString("illustration");
             String[] illustrationsSplitted = illustration.split("\n");
-
             String pageUUID = document.getString("pageUUID");
             for (int j = 0; j< illustrationsSplitted.length; j++){
                 illustrationsSplitted[j] = illustrationsSplitted[j] + " :" + pageUUID;
             }
-
             illustrationList.addAll(Arrays.asList(illustrationsSplitted));
         }
-
         return illustrationList;
-
     }
 
-    public static void createIllustrationLinks(){
+    public static URL createIllustrationLinks(IllustrationMetadata illustration) throws MalformedURLException {
+        // Reconstructing this as would be done with input data
+        // TODO: add test solr url
+        URL baseURL = new URL("");
+        String baseParams = "&CVT=jpeg";
 
+        String pageUuid = illustration.getPageUUID();
+
+        String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
+
+        // SYNTAX for defining region for export
+        //RGN=x,y,w,h
+
+        // Region is a fraction of the image = Measure the fraction of each illustration.
+        // TODO: I need page width and page height from original solr response
+
+        String region = "&RGN="+illustration.getX()+","+illustration.getY()+","+illustration.getW()+","+illustration.getH();
+
+        URL finalUrl = new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
+        return finalUrl;
     }
 
     static public String solrCall() throws IOException {
@@ -85,15 +93,11 @@ public class ImageExtractor {
         Set<SolrExport.STRUCTURE> structure = new HashSet<>();
         structure.add(SolrExport.STRUCTURE.valueOf("content"));
         long max = 10;
-
         // Query here is only important variable/argument
         StreamingOutput stream = SolrExport.getInstance().export("cykel", fields, max , structure , SolrExport.EXPORT_FORMAT.image);
-
         // Convert StreamingOutput to String
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         stream.write(output);
         return output.toString(StandardCharsets.UTF_8);
     }
-
-
 }

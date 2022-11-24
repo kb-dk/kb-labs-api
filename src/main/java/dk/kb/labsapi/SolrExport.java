@@ -323,10 +323,9 @@ public class SolrExport extends SolrBase {
     }
 
     public StreamingOutput streamExportImages(SolrParams request) {
-        // Manually constructed SolrQuery that returns altobox and illustrations for each hit
+        // Manually constructed SolrQuery that returns illustrations metadata for each hit
 
         String format = "json";
-
         // Sets fields to export
         Set<String> fields = new HashSet<>();
         fields.add("recordID");
@@ -345,8 +344,6 @@ public class SolrExport extends SolrBase {
                 //cykel AND py:[1850 TO 1880] AND illustration:[* TO *] this query works in the solr admin panel
                 CommonParams.Q, sanitize("illustration:[* TO *]"),
                 CommonParams.FL, String.join(",", expandRequestFields(fields))
-
-
         );
 
         // Add extra SolrParams to final request
@@ -364,7 +361,6 @@ public class SolrExport extends SolrBase {
                                 // TODO: Convert to DocumentDTO
                                 .collect(Collectors.toMap(
                                         field -> field, field -> flattenStringList(doc.get(field)))));
-
                 if (structure.contains(STRUCTURE.content)) {
                     searchAndProcess(finalRequest, pageSize, max, docWriter, null);
                 }
