@@ -14,22 +14,67 @@ import java.util.List;
 
 public class ImageExtractor {
 
-    static public void getIllustrationMetadata(int x) throws IOException {
-
+    /**
+     * Get metadata values for all illustrations from query in mediestream.
+     * The returned array contains and array of metadata from each single illustration.
+     * These inner arrays contain the following values in order: x, y, w, h.
+     * X and Y are coordinates while w = width and h = height.
+     * @return an array of integer arrays consisting of the x, y, w and h values that are used to extract the illustration.
+     */
+    static public int[][] getMetadataForAllIllustrations() throws IOException {
+        // Test SOLR call
         String jsonString = solrCall();
 
-        List<String> illustrationList =getIllustrationIntegers(jsonString);
+        // Parse result from query and save into a list of strings
+        List<String> illustrationList = getIllustrationIntegers(jsonString);
+
+
+        // Creating object to return
+        int[][] allXYHWValues = new int[illustrationList.size()][];
+
+        for (int i = 0; i< illustrationList.size(); i++){
+            allXYHWValues[i] = getMetadataForSingleIllustration(i);
+        }
+
+        return allXYHWValues;
+    }
+    /**
+     * Get metadata values for single illustrations from query in mediestream.
+     * The returned array contains the following values in order: x, y, w, h.
+     * X and Y are coordinates while w = width and h = height.
+     * @param index represents the index at which the illustrations data is placed.
+     * @return an array consisting of the x, y, w and h values that are used to extract the illustration.
+     */
+    static public int[] getMetadataForSingleIllustration(int index) throws IOException {
+
+        // Test SOLR call
+        String jsonString = solrCall();
+
+        // Parse result from query and save into a list of strings
+        List<String> illustrationList = getIllustrationIntegers(jsonString);
 
         // TODO: Figure out how to use these values
+        // Dividing the strings from illustrationList into individual arrays of respective types
         String[] illustrationIDs = getIDs(illustrationList);
         int[] xValues = getXValues(illustrationList);
         int[] yValues = getYValues(illustrationList);
-        int[] hValues = getHValues(illustrationList);
         int[] wValues = getWValues(illustrationList);
+        int[] hValues = getHValues(illustrationList);
 
+        // Creating object to return
+        // Consists of x, y, w and h values
+        int[] singleXYHWValues = new int[]{
+                xValues[index], yValues[index], wValues[index], hValues[index]
+        };
 
+        return singleXYHWValues;
     }
 
+    /**
+     * Parse JSON response into list of individual illustrations.
+     * @param jsonString to extract illustrations from.
+     * @return a list of strings. Each string contains metadata for a single illustration from the input jsonString.
+     */
     static public List<String> getIllustrationIntegers(String jsonString) {
         // Create JSON Array from json string
         JSONArray responseArray = new JSONArray(jsonString);
@@ -47,6 +92,11 @@ public class ImageExtractor {
 
     }
 
+    /**
+     * Extracts individual IDs from list of strings with the format "ID=IDIDID, x=XX, y=YY, w=WW, h=HH"
+     * @param illustrationList input list of strings with specific format
+     * @return String array of IDs for illustrations
+     */
     static public String[] getIDs(List<String> illustrationList){
         String[] stringSplitted;
         String[] idStrings = new String[illustrationList.size()];
@@ -59,6 +109,12 @@ public class ImageExtractor {
 
         return idStrings;
     }
+
+    /**
+     * Extracts individual X values from list of strings with the format "ID=IDIDID, x=XX, y=YY, w=WW, h=HH"
+     * @param illustrationList input list of strings with specific format
+     * @return Integer array of X values for illustrations
+     */
     static public int[] getXValues(List<String> illustrationList){
         String[] stringSplitted;
         String[] xStrings = new String[illustrationList.size()];
@@ -76,6 +132,12 @@ public class ImageExtractor {
         }
         return xInts;
     }
+
+    /**
+     * Extracts individual Y values from list of strings with the format "ID=IDIDID, x=XX, y=YY, w=WW, h=HH"
+     * @param illustrationList input list of strings with specific format
+     * @return Integer array of Y values for illustrations
+     */
     static public int[] getYValues(List<String> illustrationList){
         String[] stringSplitted;
         String[] yStrings = new String[illustrationList.size()];
@@ -94,6 +156,12 @@ public class ImageExtractor {
         }
             return yInts;
     }
+
+    /**
+     * Extracts individual W values from list of strings with the format "ID=IDIDID, x=XX, y=YY, w=WW, h=HH"
+     * @param illustrationList input list of strings with specific format
+     * @return Integer array of W values for illustrations
+     */
     static public int[] getWValues(List<String> illustrationList){
         String[] stringSplitted;
         String[] wStrings = new String[illustrationList.size()];
@@ -111,6 +179,12 @@ public class ImageExtractor {
         }
         return wInts;
     }
+
+    /**
+     * Extracts individual H values from list of strings with the format "ID=IDIDID, x=XX, y=YY, w=WW, h=HH"
+     * @param illustrationList input list of strings with specific format
+     * @return Integer array of H values for illustrations
+     */
     static public int[] getHValues(List<String> illustrationList){
         String[] stringSplitted;
         String[] hStrings = new String[illustrationList.size()];

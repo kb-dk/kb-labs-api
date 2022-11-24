@@ -27,8 +27,22 @@ public class IllustrationBoxesTest {
     }
 
     @Test
-    public void testImageExtractor() throws IOException {
-        ImageExtractor.getIllustrationMetadata(5);
+    public void testSingleIllustrationExtraction() throws IOException {
+        int[] result = ImageExtractor.getMetadataForSingleIllustration(0);
+        for (int i : result) {
+            System.out.println(i);
+        }
+    }
+
+    @Test
+    public void testAllIllustrationExtraction() throws IOException{
+        int[][] result = ImageExtractor.getMetadataForAllIllustrations();
+        for (int[] i : result){
+            System.out.println(i);
+            for (int j : i){
+                System.out.println(j);
+            }
+        }
     }
 
 }
