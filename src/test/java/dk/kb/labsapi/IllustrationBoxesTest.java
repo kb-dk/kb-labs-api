@@ -1,17 +1,13 @@
 package dk.kb.labsapi;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import dk.kb.labsapi.config.ServiceConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.StreamingOutput;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -27,21 +23,29 @@ public class IllustrationBoxesTest {
     }
 
     @Test
-    public void testSingleIllustrationExtraction() throws IOException {
-        int[] result = ImageExtractor.getMetadataForSingleIllustration(0);
-        for (int i : result) {
-            System.out.println(i);
-        }
+    void testSolrCall() throws IOException {
+        String test = ImageExtractor.solrCall();
+        System.out.println(test);
     }
 
     @Test
-    public void testAllIllustrationExtraction() throws IOException{
-        int[][] result = ImageExtractor.getMetadataForAllIllustrations();
-        for (int[] i : result){
-            System.out.println(i);
-            for (int j : i){
-                System.out.println(j);
-            }
+    public void testRegex() throws IOException {
+        IllustrationMetadata illustration = new IllustrationMetadata();
+        // illustration.setData();
+
+        // System.out.println(illustration.get);
+    }
+
+    @Test
+    public void testIllustrationMetadataExtractor() throws IOException {
+        List<IllustrationMetadata> illustrations = ImageExtractor.getMetadataForIllustrations();
+
+        for (IllustrationMetadata illustration : illustrations) {
+            System.out.println(illustration.getId());
+            System.out.println(illustration.getX());
+            System.out.println(illustration.getY());
+            System.out.println(illustration.getW());
+            System.out.println(illustration.getH());
         }
     }
 
