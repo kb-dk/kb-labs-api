@@ -17,6 +17,11 @@ labsapi:
       cache:
         maxEntries: 50
         maxAgeMS: 3600000 # 1 hour
+
+    summarise:
+      # A summarise server with newspaper material
+      url: 'http://stage.example.com:50108/aviser/'
+
     facet:
       minYear: 1666 # Optional. Default is 1666
       maxYear: NOW # Optional. Valid values are YYYY or NOW

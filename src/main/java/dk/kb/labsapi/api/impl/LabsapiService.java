@@ -1,5 +1,6 @@
 package dk.kb.labsapi.api.impl;
 
+import dk.kb.labsapi.SummariseExport;
 import dk.kb.labsapi.SolrExport;
 import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
@@ -20,7 +21,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
@@ -241,6 +241,29 @@ public class LabsapiService implements LabsapiApi {
         }
     }
 
+    /**
+     * Deliver [ALTO XML](https://www.loc.gov/standards/alto/) for a single page from http://mediestream.dk/
+     *
+     * @param id: Ths ID for the ALTO to retrieve. This can be  * a [Mediestream link](https://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page:uuid:a9990f12-e9f0-4b1e-becc-e0d4bf514586/query/heste) * an UUID such as &#x60;a9990f12-e9f0-4b1e-becc-e0d4bf514586&#x60; * a &#x60;recordID&#x60; for an article such as &#x60;doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19&#x60;
+     *
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * [ALTO XML](https://www.loc.gov/standards/alto/) contains OCR text with bounding boxes from sections  down to single word granularity. Where possible, sections are connected through attributes to form articles, which are the atomic documents discovered through [Mediestream](https://mediestream.dk/).  This service only delivers ALTOs for newspaper material that is 140+ years old.
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public String getALTO(String id) throws ServiceException {
+        try{
+            return SummariseExport.getInstance().getALTO(id);
+        } catch (Exception e){
+            throw handleException(e);
+        }
+
+    }
     /**
      * Splits candidates on comma and ensured that all candidates are in valids.
      * @param candidates  candidate elements.

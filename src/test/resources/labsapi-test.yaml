@@ -14,6 +14,11 @@ labsapi:
       # Default is 5
       connections: 3
 
+    summarise:
+      # The full stage mirror of the production data
+      # Not to be confused with 56708 which only holds a small test corpus
+      url: 'http://localhost:50108/aviser/'
+
     facet:
       # Maximum field.limit
       # Defaults to 1000
