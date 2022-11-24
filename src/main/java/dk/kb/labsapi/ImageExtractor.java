@@ -29,10 +29,13 @@ public class ImageExtractor {
 
         List<IllustrationMetadata> illustrations = new ArrayList<>();
 
+
         for (String s : illustrationList) {
             // Create Illustration metadata object
             IllustrationMetadata singleIllustration = new IllustrationMetadata();
             singleIllustration.setData(s);
+            // TODO: Figure how to set Page UUID in a convenient way
+            // singleIllustration.setPageUUID();
 
             // Add object to list of object
             illustrations.add(singleIllustration);
@@ -56,6 +59,12 @@ public class ImageExtractor {
             JSONObject document = responseArray.getJSONObject(i);
             String illustration = document.getString("illustration");
             String[] illustrationsSplitted = illustration.split("\n");
+
+            String pageUUID = document.getString("pageUUID");
+            for (int j = 0; j< illustrationsSplitted.length; j++){
+                illustrationsSplitted[j] = illustrationsSplitted[j] + " :" + pageUUID;
+            }
+
             illustrationList.addAll(Arrays.asList(illustrationsSplitted));
         }
 
@@ -63,11 +72,15 @@ public class ImageExtractor {
 
     }
 
+    public static void createIllustrationLinks(){
+
+    }
+
     static public String solrCall() throws IOException {
         // These fields act as placeholders, while the call to SolrExport.getInstance().export
         // handles all variables itself as it is for now.
         Set<String> fields = new HashSet<>();
-        fields.add("alto_box");
+        fields.add("pageUUID");
         fields.add("illustration");
         Set<SolrExport.STRUCTURE> structure = new HashSet<>();
         structure.add(SolrExport.STRUCTURE.valueOf("content"));

@@ -330,7 +330,7 @@ public class SolrExport extends SolrBase {
         // Sets fields to export
         Set<String> fields = new HashSet<>();
         fields.add("recordID");
-        fields.add("alto_box");
+        fields.add("pageUUID");
         fields.add("illustration");
 
         // Maximum number of documents to export

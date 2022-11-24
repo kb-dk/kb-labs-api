@@ -1,12 +1,16 @@
 package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,14 +34,15 @@ public class IllustrationBoxesTest {
 
     @Test
     public void testRegexFormatting(){
-        String testString = "id=ART99-1_SUB,x=8380,y=7888,w=2596,h=448";
+        String testString = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100 :doms_aviser_page:uuid:0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4";
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData(testString);
-        assertEquals("ART99-1_SUB", illustration.getId());
-        assertEquals(8380, illustration.getX());
-        assertEquals(7888, illustration.getY());
-        assertEquals(2596, illustration.getW());
-        assertEquals(448, illustration.getH());
+        assertEquals("ART88-1_SUB", illustration.getId());
+        assertEquals(2364, illustration.getX());
+        assertEquals(4484, illustration.getY());
+        assertEquals(652, illustration.getW());
+        assertEquals(100, illustration.getH());
+        assertEquals("0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4", illustration.getPageUUID());
     }
 
     @Test
@@ -51,6 +56,15 @@ public class IllustrationBoxesTest {
             System.out.println(illustration.getW());
             System.out.println(illustration.getH());
         }
+    }
+
+    @Test
+    public void testGetPageUuid() throws IOException {
+        String testString = ImageExtractor.solrCall();
+
+        List<String> list = ImageExtractor.getIllustrationsList(testString);
+
+        System.out.println(list.get(0));
     }
 
 }

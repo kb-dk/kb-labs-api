@@ -12,14 +12,13 @@ import static dk.kb.labsapi.ImageExtractor.getIllustrationsList;
 
 public class IllustrationMetadata {
     private static final Logger log = LoggerFactory.getLogger(IllustrationMetadata.class);
+    private String pageUUID;
     private String id;
     private int x;
     private int y;
     private int w;
     private int h;
-
-    // TODO: Make regex prettier
-    static final Pattern illustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*)");
+    static final Pattern illustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*) :doms_aviser_page:uuid:(\\S*)");
 
     public IllustrationMetadata(){
     }
@@ -33,12 +32,16 @@ public class IllustrationMetadata {
             this.y = Integer.parseInt(m.group(3));
             this.w = Integer.parseInt(m.group(4));
             this.h = Integer.parseInt(m.group(5));
+            this.pageUUID = m.group(6);
         } else {
             log.error("Regex matching failed. Please check that input and pattern aligns.");
         }
     }
 
     // Getters
+    public String getPageUUID(){
+        return pageUUID;
+    }
     public String getId() {
         return id;
     }
