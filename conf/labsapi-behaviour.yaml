@@ -17,6 +17,8 @@ labsapi:
       cache:
         maxEntries: 50
         maxAgeMS: 3600000 # 1 hour
+    imageserver: # testURL
+      url: 'https://example.com/?FIF=/avis-show/symlinks'
     facet:
       minYear: 1666 # Optional. Default is 1666
       maxYear: NOW # Optional. Valid values are YYYY or NOW
