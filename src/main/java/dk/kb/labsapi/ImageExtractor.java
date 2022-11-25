@@ -21,11 +21,11 @@ public class ImageExtractor {
      * X and Y are coordinates while w = width and h = height.
      * @return an array of objects consisting of the id, x, y, w and h values that are used to extract illustrations.
      */
-    static public List<IllustrationMetadata> getMetadataForIllustrations() throws IOException {
+    static public List<IllustrationMetadata> getMetadataForIllustrations(String jsonString) throws IOException {
         List<IllustrationMetadata> illustrations = new ArrayList<>();
         // Test SOLR call - This will probably be given as method input/argument
         // TODO: Move this solr call out, so that the method can be tested properly
-        String jsonString = solrCall();
+        // String jsonString = solrCall();
         // Parse result from query and save into a list of strings
         List<String> illustrationList = getIllustrationsList(jsonString);
 

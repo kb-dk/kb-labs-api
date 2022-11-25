@@ -1,5 +1,7 @@
 package dk.kb.labsapi.api.impl;
 
+import dk.kb.labsapi.IllustrationMetadata;
+import dk.kb.labsapi.ImageExtractor;
 import dk.kb.labsapi.SolrExport;
 import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
@@ -19,11 +21,10 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.URI;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
@@ -252,7 +253,41 @@ public class LabsapiService implements LabsapiApi {
 
     @Override
     public javax.ws.rs.core.StreamingOutput exportImages(String query) {
-        return null;
+        Set<String> fields = new HashSet<>();
+        fields.add("recordID"); // Is not used for anything
+        fields.add("pageUUID"); // Defines the page
+        fields.add("illustration"); // Used to extract every illustration for each pageUUID
+        fields.add("page_width"); // Overall width of page - used to calculate extraction region
+        fields.add("page_height"); //Overall height of page - used to calculate extraction region
+
+        long max = 10;
+
+        Set<SolrExport.STRUCTURE> structure = new HashSet<>();
+        structure.add(SolrExport.STRUCTURE.valueOf("content"));
+        // This method should only need the query and maybe a maximim number of results to return number of results
+        // TODO: Implement this method as own endpoint.
+        // TODO: Make overall method in Image Extractor that connect these child methods
+        // TODO: Return images instead of links to images
+        StreamingOutput solrResponse = SolrExport.getInstance().export(query, fields, max, structure, image);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try {
+            solrResponse.write(output);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        String jsonString = output.toString(StandardCharsets.UTF_8);
+
+        List<IllustrationMetadata> metadataList;
+        List<URL> urls;
+        try {
+            metadataList = ImageExtractor.getMetadataForIllustrations(jsonString);
+            urls = ImageExtractor.createLinkForAllIllustrations(metadataList);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return (StreamingOutput) urls;
     }
 
     /**

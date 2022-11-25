@@ -88,6 +88,12 @@ public class IllustrationBoxesTest {
         String region = ImageExtractor.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
         assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
+
+    @Test
+    public void testServerConfig(){
+        String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
+        assertFalse(baseURL.isEmpty());
+    }
     @Test
     public void randomTests() throws IOException {
 

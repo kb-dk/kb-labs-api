@@ -192,10 +192,11 @@ paths:
         '200':
           description: 'OK'
           content:
-            image/png:
+            text/plain:
               schema:
-                type: string
-                format: binary
+                type: array
+                items:
+                  type: string
 
   /aviser/query/facet:
     get:
