@@ -331,6 +331,8 @@ public class SolrExport extends SolrBase {
         fields.add("recordID");
         fields.add("pageUUID");
         fields.add("illustration");
+        fields.add("page_width");
+        fields.add("page_height");
 
         // Maximum number of documents to export
         long max = 10;
