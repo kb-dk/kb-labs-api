@@ -1,15 +1,12 @@
 package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
-import dk.kb.util.yaml.YAML;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -27,6 +24,7 @@ public class ImageExtractor {
     static public List<IllustrationMetadata> getMetadataForIllustrations() throws IOException {
         List<IllustrationMetadata> illustrations = new ArrayList<>();
         // Test SOLR call - This will probably be given as method input/argument
+        // TODO: Move this solr call out, so that the method can be tested properly
         String jsonString = solrCall();
         // Parse result from query and save into a list of strings
         List<String> illustrationList = getIllustrationsList(jsonString);
@@ -68,21 +66,26 @@ public class ImageExtractor {
         return illustrationList;
     }
 
+    public static List<URL> createLinkForAllIllustrations(List<IllustrationMetadata> metadataList) throws IOException {
+        List<URL> illustrationUrls = new ArrayList<>();
+
+        for (int i = 0; i< metadataList.size(); i++){
+            illustrationUrls.add(createIllustrationLink(metadataList.get(i)));
+        }
+        return illustrationUrls;
+    }
+
     /**
      * Construct link to illustration from metadata.
      * @param ill is a class containing metadata for an illustration
      * @return a URL to the illustration described in the input metadata
      */
-    public static URL createIllustrationLinks(IllustrationMetadata ill) throws IOException {
-        YAML conf = ServiceConfig.getConfig();
-        String baseURL = conf.getString("labsapi.aviser.imageserver.url");
+    public static URL createIllustrationLink(IllustrationMetadata ill) throws IOException {
+        String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
         String baseParams = "&CVT=jpeg";
         String pageUuid = ill.getPageUUID();
         String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
-
-        // SYNTAX for defining region for export
-        //RGN=x,y,w,h
-
+        // TODO: Some encoding should probably happen here, so that we are not using un-encoded commas in the URL
         String region = calculateIllustrationRegion(ill.getX(), ill.getY(), ill.getW(), ill.getH(), ill.getPageWidth(), ill.getPageHeight());
 
         URL finalUrl = new URL(baseURL+prePageUuid+pageUuid+region+baseParams);

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,8 +26,8 @@ public class IllustrationBoxesTest {
 
     @Test
     void testSolrCall() throws IOException {
-        String test = ImageExtractor.solrCall();
-        System.out.println(test);
+        String testCall = ImageExtractor.solrCall();
+        assertFalse(testCall.isEmpty());
     }
 
     @Test
@@ -45,56 +46,47 @@ public class IllustrationBoxesTest {
     }
 
     @Test
-    public void testIllustrationMetadataExtractor() throws IOException {
-        List<IllustrationMetadata> illustrations = ImageExtractor.getMetadataForIllustrations();
+    public void testIllustrationMetadataConversion() throws IOException {
+        IllustrationMetadata testIllustration = new IllustrationMetadata();
+        testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
 
-        for (IllustrationMetadata illustration : illustrations) {
-            System.out.println(illustration.getId());
-            System.out.println(illustration.getX());
-            System.out.println(illustration.getY());
-            System.out.println(illustration.getW());
-            System.out.println(illustration.getH());
-            System.out.println(illustration.getPageWidth());
-            System.out.println(illustration.getPageHeight());
-        }
+        assertEquals(IllustrationMetadata.class, testIllustration.getClass());
     }
 
     @Test
-    public void testGetPageUuid() throws IOException {
-        String testString = ImageExtractor.solrCall();
+    public void testSingleURLConstruction() throws IOException {
+        // img size 2169x2644
+        IllustrationMetadata testIllustration = new IllustrationMetadata();
+        testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
-        List<String> list = ImageExtractor.getIllustrationsList(testString);
+        URL test = ImageExtractor.createIllustrationLink(testIllustration);
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966"+"&CVT=jpeg");
 
-        System.out.println(list.get(0));
+        assertEquals(correct, test);
     }
 
-
     @Test
-    public void testDefinitionOfRegions() throws IOException {
+    public void testMultipleURLConstructions() throws IOException {
         // img size 2169x2644
         IllustrationMetadata illustration1 = new IllustrationMetadata();
         illustration1.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         IllustrationMetadata illustration2 = new IllustrationMetadata();
         illustration2.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        List<IllustrationMetadata> testList = new ArrayList<>();
+        testList.add(illustration1);
+        testList.add(illustration2);
 
-        System.out.println(illustration1.getPageUUID());
-
-        URL test = ImageExtractor.createIllustrationLinks(illustration1);
-        System.out.println(test);
-
+        List<URL> result = ImageExtractor.createLinkForAllIllustrations(testList);
+        System.out.println(result);
     }
 
     @Test
     public void testSizeConversion(){
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-
-        float calculatedX = (float) illustration.getX() / (float) illustration.getPageWidth();
-        float calculatedY = (float) illustration.getY() / (float) illustration.getPageHeight();
-        float calculatedW = (float) illustration.getW() / (float) illustration.getPageWidth();
-        float calculatedH = (float) illustration.getH() / (float) illustration.getPageHeight();
-        String region = "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;
-        System.out.println(region);
+        String region = ImageExtractor.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
+        assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
     @Test
     public void randomTests() throws IOException {
