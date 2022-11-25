@@ -1,11 +1,14 @@
 package dk.kb.labsapi;
 
+import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.util.yaml.YAML;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -54,34 +57,49 @@ public class ImageExtractor {
             String illustration = document.getString("illustration");
             String[] illustrationsSplitted = illustration.split("\n");
             String pageUUID = document.getString("pageUUID");
+            int pageWidth = document.getInt("page_width");
+            int pageHeight = document.getInt("page_height");
+
             for (int j = 0; j< illustrationsSplitted.length; j++){
-                illustrationsSplitted[j] = illustrationsSplitted[j] + " :" + pageUUID;
+                illustrationsSplitted[j] = illustrationsSplitted[j] + "," + pageUUID + "," + pageWidth + "," + pageHeight;
             }
             illustrationList.addAll(Arrays.asList(illustrationsSplitted));
         }
         return illustrationList;
     }
 
-    public static URL createIllustrationLinks(IllustrationMetadata illustration) throws MalformedURLException {
-        // Reconstructing this as would be done with input data
-        // TODO: add test solr url
-        URL baseURL = new URL("");
+    /**
+     * Construct link to illustration from metadata.
+     * @param ill is a class containing metadata for an illustration
+     * @return a URL to the illustration described in the input metadata
+     */
+    public static URL createIllustrationLinks(IllustrationMetadata ill) throws IOException {
+        YAML conf = ServiceConfig.getConfig();
+        String baseURL = conf.getString("labsapi.aviser.imageserver.url");
         String baseParams = "&CVT=jpeg";
-
-        String pageUuid = illustration.getPageUUID();
-
+        String pageUuid = ill.getPageUUID();
         String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
 
         // SYNTAX for defining region for export
         //RGN=x,y,w,h
 
-        // Region is a fraction of the image = Measure the fraction of each illustration.
-        // TODO: I need page width and page height from original solr response
-
-        String region = "&RGN="+illustration.getX()+","+illustration.getY()+","+illustration.getW()+","+illustration.getH();
+        String region = calculateIllustrationRegion(ill.getX(), ill.getY(), ill.getW(), ill.getH(), ill.getPageWidth(), ill.getPageHeight());
 
         URL finalUrl = new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
         return finalUrl;
+    }
+
+    /**
+     * Calculate X & W coordinates, width and height for region parameter. Converts input pixel values to fractions of image size.
+     * The image server containing the images uses the <a href="https://iipimage.sourceforge.io/documentation/protocol/">Internet Imaging Protocol</a>.
+     * @return a region string that is ready to be added to an IIP query
+     */
+    public static String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
+        float calculatedX = (float) x / (float) width;
+        float calculatedY = (float) y / (float) height;
+        float calculatedW = (float) w / (float) width;
+        float calculatedH = (float) h / (float) height;
+        return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;
     }
 
     static public String solrCall() throws IOException {
@@ -90,6 +108,8 @@ public class ImageExtractor {
         Set<String> fields = new HashSet<>();
         fields.add("pageUUID");
         fields.add("illustration");
+        fields.add("page_width");
+        fields.add("page_height");
         Set<SolrExport.STRUCTURE> structure = new HashSet<>();
         structure.add(SolrExport.STRUCTURE.valueOf("content"));
         long max = 10;
