@@ -324,24 +324,21 @@ public class SolrExport extends SolrBase {
 
     public StreamingOutput streamExportImages(SolrParams request) {
         // Manually constructed SolrQuery that returns illustrations metadata for each hit
-
-        String format = "json";
+        // TODO: This method has to be accesed from own OpenAPI endpoint and not only as an option in export
+        String format = "json"; // Defines the format for Solr response - needs to be json for ImageExtractor class to function correctly
         // Sets fields to export
         Set<String> fields = new HashSet<>();
-        fields.add("recordID");
-        fields.add("pageUUID");
-        fields.add("illustration");
-        fields.add("page_width");
-        fields.add("page_height");
-
+        fields.add("recordID"); // Is not used for anything
+        fields.add("pageUUID"); // Defines the page
+        fields.add("illustration"); // Used to extract every illustration for each pageUUID
+        fields.add("page_width"); // Overall width of page - used to calculate extraction region
+        fields.add("page_height"); //Overall height of page - used to calculate extraction region
         // Maximum number of documents to export
-        long max = 10;
-
+        long max = 10; // should be set by user
         // Makes the request modifialble
         ModifiableSolrParams finalRequest = new ModifiableSolrParams(request);
-
         // Add fields to SolrParams
-        // TODO: Currently it does not require results to have illustrations - They need to have it
+        // Constructs solr query that only contains pages with illustrations
         SolrParams manualParams = new SolrQuery(
                 //cykel AND py:[1850 TO 1880] AND illustration:[* TO *] this query works in the solr admin panel
                 CommonParams.Q, sanitize("illustration:[* TO *]"),
