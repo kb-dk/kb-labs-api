@@ -257,12 +257,17 @@ public class LabsapiService implements LabsapiApi {
      */
     @Override
     public String getALTO(String id) throws ServiceException {
+        String uuid = SummariseExport.extractUUID(id);
+
         try{
+            String filename = "mediestream_page_" + uuid + ".alto.xml";
+            // Show inline in Swagger UI, inline when opened directly in browser
+            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"" + filename + "\"");
+
             return SummariseExport.getInstance().getALTO(id);
         } catch (Exception e){
             throw handleException(e);
         }
-
     }
     /**
      * Splits candidates on comma and ensured that all candidates are in valids.

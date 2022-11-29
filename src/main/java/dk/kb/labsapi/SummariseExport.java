@@ -16,6 +16,7 @@ package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.util.webservice.exception.InternalServiceException;
+import dk.kb.util.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.util.xml.XMLStepper;
 import dk.kb.util.yaml.YAML;
 import org.apache.commons.io.IOUtils;
@@ -85,11 +86,7 @@ public class SummariseExport {
             throw new InternalServiceException("ALTO delivery service has not been configured, sorry");
         }
 
-        Matcher matcher = UUID_PATTERN.matcher(id);
-        if (!matcher.matches()) {
-            throw new IllegalArgumentException("Unable to extract UUID from '" + id + "'");
-        }
-        String uuid = matcher.group(1).toLowerCase(Locale.ROOT);
+        String uuid = extractUUID(id);
         String recordID = uuidToRecordID(id, uuid);
 
         log.debug("Retrieving SOAP XML for recordID '{}'", recordID);
@@ -118,6 +115,23 @@ public class SummariseExport {
         String alto = extractALTOFromFedoraXML(extractRecord(soapXML, uuid), uuid);
         log.debug("Resolved ALTO request for id '{}' to a {} character ALTO XML", id, alto.length());
         return alto;
+    }
+
+    /**
+     * Extract an UUID from the given id using pattern matching. Only requirement for matching is that a substring
+     * follows the UUID 8-4-4-4-12 hex pattern, e.g. {@code 1620bf3b-7801-4a34-b2b9-fd8db9611b76}.
+     * @param id an ID containg an UUID.
+     * @return the UUID part of the ID.
+     * @throws InvalidArgumentServiceException if no UUID could be extracted.
+     */
+    public static String extractUUID(String id) {
+        Matcher matcher = UUID_PATTERN.matcher(id);
+        if (!matcher.matches()) {
+            throw new InvalidArgumentServiceException(
+                    "Unable to extract UUID from '" + id + "'. Expected 8-4-4-4-12 hex pattern, e.g. " +
+                    "1620bf3b-7801-4a34-b2b9-fd8db9611b76");
+        }
+        return matcher.group(1).toLowerCase(Locale.ROOT);
     }
 
     /**

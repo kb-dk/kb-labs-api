@@ -42,7 +42,7 @@ class SummariseExportTest {
     }
 
     // Not enabled per default as it only runs on the developer network with access to a test server
-    //@Test
+    @Test
     public void testRetrieval() throws SolrServerException, IOException {
         String id = getID("hest");
         String alto = SummariseExport.getInstance().getALTO(id);
