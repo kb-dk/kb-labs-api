@@ -209,6 +209,11 @@ public class SummariseExport {
             throw new RuntimeException(message);
         }
         if (response.getResults().isEmpty()) {
+            log.info("uuidToRecordID: No results for query '{}' constructed from input id '{}'", query, id);
+            if (SolrExport.getInstance().countHits(true, query) != 0) {
+                throw new IllegalArgumentException(
+                        "Unable to export ALTO id '" + id + "'. The material is not old enough to be out of copyright");
+            }
             throw new IllegalArgumentException("Unable to resolve ALTO id '" + id + "'");
         }
         Object oID = response.getResults().get(0).getFieldValue("recordID");
