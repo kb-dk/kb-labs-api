@@ -125,6 +125,9 @@ public class SummariseExport {
      * @throws InvalidArgumentServiceException if no UUID could be extracted.
      */
     public static String extractUUID(String id) {
+        if (id == null) {
+            throw new InvalidArgumentServiceException("No ID provided");
+        }
         Matcher matcher = UUID_PATTERN.matcher(id);
         if (!matcher.matches()) {
             throw new InvalidArgumentServiceException(
