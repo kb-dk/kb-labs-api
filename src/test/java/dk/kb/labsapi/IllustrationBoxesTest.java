@@ -82,6 +82,15 @@ public class IllustrationBoxesTest {
     }
 
     @Test
+    public void testIllustrationLink() throws IOException {
+        IllustrationMetadata illustration = new IllustrationMetadata();
+        illustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+
+        URL result = ImageExtractor.createIllustrationLink(illustration);
+        System.out.println(result);
+    }
+
+    @Test
     public void testSizeConversion(){
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");

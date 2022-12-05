@@ -253,6 +253,7 @@ public class LabsapiService implements LabsapiApi {
 
     @Override
     public javax.ws.rs.core.StreamingOutput exportImages(String query) {
+        // This method should only need the query and maybe a maximum number of results to return number of results
         Set<String> fields = new HashSet<>();
         fields.add("recordID"); // Is not used for anything
         fields.add("pageUUID"); // Defines the page
@@ -260,14 +261,14 @@ public class LabsapiService implements LabsapiApi {
         fields.add("page_width"); // Overall width of page - used to calculate extraction region
         fields.add("page_height"); //Overall height of page - used to calculate extraction region
 
-        long max = 10;
+        long max = 10; // TODO: Ideally this is set as an argument in the method
 
         Set<SolrExport.STRUCTURE> structure = new HashSet<>();
         structure.add(SolrExport.STRUCTURE.valueOf("content"));
-        // This method should only need the query and maybe a maximim number of results to return number of results
         // TODO: Implement this method as own endpoint.
         // TODO: Make overall method in Image Extractor that connect these child methods
-        // TODO: Return images instead of links to images
+
+        // TODO: Instead of creating an export instance of SolrExport this should maybe happen in its own class. Maybe ImageExtractor, where everything else happens.
         StreamingOutput solrResponse = SolrExport.getInstance().export(query, fields, max, structure, image);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
@@ -287,6 +288,7 @@ public class LabsapiService implements LabsapiApi {
             throw new RuntimeException(e);
         }
 
+        // TODO: Return images instead of links to images
         return (StreamingOutput) urls;
     }
 
