@@ -21,23 +21,24 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
-import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.client.solrj.request.json.JsonQueryRequest;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.params.*;
+import org.apache.solr.common.params.CommonParams;
+import org.apache.solr.common.params.CursorMarkParams;
+import org.apache.solr.common.params.FacetParams;
+import org.apache.solr.common.params.GroupParams;
+import org.apache.solr.common.params.HighlightParams;
+import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.params.SolrParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Super class for the Solr-using parts of the API.
@@ -45,11 +46,13 @@ import java.util.function.Supplier;
 public class SolrBase {
     private static final Logger log = LoggerFactory.getLogger(SolrBase.class);
     protected final CachingSolrClient solrClient;
+    protected final SolrClient rawSolrClient;
 
     public SolrBase(String configRoot) {
         this(resolveConfig(configRoot));
     }
     public SolrBase(YAML conf) {
+        rawSolrClient = createRawClient(conf);
         SolrClient innerSolrClient = createClient(conf);
         solrClient = new CachingSolrClient(
                 innerSolrClient,
@@ -81,6 +84,24 @@ public class SolrBase {
             baseParams.set(CommonParams.FQ, filter);
         }
         log.info("Creating SolrClient({}) with filter='{}'", fullURL, filter);
+        return new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
+    }
+
+    /**
+     * Create a SolrClient without any filters.
+     * @param conf the configuration for the Solr client.
+     * @return a SolrClient ready for use.
+     */
+    private SolrClient createRawClient(YAML conf) {
+        String solrURL = conf.getString(".solr.url");
+        String collection = conf.getString(".solr.collection");
+        String fullURL = solrURL + (solrURL.endsWith("/") ? "" : "/") + collection;
+        String filter = conf.getString(".solr.filter", null);
+
+        ModifiableSolrParams baseParams = new ModifiableSolrParams();
+        baseParams.set(HighlightParams.HIGHLIGHT, false);
+        baseParams.set(GroupParams.GROUP, false);
+        log.info("Creating SolrClient({}) without filters", fullURL);
         return new HttpSolrClient.Builder(fullURL).withInvariantParams(baseParams).build();
     }
 
@@ -150,7 +171,18 @@ public class SolrBase {
      * @throws RuntimeException if the Solr call could not be completed.
      */
     protected QueryResponse callSolr(SolrParams request) throws SolrServerException, IOException {
-        return solrClient.query(request);
+        return callSolr(request, false);
+    }
+
+    /**
+     * Performs a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
+     * @param request the request to Solr.
+     * @param useRaw if true, the filterless Solr client will be used.
+     * @return the response from Solr.
+     * @throws RuntimeException if the Solr call could not be completed.
+     */
+    protected QueryResponse callSolr(SolrParams request, boolean useRaw) throws SolrServerException, IOException {
+        return useRaw ? rawSolrClient.query(request) : solrClient.query(request);
     }
 
     /**
@@ -170,15 +202,30 @@ public class SolrBase {
      * @return the number of hits for the query.
      */
     public long countHits(String query) {
-        SolrParams request = new SolrQuery(
+        return countHits(false, query);
+    }
+
+    /**
+     * Performs the fastest possible request ({@code rows=0&facet=false...} to Solr and return the number of hits.
+     * Typically used to get an idea of the size of a full export.
+     * @param useRaw if true, the filterless Solr client will be used for counting.
+     * @param query a Solr query.
+     * @param filterQueries 0 or more filterQueries. These are only guaranteed to take effect if {@code useRaw == true}.
+     * @return the number of hits for the query.
+     */
+    public long countHits(boolean useRaw, String query, String... filterQueries) {
+        SolrQuery request = new SolrQuery(
                 CommonParams.Q, sanitize(query),
                 FacetParams.FACET, "false",
                 GroupParams.GROUP, "false",
                 HighlightParams.HIGHLIGHT, "false",
                 // Filter is added automatically by the SolrClient
                 CommonParams.ROWS, Integer.toString(0));
+        if (filterQueries.length != 0) {
+            request.setFilterQueries(filterQueries);
+        }
         try {
-            QueryResponse response = callSolr(request);
+            QueryResponse response = callSolr(request, useRaw);
             return response.getResults().getNumFound();
         } catch (Exception e) {
             log.warn("Exception calling Solr for countHits(" + query + ")", e);
