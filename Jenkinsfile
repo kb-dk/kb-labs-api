@@ -45,19 +45,21 @@ openshift.withCluster() { // Use "default" cluster or fallback to OpenShift clus
                                 taskScanner(highTags:'FIXME', normalTags:'TODO', includePattern: '**/*.java', excludePattern: 'target/**/*')]                
                 }
 
-                stage('Create test project') {
-                    recreateProject(projectName)
-
-                    openshift.withProject(projectName) {
-
-                        stage("Create build and deploy application") { 
-                            openshift.newBuild("--strategy source", "--binary", "-i kb-infra/kb-s2i-tomcat90", "--name labsapi")
-                            openshift.startBuild("labsapi", "--from-dir=.", "--follow")
-                            openshift.newApp("labsapi:latest")
-                            openshift.create("route", "edge", "--service=labsapi")
-                        }
-                    }
-                }
+// Disabled 2022-12-05 due to internal Jenkins problems @ the Royal Danish Library
+// This should be re-enabled when the problems has been solved
+//                stage('Create test project') {
+//                    recreateProject(projectName)
+//
+//                    openshift.withProject(projectName) {
+//
+//                        stage("Create build and deploy application") {
+//                            openshift.newBuild("--strategy source", "--binary", "-i kb-infra/kb-s2i-tomcat90", "--name java-webapp")
+//                            openshift.startBuild("java-webapp", "--from-dir=.", "--follow")
+//                            openshift.newApp("java-webapp:latest")
+//                            openshift.create("route", "edge", "--service=java-webapp")
+//                        }
+//                    }
+//                }
 
                 stage('Push to Nexus (if Master)') {
                     sh 'env'
