@@ -186,8 +186,8 @@ paths:
           description: |
                       The ID for the ALTO to retrieve. This can be 
                       * a [Mediestream URL](https://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page:uuid:a9990f12-e9f0-4b1e-becc-e0d4bf514586/query/heste) to a single page
-                      * an `UUID`  such as `a9990f12-e9f0-4b1e-becc-e0d4bf514586`
-                      * a `recordID` for an article such as `doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19`
+                      * an `UUID`  such as `a9990f12-e9f0-4b1e-becc-e0d4bf514586`. `UUID`s can be extracted from the Mediestream URL directly or from `recordID`s or `pageUUID`s from field exports.  
+                      * a `recordID` for an article such as `doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19`. `recordID`s can be retrieved as part of the field export endpoint.
           schema:
             type: string
             example: 'doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19'
