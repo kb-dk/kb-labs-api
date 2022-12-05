@@ -120,7 +120,7 @@ public class SummariseExport {
     /**
      * Extract an UUID from the given id using pattern matching. Only requirement for matching is that a substring
      * follows the UUID 8-4-4-4-12 hex pattern, e.g. {@code 1620bf3b-7801-4a34-b2b9-fd8db9611b76}.
-     * @param id an ID containg an UUID.
+     * @param id an ID containing an UUID.
      * @return the UUID part of the ID.
      * @throws InvalidArgumentServiceException if no UUID could be extracted.
      */
@@ -190,7 +190,7 @@ public class SummariseExport {
                 // https://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page:uuid:a9990f12-e9f0-4b1e-becc-e0d4bf514586/query/heste)
                 "pageUUID:\"doms_aviser_page:uuid:%1$s\"",
                 uuid);
-        String filter = "recordBase:doms_aviser_page AND py:[* TO 1882]";
+        String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
 
         log.debug("Verifying validity and resolving recordID from given UUID '{}' with query='{}'",
                   uuid, query);
