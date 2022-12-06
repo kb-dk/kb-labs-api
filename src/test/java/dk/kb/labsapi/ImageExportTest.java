@@ -1,14 +1,20 @@
 package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
+import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocumentList;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -16,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * IMPORTANT: All this only works with a proper setup and contact to Solr
  */
-public class IllustrationBoxesTest {
-    private static final Logger log = LoggerFactory.getLogger(IllustrationBoxesTest.class);
+public class ImageExportTest {
+    private static final Logger log = LoggerFactory.getLogger(ImageExportTest.class);
 
     @BeforeAll
     static void setupConfig() throws IOException {
@@ -25,9 +31,67 @@ public class IllustrationBoxesTest {
     }
 
     @Test
-    void testSolrCall() throws IOException {
-        String testCall = ImageExport.solrCall();
-        assertFalse(testCall.isEmpty());
+    void testSolrCall() {
+        int max = 10;
+        QueryResponse response = ImageExport.illustrationSolrCall("hest", max);
+
+        SolrDocumentList responseList = response.getResults();
+
+        for (int i = 0; i<responseList.size(); i++){
+            System.out.println(responseList.get(i).jsonStr());
+        }
+    }
+
+    @Test
+    public void testMapping(){
+        int max = 10;
+        QueryResponse response = ImageExport.illustrationSolrCall("hest", max);
+        SolrDocumentList responseList = response.getResults();
+
+        for (int i = 0; i<responseList.size(); i++) {
+            //System.out.println(responseList.get(i).getFieldValue("pageUUID"));
+            //System.out.println(responseList.get(i).getFieldValue("page_width"));
+            //System.out.println(responseList.get(i).getFieldValue("page_height"));
+            //System.out.println(responseList.get(i).getFieldValue("illustration"));
+
+            //System.out.println(responseList.get(i).jsonStr());
+            //responseList.get(i).jsonStr();
+            String pageUUID = responseList.get(i).getFieldValue("pageUUID").toString();
+            long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
+            long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
+            List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
+            responseList.get(i).getFieldValue("illustration");
+
+            System.out.println(pageUUID + pageWidth + pageHeight + illustrations);
+        }
+
+        /*
+        JSONArray responseArray = new JSONArray(jsonString);
+
+
+        // Create list for all illustration values
+        List<String> illustrationList = new ArrayList<>();
+
+        for (int i = 0; i < responseArray.length(); ++i) {
+            JSONObject document = responseArray.getJSONObject(i);
+            String illustration = document.getString("illustration");
+            String[] illustrationsSplitted = illustration.split("\n");
+            String pageUUID = document.getString("pageUUID");
+            int pageWidth = document.getInt("page_width");
+            int pageHeight = document.getInt("page_height");
+
+            for (int j = 0; j< illustrationsSplitted.length; j++){
+                illustrationsSplitted[j] = illustrationsSplitted[j] + "," + pageUUID + "," + pageWidth + "," + pageHeight;
+            }
+            illustrationList.addAll(Arrays.asList(illustrationsSplitted));
+        }
+
+
+        for (int i = 0; i<illustrationList.size(); i++){
+            System.out.println(illustrationList.get(i));
+        }
+
+         */
     }
 
     @Test

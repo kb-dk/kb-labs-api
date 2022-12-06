@@ -1,49 +1,61 @@
 package dk.kb.labsapi;
 
+import dk.kb.JSONStreamWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.GroupParams;
+import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.params.SolrParams;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
 
 public class ImageExport {
+    private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
 
-    static public void getImageFromTextQuery(){
+
+    static public void getImageFromTextQuery(String query, int max){
         /* Steps
         1. Send Solr query with correct fields as done in SolrCall()
+        1,1. Parse response to string
         2. Parse response to get illustration metadata
         3. Construct links to get illustrations from Imageserver
         4. Return a stream of images instead of the link to them
         */
+        // Query Solr
+        QueryResponse response = illustrationSolrCall(query, max);
+        // Parse response
+        String responseString = String.valueOf(response.getResults());
+
+        // Get illustration metadata
 
     }
-/*
-    static private void illustrationSolrCall(String query){
 
-        // These fields act as placeholders, while the call to SolrExport.getInstance().export
-        // handles all variables itself as it is for now.
-        Set<String> fields = new HashSet<>();
-        fields.add("pageUUID");
-        fields.add("illustration");
-        fields.add("page_width");
-        fields.add("page_height");
-        Set<SolrExport.STRUCTURE> structure = new HashSet<>();
-        structure.add(SolrExport.STRUCTURE.valueOf("content"));
-        long max = 10;
+    static public QueryResponse illustrationSolrCall(String query, int max){
+        String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]"; //AND illustration:[* TO *]"; //TODO: Make filter work and filter for illustrations. Currently it odes not get added
 
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
-        solrQuery.setFields(fields);
-        solrQuery.setRows(1);
+        solrQuery.setFilterQueries(filter); // TODO: Make filter work and filter for illustrations
+        solrQuery.setFields("pageUUID, illustration, page_width, page_height");
+        solrQuery.setRows(max); // TODO: Implement -1 to return all
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
@@ -51,13 +63,20 @@ public class ImageExport {
         try {
             response = SolrExport.getInstance().callSolr(solrQuery);
         } catch (Exception e) {
-            String message = "Error calling Solr for ALTO id '" + id + "' resolved to UUID '" + uuid + "'";
+            String message = "Error calling Solr for query: " + query;
             log.warn(message, e);
             throw new RuntimeException(message);
         }
-    }
+        /*
+        Object oID = response.getResults().get(0).getFieldValue("recordID");
+        if (oID == null) {
+            log.error("");
+            throw new RuntimeException("Internal server error: Unable to resolve recordID");
+        }
+         */
 
- */
+        return response;
+    }
 
     /**
      * Get metadata values for all illustrations from query.
@@ -68,9 +87,7 @@ public class ImageExport {
      */
     static public List<IllustrationMetadata> getMetadataForIllustrations(String jsonString) throws IOException {
         List<IllustrationMetadata> illustrations = new ArrayList<>();
-        // Test SOLR call - This will probably be given as method input/argument
-        // TODO: Move this solr call out, so that the method can be tested properly
-        // String jsonString = solrCall();
+
         // Parse result from query and save into a list of strings
         List<String> illustrationList = getIllustrationsList(jsonString);
 

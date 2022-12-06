@@ -1,7 +1,7 @@
 package dk.kb.labsapi.api.impl;
 
 import dk.kb.labsapi.IllustrationMetadata;
-import dk.kb.labsapi.ImageExtractor;
+import dk.kb.labsapi.ImageExport;
 import dk.kb.labsapi.SummariseExport;
 import dk.kb.labsapi.SolrExport;
 import dk.kb.labsapi.SolrTimeline;
@@ -282,7 +282,7 @@ public class LabsapiService implements LabsapiApi {
     }
 
     @Override
-    public javax.ws.rs.core.StreamingOutput exportImages(String query) {
+    public javax.ws.rs.core.StreamingOutput exportImages(String query, Integer max) {
         // This method should only need the query and maybe a maximum number of results to return number of results
         Set<String> fields = new HashSet<>();
         fields.add("recordID"); // Is not used for anything
@@ -290,8 +290,6 @@ public class LabsapiService implements LabsapiApi {
         fields.add("illustration"); // Used to extract every illustration for each pageUUID
         fields.add("page_width"); // Overall width of page - used to calculate extraction region
         fields.add("page_height"); //Overall height of page - used to calculate extraction region
-
-        long max = 10; // TODO: Ideally this is set as an argument in the method
 
         Set<SolrExport.STRUCTURE> structure = new HashSet<>();
         structure.add(SolrExport.STRUCTURE.valueOf("content"));
@@ -312,8 +310,8 @@ public class LabsapiService implements LabsapiApi {
         List<IllustrationMetadata> metadataList;
         List<URL> urls;
         try {
-            metadataList = ImageExtractor.getMetadataForIllustrations(jsonString);
-            urls = ImageExtractor.createLinkForAllIllustrations(metadataList);
+            metadataList = ImageExport.getMetadataForIllustrations(jsonString);
+            urls = ImageExport.createLinkForAllIllustrations(metadataList);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
