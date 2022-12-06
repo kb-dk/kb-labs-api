@@ -187,6 +187,16 @@ paths:
           schema:
             type: string
             example: 'cykel AND lplace:København AND py:[1850 TO 1880]'
+        - name: max
+          in: query
+          required: true
+          description: | 
+            Number of max results to return. For all results use -1.
+          schema:
+            type: integer
+            format: int32
+            default: 20
+
       x-streamingOutput: true
       responses:
         '200':
