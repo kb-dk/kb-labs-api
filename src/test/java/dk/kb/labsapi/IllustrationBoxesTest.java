@@ -26,7 +26,7 @@ public class IllustrationBoxesTest {
 
     @Test
     void testSolrCall() throws IOException {
-        String testCall = ImageExtractor.solrCall();
+        String testCall = ImageExport.solrCall();
         assertFalse(testCall.isEmpty());
     }
 
@@ -60,7 +60,7 @@ public class IllustrationBoxesTest {
         testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
-        URL test = ImageExtractor.createIllustrationLink(testIllustration);
+        URL test = ImageExport.createIllustrationLink(testIllustration);
         URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966"+"&CVT=jpeg");
 
         assertEquals(correct, test);
@@ -77,7 +77,7 @@ public class IllustrationBoxesTest {
         testList.add(illustration1);
         testList.add(illustration2);
 
-        List<URL> result = ImageExtractor.createLinkForAllIllustrations(testList);
+        List<URL> result = ImageExport.createLinkForAllIllustrations(testList);
         System.out.println(result);
     }
 
@@ -86,7 +86,7 @@ public class IllustrationBoxesTest {
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
 
-        URL result = ImageExtractor.createIllustrationLink(illustration);
+        URL result = ImageExport.createIllustrationLink(illustration);
         System.out.println(result);
     }
 
@@ -94,7 +94,7 @@ public class IllustrationBoxesTest {
     public void testSizeConversion(){
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-        String region = ImageExtractor.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
+        String region = ImageExport.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
         assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
 
