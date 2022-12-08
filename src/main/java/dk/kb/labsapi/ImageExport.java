@@ -1,32 +1,17 @@
 package dk.kb.labsapi;
 
-import dk.kb.JSONStreamWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.response.QueryResponse;
-import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
-import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.GroupParams;
-import org.apache.solr.common.params.ModifiableSolrParams;
-import org.apache.solr.common.params.SolrParams;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.StreamingOutput;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
 
 public class ImageExport {
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
@@ -40,7 +25,7 @@ public class ImageExport {
         // Get illustration URLS
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
 
-        // TODO: Return the image from the URL
+        // TODO: Return the image from each URL in illustrationUrls
 
         return illustrationUrls;
 

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -86,6 +87,15 @@ public class ImageExportTest {
 
         List<URL> result = ImageExport.createLinkForAllIllustrations(testList);
         System.out.println(result);
+
+        HttpURLConnection connection = null;
+        int code;
+        for (int i = 0; i<result.size(); i++){
+            connection = (HttpURLConnection) result.get(0).openConnection();
+            connection.setRequestMethod("HEAD");
+            code = connection.getResponseCode();
+            assertEquals(200,code);
+        }
     }
 
     @Test
