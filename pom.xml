@@ -50,6 +50,8 @@
         <!--Specify the licenses here, so they can be picked up by openAPI-->
         <license.name>Apache License, Version 2.0</license.name>
         <license.url>https://www.apache.org/licenses/LICENSE-2.0.txt</license.url>
+        <data.license.name>Creative Commons Public Domain Mark 1.0 License</data.license.name>
+        <data.license.url>https://creativecommons.org/publicdomain/mark/1.0/</data.license.url>
 
         <project.package>dk.kb.labsapi</project.package>
         <project.description>Experimental API for publicly available data and metadata at the Royal Danish Library.</project.description>
