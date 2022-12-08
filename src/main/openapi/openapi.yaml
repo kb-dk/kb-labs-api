@@ -197,12 +197,12 @@ paths:
             format: int32
             default: 20
 
-      x-streamingOutput: true
+      #x-streamingOutput: true
       responses:
         '200':
           description: 'OK'
           content:
-            text/plain:
+            application/json:
               schema:
                 type: array
                 items:

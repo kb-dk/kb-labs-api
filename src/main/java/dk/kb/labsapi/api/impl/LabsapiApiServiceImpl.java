@@ -2,17 +2,19 @@ package dk.kb.labsapi.api.impl;
 
 import dk.kb.labsapi.api.*;
 
-import java.util.List;
-
 import dk.kb.labsapi.model.HitsDto;
 
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import dk.kb.labsapi.model.InlineResponse200Dto;
 import dk.kb.webservice.exception.ServiceException;
 import dk.kb.webservice.exception.InternalServiceException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -30,7 +32,7 @@ import org.apache.cxf.jaxrs.ext.MessageContext;
 /**
  * labsapi
  *
- * <p>Experimental API for publicly available data and metadata at the Royal Danish Library 
+ * <p>Experimental API for publicly available data and metadata at the Royal Danish Library.  If you have any ideas or experience any issues please report them at the projects github issues [page](https://github.com/kb-dk/kb-labs-api/issues). 
  *
  */
 public class LabsapiApiServiceImpl implements LabsapiApi {
@@ -89,9 +91,9 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param elements: The elements for the timeline. The element &#39;unique_titles&#39; is special as it, as the name signals, the number of unique titles and not the sum of instances. 
      * 
-     * @param structure: The major parts of the delivery.  * comments: Metadata for the timeline (query, export time...), prefixed with # in CSV * header: The export field names. Only relevant for CSV as it is implicit in JSON * content: The export content itself 
+     * @param structure: |The major parts of the delivery.| | |---|---| |comments|Metadata for the timeline (query, export time...), prefixed with # in CSV.| |header|The export field names. Only relevant for CSV as it is implicit in JSON.| |content|The export content itself.| 
      * 
-     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of TimelineEntrys 
+     * @param format: |The delivery format.| | |---|---| |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes.| |JSON|Valid JSON in the form of a single array of TimelineEntrys.| 
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = TimelineEntryDto.class, responseContainer = "List"</li>
@@ -119,15 +121,15 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     /**
      * Export data from old newspapers at http://mediestream.dk/
      * 
-     * @param query: A query for the newspapers to export metadata for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied 
+     * @param query: A query for the newspapers to export metadata for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied. This means that the API returns material from 1880 and before.  Even though a query like &#39;*cykel AND lplace:København*&#39; might return more and newer results in a [Mediestream search](https://www2.statsbiblioteket.dk/mediestream/avis/search/cykel%20AND%20lplace%3AK%C3%B8benhavn) the response from the API is limited to material at least 140 years old. 
      * 
-     * @param fields: The fields to export.  * link: A hyperlink to the Mediestream page for the article * recordID: The unique ID of the article in the Mediestream system * timestamp: The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS * pwa: Predicted Word Accuracy for the OCR text on a scale from 0 to 100 * cer: * fulltext_org: The original OCR text for the article * pageUUID: The ID for the page that the article appears on * editionUUID: The ID for the edition that the page with the article belongs to * editionId: Human readable version of the edition * titleUUID: TODO: Explain this * familyId: TODO: Explain this * newspaper_page: The page number of the addition that the article appears on * newspaper_edition: TODO: Explain this * lplace: TODO: Explain this * location_name: Location names extracted from the text (low quality entity recognition) * location_coordinates: Coordinates for places from location_name 
+     * @param fields: |The fields to export.|Description.| |--- |---| |Link|A hyperlink to the Mediestream page for the article.| |recordID|The unique ID of the article in the Mediestream system.| |timestamp|The publication date for the article in ISO format YYYY-MM-DDTHH:MM:SS| |pwa|Predicted Word Accuracy for the OCR text on a scale from 0 to 100, where 100 is perfect.| |cer|Character Error Rate (estimated) of the OCR on a scale from 0 to 1, where 0 is perfect| |fulltext_org|The original OCR text for the article.| |pageUUID|The ID for the page that the article appears on.| |editionUUID|The ID for the edition that the page with the article belongs to.| |editionId|Human readable version of the edition.| |titleUUID|The ID for the title of the newspaper, which the article is from.| |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same even though the title of the newspaper changes a little.| |newspaper_page|The page number of the edition that the article appears on.| |newspaper_edition|The edition of the newspaper. Newspapers can change during the day, this data tells if the edition has changed.| |lplace|Place of publication. Where the paper was published.| |location_name|Location names extracted from the text (low quality entity recognition).| |location_coordinates |Coordinates for places from location_name.| 
      * 
-     * @param max: The maximum number of articles to return, -1 to return all articles.  **WARNING** setting this to more than 50 when using the Swagger-UI to test will probably result in the browser locking up 
+     * @param max: The maximum number of articles to return, -1 to return all articles.  Setting this to more than 20 ,when using the Swagger-UI, will present a download link instead of directly showing the result. 
      * 
-     * @param structure: The major parts of the delivery.  * comments: Metadata for the export (query, export time...), prefixed with # in CSV, not shown in JSON * header: The export field names. Only relevant for CSV * content: The export content itself 
+     * @param structure: |The major parts of the delivery| | |---|---| |comments|Metadata for the export (query, export time...), prefixed with # in CSV, encapsulated in &lt;--!XML comment--&gt; in XML  and not shown in JSON.| |header|The export field names. Only relevant for CSV.| |content|The export content itself.| 
      * 
-     * @param format: The delivery format.  * CSV: Comma separated, missing values represented with nothing, strings encapsulated in quotes * JSON: Valid JSON in the form of a single array of Documents * JSONL: Newline separated single-line JSON representations of Documents 
+     * @param format: |The delivery format.| | |---|---| |CSV|Comma separated, missing values represented with nothing, strings encapsulated in quotes.| |JSON|Valid JSON in the form of a single array of Documents.| |JSONL|Newline separated single-line JSON representations of Documents.| |TXT|Plain text output. UTF-8 Encoded.| |XML|XML output. UTF-8 Encoded. &lt;br/&gt;This output format is [Voyant](https://voyant-tools.org/docs/#!/guide/about) compliant and makes it possible to export newspaper data directly to Voyant.| 
      * 
      * @return <ul>
       *   <li>code = 200, message = "OK", response = String.class</li>
@@ -137,7 +139,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
       *   </ul>
       * @throws ServiceException when other http codes should be returned
       *
-      * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The export is restricted to newspapers older than 140 years and will be sorted by publication date.&#39; 
+      * Retrieve metadata fields from articles in the newspaper collection at http://mediestream.dk/ (a part of the [Royal Danish Library](https://kb.dk)). The export is restricted to newspapers older than 140 years and will be sorted by publication date. 
       *
       * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
@@ -155,9 +157,33 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
     }
 
+    /**
+     * Export images from newspapers
+     *
+     * @param query: A query for the newspapers to export metadata for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied. This means that the API returns material from 1880 and before.  Even though a query like &#39;*cykel AND lplace:København*&#39; might return more and newer results in a [Mediestream search](https://www2.statsbiblioteket.dk/mediestream/avis/search/cykel%20AND%20lplace%3AK%C3%B8benhavn) the response from the API is limited to material at least 140 years old.
+     * @param max:   Number of max results to return. For all results use -1.
+     * @return <ul>
+     * <li>code = 200, message = "OK", response = String.class, responseContainer = "List"</li>
+     * </ul>
+     * @throws ServiceException when other http codes should be returned
+     *                          <p>
+     *                          Export images from pages of newspapers that contains the given query.
+     * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
     @Override
-    public javax.ws.rs.core.StreamingOutput exportImages(String query) {
-        return null;
+    public List<String> exportImages(String query, Integer max) throws ServiceException {
+        // TODO: Implement...
+        // TODO:
+    
+        
+        try{ 
+            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
+            List<String> output = new ArrayList<String>();
+            return output;
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    
     }
 
     /**
@@ -169,7 +195,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * 
      * @param endTime: The ending point of the timeline (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. If blank, the current point in time is used.  Note: As of 2021, Mediestream does not contain newspapers later than 2013. 
      * 
-     * @param field: The field to facet. Note that it is case sensitive.  * familyId: The general name of the newspaper * lvx: The specific name of the newspaper * lplace: \&quot;Udgivelsessted\&quot; / publication location. Where the paper was published : py: Publication year 
+     * @param field: |The field to facet.|Note that it is case sensitive.| |---|---| |familyId|The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same even though the title of the newspaper changes a little.| |lvx|The specific name of the newspaper.| |lplace|Place of publication. Where the paper was published.| |py|Publication year.| 
      * 
      * @param sort: The sort order of the facet content.
      * 
@@ -201,12 +227,40 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     }
 
     /**
-     * Perform a search with the given query, returning only the number of hits. Typically used to get an estimate for the result size for an export
+     * Deliver ALTO XML for a single page from http://mediestream.dk/
      * 
-     * @param query: A query for the newspaper articles.  The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result.  A filter restricting the result to newspapers older than 140 years will be automatically applied&#39; 
+     * @param id: The ID for the ALTO to retrieve. This can be  * a [Mediestream URL](https://www2.statsbiblioteket.dk/mediestream/avis/record/doms_aviser_page:uuid:a9990f12-e9f0-4b1e-becc-e0d4bf514586/query/heste) to a single page * an &#x60;UUID&#x60;  such as &#x60;a9990f12-e9f0-4b1e-becc-e0d4bf514586&#x60;. &#x60;UUID&#x60;s can be extracted from the Mediestream URL directly or from &#x60;recordID&#x60;s or &#x60;pageUUID&#x60;s from field exports.   * a &#x60;recordID&#x60; for an article such as &#x60;doms_newspaperCollection:uuid:1620bf3b-7801-4a34-b2b9-fd8db9611b76-segment_19&#x60;. &#x60;recordID&#x60;s can be retrieved as part of the field export endpoint. 
      * 
      * @return <ul>
-      *   <li>code = 200, message = "OK", response = Long.class</li>
+      *   <li>code = 200, message = "OK", response = String.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * This endpoint delivers [ALTO XML](https://www.loc.gov/standards/alto/) for newspaper material that is 140+ years old.  [ALTO XML](https://www.loc.gov/standards/alto/) contains OCR text with bounding boxes from sections  down to single word granularity. Where possible, sections are connected through attributes to form articles, which are the atomic documents discovered through [Mediestream](https://mediestream.dk/).  **Warning:** ALTO XML can be quite large. If the ALTO is requested through the OpenAPI GUI,  the browser might hang for a minute before showing the result. 
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+     */
+    @Override
+    public String getALTO(String id) throws ServiceException {
+        // TODO: Implement...
+    
+        
+        try{ 
+            String response = "MVO2h";
+        return response;
+        } catch (Exception e){
+            throw handleException(e);
+        }
+    
+    }
+
+    /**
+     * Perform a search with the given query, returning only the number of hits, divided into publicly available data (&gt; 140 years) and restricted data. Typically used to get an estimate for the result size for an export
+     * 
+     * @param query: A query for the newspaper articles.  The query can also be tested at http://www2.statsbiblioteket.dk/mediestream/avis for a more interactive result. 
+     * 
+     * @return <ul>
+      *   <li>code = 200, message = "OK", response = HitsDto.class</li>
       *   <li>code = 500, message = "Internal Error", response = String.class</li>
       *   </ul>
       * @throws ServiceException when other http codes should be returned
@@ -219,8 +273,10 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
-            return new HitsDto()._public(-1L).restricted(-1L);
+            HitsDto response = new HitsDto();
+        response.setPublic(-4760299121817466880L);
+        response.setRestricted(7360523006580054016L);
+        return response;
         } catch (Exception e){
             throw handleException(e);
         }
@@ -245,7 +301,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
     
         
         try{ 
-            String response = "pqVW2e7HX4";
+            String response = "I504r91";
         return response;
         } catch (Exception e){
             throw handleException(e);
