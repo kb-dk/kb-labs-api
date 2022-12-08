@@ -6,6 +6,7 @@ import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.GroupParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
@@ -31,29 +32,26 @@ public class ImageExport {
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
 
 
-    static public void getImageFromTextQuery(String query, int max){
-        /* Steps
-        1. Send Solr query with correct fields as done in SolrCall()
-        1,1. Parse response to string
-        2. Parse response to get illustration metadata
-        3. Construct links to get illustrations from Imageserver
-        4. Return a stream of images instead of the link to them
-        */
+    static public List<URL> getImageFromTextQuery(String query, int max) throws IOException {
         // Query Solr
         QueryResponse response = illustrationSolrCall(query, max);
-        // Parse response
-        String responseString = String.valueOf(response.getResults());
-
         // Get illustration metadata
+        List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
+        // Get illustration URLS
+        List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
+
+        // TODO: Return the image from the URL
+
+        return illustrationUrls;
 
     }
 
     static public QueryResponse illustrationSolrCall(String query, int max){
-        String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]"; //AND illustration:[* TO *]"; //TODO: Make filter work and filter for illustrations. Currently it odes not get added
+        String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
 
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
-        solrQuery.setFilterQueries(filter); // TODO: Make filter work and filter for illustrations
+        solrQuery.setFilterQueries(filter);
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
         solrQuery.setRows(max); // TODO: Implement -1 to return all
         solrQuery.setFacet(false);
@@ -67,30 +65,22 @@ public class ImageExport {
             log.warn(message, e);
             throw new RuntimeException(message);
         }
-        /*
-        Object oID = response.getResults().get(0).getFieldValue("recordID");
-        if (oID == null) {
-            log.error("");
-            throw new RuntimeException("Internal server error: Unable to resolve recordID");
-        }
-         */
 
         return response;
     }
 
     /**
      * Get metadata values for all illustrations from query.
-     * The returned array contains and object of metadata from each single illustration.
-     * These inner objects contain the following values in order: String id, int x, int y, int w, int h.
-     * X and Y are coordinates while w = width and h = height.
-     * @return an array of objects consisting of the id, x, y, w and h values that are used to extract illustrations.
+     * The returned list contains an object of metadata from each single illustration.
+     * These inner objects contain the following values in order: String id, int x, int y, int w, int h, string pageUUID, int pageWidth and int pageHeight.
+     * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from
+     * @return a list of objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
-    static public List<IllustrationMetadata> getMetadataForIllustrations(String jsonString) throws IOException {
+    static public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) throws IOException {
         List<IllustrationMetadata> illustrations = new ArrayList<>();
-
         // Parse result from query and save into a list of strings
-        List<String> illustrationList = getIllustrationsList(jsonString);
-
+        List<String> illustrationList = getIllustrationsList(solrResponse);
+        // Map strings to illustration metadata
         for (String s : illustrationList) {
             // Create Illustration metadata object
             IllustrationMetadata singleIllustration = new IllustrationMetadata();
@@ -102,32 +92,37 @@ public class ImageExport {
     }
 
     /**
-     * Parse JSON response into list of individual illustrations.
-     * @param jsonString to extract illustrations from.
+     * Parse Solr QueryResponse of newspaper pages into list of individual illustrations.
+     * @param solrResponse to extract illustrations from.
      * @return a list of strings. Each string contains metadata for a single illustration from the input jsonString.
      */
-    static public List<String> getIllustrationsList(String jsonString) {
-        // Create JSON Array from json string
-        JSONArray responseArray = new JSONArray(jsonString);
-        // Create list for all illustration values
+    static public List<String> getIllustrationsList(QueryResponse solrResponse) {
+        SolrDocumentList responseList = solrResponse.getResults();
         List<String> illustrationList = new ArrayList<>();
-        // Add all individual illustrations to list
-        for (int i = 0; i < responseArray.length(); ++i) {
-            JSONObject document = responseArray.getJSONObject(i);
-            String illustration = document.getString("illustration");
-            String[] illustrationsSplitted = illustration.split("\n");
-            String pageUUID = document.getString("pageUUID");
-            int pageWidth = document.getInt("page_width");
-            int pageHeight = document.getInt("page_height");
-
-            for (int j = 0; j< illustrationsSplitted.length; j++){
-                illustrationsSplitted[j] = illustrationsSplitted[j] + "," + pageUUID + "," + pageWidth + "," + pageHeight;
+        // Extract metadata from documents in solr response
+        for (int i = 0; i<responseList.size(); i++) {
+            String pageUUID = responseList.get(i).getFieldValue("pageUUID").toString();
+            long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
+            long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
+            List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
+            // Check if illustrations are present. If not, continue to next SolrDocument in list
+            if (illustrations == null) {
+                continue;
             }
-            illustrationList.addAll(Arrays.asList(illustrationsSplitted));
+            // Create metadata string for each illustration
+            for (int j = 0; j< illustrations.size(); j++){
+                illustrations.set(j, illustrations.get(j) + "," + pageUUID + "," + pageWidth + "," + pageHeight);
+            }
+            illustrationList.addAll(illustrations);
         }
         return illustrationList;
     }
 
+    /**
+     * Create a link for each illustration in the given metadataList
+     * @param metadataList a list of objects consisting of metadata used to construct links to the image server
+     * @return a list of URLs pointing to the imageserver, that contains the illustrations.
+     */
     public static List<URL> createLinkForAllIllustrations(List<IllustrationMetadata> metadataList) throws IOException {
         List<URL> illustrationUrls = new ArrayList<>();
 
@@ -165,24 +160,5 @@ public class ImageExport {
         float calculatedW = (float) w / (float) width;
         float calculatedH = (float) h / (float) height;
         return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;
-    }
-
-    static public String solrCall() throws IOException {
-        // These fields act as placeholders, while the call to SolrExport.getInstance().export
-        // handles all variables itself as it is for now.
-        Set<String> fields = new HashSet<>();
-        fields.add("pageUUID");
-        fields.add("illustration");
-        fields.add("page_width");
-        fields.add("page_height");
-        Set<SolrExport.STRUCTURE> structure = new HashSet<>();
-        structure.add(SolrExport.STRUCTURE.valueOf("content"));
-        long max = 10;
-        // Query here is only important variable/argument
-        StreamingOutput stream = SolrExport.getInstance().export("cykel", fields, max , structure , SolrExport.EXPORT_FORMAT.image);
-        // Convert StreamingOutput to String
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        stream.write(output);
-        return output.toString(StandardCharsets.UTF_8);
     }
 }

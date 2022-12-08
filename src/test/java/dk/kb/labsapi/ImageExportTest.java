@@ -33,65 +33,8 @@ public class ImageExportTest {
     @Test
     void testSolrCall() {
         int max = 10;
-        QueryResponse response = ImageExport.illustrationSolrCall("hest", max);
-
-        SolrDocumentList responseList = response.getResults();
-
-        for (int i = 0; i<responseList.size(); i++){
-            System.out.println(responseList.get(i).jsonStr());
-        }
-    }
-
-    @Test
-    public void testMapping(){
-        int max = 10;
-        QueryResponse response = ImageExport.illustrationSolrCall("hest", max);
-        SolrDocumentList responseList = response.getResults();
-
-        for (int i = 0; i<responseList.size(); i++) {
-            //System.out.println(responseList.get(i).getFieldValue("pageUUID"));
-            //System.out.println(responseList.get(i).getFieldValue("page_width"));
-            //System.out.println(responseList.get(i).getFieldValue("page_height"));
-            //System.out.println(responseList.get(i).getFieldValue("illustration"));
-
-            //System.out.println(responseList.get(i).jsonStr());
-            //responseList.get(i).jsonStr();
-            String pageUUID = responseList.get(i).getFieldValue("pageUUID").toString();
-            long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
-            long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
-            List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
-            responseList.get(i).getFieldValue("illustration");
-
-            System.out.println(pageUUID + pageWidth + pageHeight + illustrations);
-        }
-
-        /*
-        JSONArray responseArray = new JSONArray(jsonString);
-
-
-        // Create list for all illustration values
-        List<String> illustrationList = new ArrayList<>();
-
-        for (int i = 0; i < responseArray.length(); ++i) {
-            JSONObject document = responseArray.getJSONObject(i);
-            String illustration = document.getString("illustration");
-            String[] illustrationsSplitted = illustration.split("\n");
-            String pageUUID = document.getString("pageUUID");
-            int pageWidth = document.getInt("page_width");
-            int pageHeight = document.getInt("page_height");
-
-            for (int j = 0; j< illustrationsSplitted.length; j++){
-                illustrationsSplitted[j] = illustrationsSplitted[j] + "," + pageUUID + "," + pageWidth + "," + pageHeight;
-            }
-            illustrationList.addAll(Arrays.asList(illustrationsSplitted));
-        }
-
-
-        for (int i = 0; i<illustrationList.size(); i++){
-            System.out.println(illustrationList.get(i));
-        }
-
-         */
+        QueryResponse response = ImageExport.illustrationSolrCall("hest AND py:[1820 TO 1825]", max);
+        assertNotNull(response);
     }
 
     @Test
@@ -167,9 +110,4 @@ public class ImageExportTest {
         String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
         assertFalse(baseURL.isEmpty());
     }
-    @Test
-    public void randomTests() throws IOException {
-
-    }
-
 }
