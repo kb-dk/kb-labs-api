@@ -1,6 +1,5 @@
 package dk.kb.labsapi.api.impl;
 
-import dk.kb.labsapi.IllustrationMetadata;
 import dk.kb.labsapi.ImageExport;
 import dk.kb.labsapi.SummariseExport;
 import dk.kb.labsapi.SolrExport;
@@ -8,6 +7,7 @@ import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.model.HitsDto;
+import dk.kb.labsapi.model.InlineResponse200Dto;
 import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
@@ -25,20 +25,9 @@ import javax.ws.rs.core.StreamingOutput;
 import java.io.*;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-
-import static dk.kb.labsapi.SolrExport.EXPORT_FORMAT.image;
 
 /**
  * Implementation of the OpenAPI-generated {@link LabsapiApi}.
@@ -282,42 +271,20 @@ public class LabsapiService implements LabsapiApi {
     }
 
     @Override
-    public javax.ws.rs.core.StreamingOutput exportImages(String query, Integer max) {
-        // This method should only need the query and maybe a maximum number of results to return number of results
-        Set<String> fields = new HashSet<>();
-        fields.add("recordID"); // Is not used for anything
-        fields.add("pageUUID"); // Defines the page
-        fields.add("illustration"); // Used to extract every illustration for each pageUUID
-        fields.add("page_width"); // Overall width of page - used to calculate extraction region
-        fields.add("page_height"); //Overall height of page - used to calculate extraction region
-
-        Set<SolrExport.STRUCTURE> structure = new HashSet<>();
-        structure.add(SolrExport.STRUCTURE.valueOf("content"));
-        // TODO: Implement this method as own endpoint.
-        // TODO: Make overall method in Image Extractor that connect these child methods
-
-        // TODO: Instead of creating an export instance of SolrExport this should maybe happen in its own class. Maybe ImageExtractor, where everything else happens.
-        StreamingOutput solrResponse = SolrExport.getInstance().export(query, fields, max, structure, image);
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
+    public List<String> exportImages(String query, Integer max) {
+        List<URL> illustrationUrls;
         try {
-            solrResponse.write(output);
+            illustrationUrls = ImageExport.getImageFromTextQuery(query, max);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        String jsonString = output.toString(StandardCharsets.UTF_8);
-
-        List<IllustrationMetadata> metadataList;
-        List<URL> urls;
-        try {
-            metadataList = ImageExport.getMetadataForIllustrations(jsonString);
-            urls = ImageExport.createLinkForAllIllustrations(metadataList);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        // Converts URLs to strings
+        List<String> urlStrings = new ArrayList<>();
+        for (int i = 0; i< illustrationUrls.size(); i++){
+            urlStrings.add(i, illustrationUrls.get(i).toString());
         }
-
         // TODO: Return images instead of links to images
-        return (StreamingOutput) urls;
+        return urlStrings;
     }
 
     /**
