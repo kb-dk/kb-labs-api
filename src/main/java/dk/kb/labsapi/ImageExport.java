@@ -8,16 +8,26 @@ import org.apache.solr.common.params.GroupParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
 
+/**
+ * Exports images from text queries to Solr below mediestream.
+ * Images are defined by alto boxes.
+ */
 public class ImageExport {
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
 
 
-    static public List<URL> getImageFromTextQuery(String query, int max) throws IOException {
+    /**
+     * Get link to image from newspaper page with given query present in text
+     * @param query to search for
+     * @param max number of images to return
+     * @return urls to images
+     */
+    static public List<ByteArrayOutputStream> getImageFromTextQuery(String query, int max) throws IOException {
         // Query Solr
         QueryResponse response = illustrationSolrCall(query, max);
         // Get illustration metadata
@@ -26,14 +36,21 @@ public class ImageExport {
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
 
         // TODO: Return the image from each URL in illustrationUrls
+        List<ByteArrayOutputStream> images = downloadAllIllustrations(illustrationUrls);
 
-        return illustrationUrls;
+        return images;
 
     }
 
+    /**
+     * Call Solr for input query and return fields needed to extract images from pages in the query.
+     * @param query to call Solr with.
+     * @param max number of results to return
+     * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
+     */
     static public QueryResponse illustrationSolrCall(String query, int max){
+        // Construct solr query
         String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
-
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
@@ -42,6 +59,7 @@ public class ImageExport {
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
+
         QueryResponse response;
         try {
             response = SolrExport.getInstance().callSolr(solrQuery);
@@ -50,7 +68,6 @@ public class ImageExport {
             log.warn(message, e);
             throw new RuntimeException(message);
         }
-
         return response;
     }
 
@@ -61,7 +78,7 @@ public class ImageExport {
      * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from
      * @return a list of objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
-    static public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) throws IOException {
+    static public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) {
         List<IllustrationMetadata> illustrations = new ArrayList<>();
         // Parse result from query and save into a list of strings
         List<String> illustrationList = getIllustrationsList(solrResponse);
@@ -127,7 +144,7 @@ public class ImageExport {
         String baseParams = "&CVT=jpeg";
         String pageUuid = ill.getPageUUID();
         String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
-        // TODO: Some encoding should probably happen here, so that we are not using un-encoded commas in the URL
+        // TODO: Should some encoding happen here, so that we are not using commas directly in URL?
         String region = calculateIllustrationRegion(ill.getX(), ill.getY(), ill.getW(), ill.getH(), ill.getPageWidth(), ill.getPageHeight());
 
         URL finalUrl = new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
@@ -146,4 +163,32 @@ public class ImageExport {
         float calculatedH = (float) h / (float) height;
         return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;
     }
+
+    public static List<ByteArrayOutputStream> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
+        List<ByteArrayOutputStream> allImages = new ArrayList<>();
+
+        for (int i = 0; i<illustrationUrls.size(); i++) {
+            ByteArrayOutputStream baos = downloadSingleIllustration(illustrationUrls.get(i));
+            allImages.add(baos);
+        }
+        return allImages;
+    }
+
+
+    public static ByteArrayOutputStream downloadSingleIllustration(URL url) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (InputStream is = url.openStream()) {
+            byte[] bytes = new byte[4096];
+            int n;
+
+            while ((n = is.read(bytes)) > 0) {
+                baos.write(bytes, 0, n);
+            }
+        } catch (IOException e) {
+            log.error("Failed to download illustration from " + url + " while reading bytes");
+        }
+        return baos;
+    }
+
+
 }

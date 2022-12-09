@@ -2,20 +2,18 @@ package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
 import org.apache.solr.client.solrj.response.QueryResponse;
-import org.apache.solr.common.SolrDocumentList;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.StreamingOutput;
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,7 +32,10 @@ public class ImageExportTest {
     @Test
     void testSolrCall() {
         int max = 10;
-        QueryResponse response = ImageExport.illustrationSolrCall("hest AND py:[1820 TO 1825]", max);
+        QueryResponse response = ImageExport.illustrationSolrCall("hest AND py:[1800 TO 1880]", max);
+        for (int i = 0; i<max; i++){
+            System.out.println(response.getResults().get(i).jsonStr());
+        }
         assertNotNull(response);
     }
 
@@ -119,5 +120,19 @@ public class ImageExportTest {
     public void testServerConfig(){
         String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
         assertFalse(baseURL.isEmpty());
+    }
+
+    @Test
+    public void testImageDownlaod() throws IOException {
+        IllustrationMetadata illustration1 = new IllustrationMetadata();
+        illustration1.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        IllustrationMetadata illustration2 = new IllustrationMetadata();
+        illustration2.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        List<IllustrationMetadata> testList = new ArrayList<>();
+        testList.add(illustration1);
+        testList.add(illustration2);
+
+        List<URL> urls = ImageExport.createLinkForAllIllustrations(testList);
+        ImageExport.downloadAllIllustrations(urls);
     }
 }
