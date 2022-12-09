@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
@@ -273,30 +274,16 @@ public class LabsapiService implements LabsapiApi {
 
     @Override
     public StreamingOutput exportImages(String query, Integer max) {
-        List<ByteArrayOutputStream> images;
-        /*
-        ZipOutputStream zs = new ZipOutputStream(outputStream);
+        ByteArrayOutputStream images;
 
-        for (int i = 0; i<images.size();i++){
-
-        }
-
-        ZipEntry e = new ZipEntry(fileName);
-        zs.putNextEntry(e);
-        zs.write(...);
-        zs.close();
-
-         */
         try {
             images = ImageExport.getImageFromTextQuery(query, max);
         } catch (IOException e) {
             throw new RuntimeException(e);
             // TODO: Add logging
         }
-
-        // Converts URLs to strings
         // TODO: Return images instead of links to images
-        return (StreamingOutput) images;
+        return output -> output.write(images.toByteArray());
     }
 
     /**

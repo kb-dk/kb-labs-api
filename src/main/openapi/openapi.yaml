@@ -202,12 +202,10 @@ paths:
         '200':
           description: 'OK'
           content:
-            image/jpg:
+            application/octet-stream:
               schema:
-                type: array
-                items:
-                  type: string
-                  format: binary
+                type: string
+                format: binary
 
   /aviser/export/alto:
     get:

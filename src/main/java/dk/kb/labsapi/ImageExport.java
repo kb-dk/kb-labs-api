@@ -8,10 +8,13 @@ import org.apache.solr.common.params.GroupParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.StreamingOutput;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Exports images from text queries to Solr below mediestream.
@@ -20,25 +23,25 @@ import java.util.List;
 public class ImageExport {
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
 
-
     /**
      * Get link to image from newspaper page with given query present in text
      * @param query to search for
      * @param max number of images to return
      * @return urls to images
      */
-    static public List<ByteArrayOutputStream> getImageFromTextQuery(String query, int max) throws IOException {
+    static public ByteArrayOutputStream getImageFromTextQuery(String query, int max) throws IOException {
         // Query Solr
         QueryResponse response = illustrationSolrCall(query, max);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
         // Get illustration URLS
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
+        // Get illustrations as bytearrays
+        List<byte[]> illustrationsAsByteArrays = downloadAllIllustrations(illustrationUrls);
+        // Create bytearray of all images as zipArray
+        ByteArrayOutputStream allImagesAsJpgs = byteArraysToZipArray(illustrationsAsByteArrays);
 
-        // TODO: Return the image from each URL in illustrationUrls
-        List<ByteArrayOutputStream> images = downloadAllIllustrations(illustrationUrls);
-
-        return images;
+        return allImagesAsJpgs;
 
     }
 
@@ -96,7 +99,7 @@ public class ImageExport {
     /**
      * Parse Solr QueryResponse of newspaper pages into list of individual illustrations.
      * @param solrResponse to extract illustrations from.
-     * @return a list of strings. Each string contains metadata for a single illustration from the input jsonString.
+     * @return a list of strings. Each string contains metadata for a single illustration from the input query response.
      */
     static public List<String> getIllustrationsList(QueryResponse solrResponse) {
         SolrDocumentList responseList = solrResponse.getResults();
@@ -157,6 +160,7 @@ public class ImageExport {
      * @return a region string that is ready to be added to an IIP query
      */
     public static String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
+        // TODO: SOMETHING IS DONE WRONG HERE
         float calculatedX = (float) x / (float) width;
         float calculatedY = (float) y / (float) height;
         float calculatedW = (float) w / (float) width;
@@ -164,31 +168,76 @@ public class ImageExport {
         return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;
     }
 
-    public static List<ByteArrayOutputStream> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
-        List<ByteArrayOutputStream> allImages = new ArrayList<>();
+    public static List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
+        List<byte[]> allIllustrations = new ArrayList<>();
 
         for (int i = 0; i<illustrationUrls.size(); i++) {
-            ByteArrayOutputStream baos = downloadSingleIllustration(illustrationUrls.get(i));
-            allImages.add(baos);
+            byte[] illustrationAsByteArray = downloadSingleIllustration(illustrationUrls.get(i));
+            allIllustrations.add(illustrationAsByteArray);
         }
-        return allImages;
+        return allIllustrations;
     }
 
 
-    public static ByteArrayOutputStream downloadSingleIllustration(URL url) {
+    public static byte[] downloadSingleIllustration(URL url) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (InputStream is = url.openStream()) {
+        byte[] illustrationAsByteArray = new byte[0];
+        InputStream is = null;
+        try {
+            is = url.openStream();
             byte[] bytes = new byte[4096];
             int n;
 
             while ((n = is.read(bytes)) > 0) {
                 baos.write(bytes, 0, n);
             }
+            illustrationAsByteArray = baos.toByteArray();
         } catch (IOException e) {
             log.error("Failed to download illustration from " + url + " while reading bytes");
+        } finally {
+            if (is != null) {
+                is.close();
+            }
+        }
+        return illustrationAsByteArray;
+    }
+
+    public static ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ZipOutputStream zos = new ZipOutputStream(baos);
+        int count = 0;
+        try {
+            // Add byte arrays from input to zip
+            for (int i = 0; i < illustrationsAsByteArrays.size(); i++) {
+                addToZipStream(illustrationsAsByteArrays.get(i), "illustration_" + count + ".jpeg", zos);
+                count += 1;
+            }
+            // Close the zip output stream
+            zos.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         return baos;
     }
 
-
+    private static void addToZipStream(byte[] data, String fileName, ZipOutputStream zos) throws IOException{
+        // Create a buffer to read the data into
+        byte[] buffer = new byte[1024];
+        // Create a new zip entry with the file's name
+        ZipEntry ze = new ZipEntry(fileName);
+        // Add the zip entry to the zip output stream
+        zos.putNextEntry(ze);
+        // Read the data into the buffer
+        ByteArrayInputStream bais = new ByteArrayInputStream(data);
+        int len;
+        while ((len = bais.read(buffer)) > 0) {
+            // Write the buffer to the zip output stream
+            zos.write(buffer, 0, len);
+        }
+        // Close the zip entry
+        zos.closeEntry();
+        // Close the byte array input stream
+        bais.close();
+    }
 }
