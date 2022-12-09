@@ -197,16 +197,17 @@ paths:
             format: int32
             default: 20
 
-      #x-streamingOutput: true
+      x-streamingOutput: true
       responses:
         '200':
           description: 'OK'
           content:
-            application/json:
+            image/jpg:
               schema:
                 type: array
                 items:
                   type: string
+                  format: binary
 
   /aviser/export/alto:
     get:
