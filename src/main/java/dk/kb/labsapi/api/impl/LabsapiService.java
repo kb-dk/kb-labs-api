@@ -7,11 +7,11 @@ import dk.kb.labsapi.SolrTimeline;
 import dk.kb.labsapi.api.LabsapiApi;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.model.HitsDto;
-import dk.kb.labsapi.model.InlineResponse200Dto;
 import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
+import org.apache.commons.io.IOUtils;
 import org.apache.cxf.jaxrs.ext.MessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,10 +24,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.*;
 import java.net.URI;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Implementation of the OpenAPI-generated {@link LabsapiApi}.
@@ -271,20 +272,31 @@ public class LabsapiService implements LabsapiApi {
     }
 
     @Override
-    public List<String> exportImages(String query, Integer max) {
-        List<URL> illustrationUrls;
+    public StreamingOutput exportImages(String query, Integer max) {
+        List<ByteArrayOutputStream> images;
+        /*
+        ZipOutputStream zs = new ZipOutputStream(outputStream);
+
+        for (int i = 0; i<images.size();i++){
+
+        }
+
+        ZipEntry e = new ZipEntry(fileName);
+        zs.putNextEntry(e);
+        zs.write(...);
+        zs.close();
+
+         */
         try {
-            illustrationUrls = ImageExport.getImageFromTextQuery(query, max);
+            images = ImageExport.getImageFromTextQuery(query, max);
         } catch (IOException e) {
             throw new RuntimeException(e);
+            // TODO: Add logging
         }
+
         // Converts URLs to strings
-        List<String> urlStrings = new ArrayList<>();
-        for (int i = 0; i< illustrationUrls.size(); i++){
-            urlStrings.add(i, illustrationUrls.get(i).toString());
-        }
         // TODO: Return images instead of links to images
-        return urlStrings;
+        return (StreamingOutput) images;
     }
 
     /**

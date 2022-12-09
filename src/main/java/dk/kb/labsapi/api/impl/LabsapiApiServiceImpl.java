@@ -4,11 +4,9 @@ import dk.kb.labsapi.api.*;
 
 import dk.kb.labsapi.model.HitsDto;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-import dk.kb.labsapi.model.InlineResponse200Dto;
 import dk.kb.webservice.exception.ServiceException;
 import dk.kb.webservice.exception.InternalServiceException;
 
@@ -19,11 +17,7 @@ import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Request;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.core.*;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Providers;
 
@@ -171,14 +165,14 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public List<String> exportImages(String query, Integer max) throws ServiceException {
+    public StreamingOutput exportImages(String query, Integer max) throws ServiceException {
         // TODO: Implement...
         // TODO:
     
         
         try{ 
             httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
-            List<String> output = new ArrayList<String>();
+            StreamingOutput output = null;
             return output;
         } catch (Exception e){
             throw handleException(e);
