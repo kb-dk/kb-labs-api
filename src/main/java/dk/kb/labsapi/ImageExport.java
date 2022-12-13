@@ -92,7 +92,6 @@ public class ImageExport {
          // Check start and end times
          int usableStartTime = setUsableStartTime(startTime);
          int usableEndTime = setUsableEndTime(endTime);
-         // TODO: implement chech for start < end
          if (usableStartTime > usableEndTime){
              log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
              throw new IOException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");

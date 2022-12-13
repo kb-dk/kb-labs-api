@@ -281,7 +281,6 @@ public class LabsapiService implements LabsapiApi {
             images = ImageExport.getInstance().getImageFromTextQuery(query, startTime, endTime, max);
         } catch (IOException e) {
             throw new RuntimeException(e);
-            // TODO: Add logging
         }
         return output -> output.write(images.toByteArray());
     }
