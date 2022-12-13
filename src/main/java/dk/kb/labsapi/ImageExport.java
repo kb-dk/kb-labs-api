@@ -64,18 +64,8 @@ public class ImageExport {
          if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
          }
-         // Check start and end times
-         int useableStartTime = startTime;
-         int useableEndTime = endTime;
-
-         if (startTime < startYear){
-             useableStartTime = startYear;
-         }
-         if (endTime > endYear){
-             useableEndTime = endYear;
-         }
         // Query Solr
-        QueryResponse response = illustrationSolrCall(query, useableStartTime, useableEndTime, max);
+        QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
         // Get illustration URLS
@@ -99,11 +89,17 @@ public class ImageExport {
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
      public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max){
-
-        // Construct solr query
-        String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
-        // TODO: Filter has to be applied differently. Currently it adds a second py filter if users adds that to their query and that creates an error
-        // TODO: SET py filter from method arguments startTime and endTime from API query
+         // Check start and end times
+         int usableStartTime = startTime;
+         int usableEndTime = endTime;
+         if (startTime < startYear){
+             usableStartTime = startYear;
+         }
+         if (endTime > endYear){
+             usableEndTime = endYear;
+         }
+        // Construct solr query with filter
+        String filter = "recordBase:doms_aviser_page AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
