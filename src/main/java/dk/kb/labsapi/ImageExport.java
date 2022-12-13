@@ -56,6 +56,7 @@ public class ImageExport {
         // Construct solr query
         String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
         // TODO: Filter has to be applied differently. Currently it adds a second py filter if users adds that to their query
+        // TODO: SET py filter from statements using inputs from the API
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
@@ -165,7 +166,7 @@ public class ImageExport {
     public static String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
         // Some illustrations have X and Y values greater than the width and height of the page.
         // Currently, these values are turned into zeroes and are therefore returning an incorrect image.
-        // TODO: Ideally they should return the correct image (if that exists?) or nothing at all.
+        // TODO: Ideally they should return the correct image (if that exists?) or nothing at all. LOOK INTO ALTO FILES
         float calculatedX = (float) x / (float) Math.max(width, x);
         float calculatedY = (float) y / (float) Math.max(height, y);
         float calculatedW = (float) w / (float) Math.max(w, width);

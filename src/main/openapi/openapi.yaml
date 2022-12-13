@@ -171,10 +171,12 @@ paths:
       description: |
         Export images from pages of newspapers that contains the given query.
       operationId: exportImages
+      # TODO: Add parameters for temporal query on py
       parameters:
         - name: query
           in: query
           required: true
+          # TODO: Update description to reflect how the images are extracted from pages where text is found from query
           description: |
             A query for the newspapers to export metadata for.
 
