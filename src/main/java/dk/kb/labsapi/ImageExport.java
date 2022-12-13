@@ -105,7 +105,7 @@ public class ImageExport {
         solrQuery.setFilterQueries(filter);
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
         solrQuery.setRows(Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize));
-        // TODO: Implement -1 to return all
+        // TODO: Implement -1 correctly
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
@@ -221,15 +221,14 @@ public class ImageExport {
         float calculatedY = (float) y / (float) Math.max(height, y);
         float calculatedW = (float) w / (float) Math.max(w, width);
         float calculatedH = (float) h / (float) Math.max(h, height);
-/*
+        /* Hack to make weird illustrationboxes return something
         if (calculatedX >= 1.0F){
             calculatedX = 0;
         }
         if (calculatedY >= 1.0F){
             calculatedY = 0;
         }
-
- */
+        */
         // Fraction calculation from: https://math.hws.edu/graphicsbook/c2/s1.html
         // newX = newLeft + ((oldX - oldLeft) / (oldRight - oldLeft)) * (newRight - newLeft))
         // newY = newTop + ((oldY - oldTop) / (oldBottom - oldTop)) * (newBottom - newTop)
@@ -305,6 +304,7 @@ public class ImageExport {
         }
         // Close the zip entry
         zos.closeEntry();
+        zos.flush();
         // Close the byte array input stream
         bais.close();
     }
