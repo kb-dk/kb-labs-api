@@ -171,7 +171,6 @@ paths:
       description: |
         Export images from pages of newspapers that contains the given query.
       operationId: exportImages
-      # TODO: Add parameters for temporal query on py
       parameters:
         - name: query
           in: query
@@ -188,7 +187,29 @@ paths:
             the response from the API is limited to material at least 140 years old.
           schema:
             type: string
-            example: 'cykel AND lplace:København AND py:[1850 TO 1880]'
+            example: 'cykel AND lplace:København'
+        - name: startTime
+          in: query
+          required: false
+          description: |
+            The starting year of the query (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+            This cannot be earlier than 1666 as we do not have material from before 1666.
+          schema:
+            type: integer
+            format: int32
+            default: 1666
+            example: 1666
+        - name: endTime
+          in: query
+          required: false
+          description: |
+            The ending point of the query (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+            If blank, the year 1880 is used. The API does not expose data from after 1880.
+          schema:
+            type: integer
+            format: int32
+            default: 1880
+            example: 1880
         - name: max
           in: query
           required: true

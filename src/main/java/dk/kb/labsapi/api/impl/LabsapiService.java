@@ -11,7 +11,6 @@ import dk.kb.util.yaml.YAML;
 import dk.kb.webservice.exception.InternalServiceException;
 import dk.kb.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.webservice.exception.ServiceException;
-import org.apache.commons.io.IOUtils;
 import org.apache.cxf.jaxrs.ext.MessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
@@ -28,8 +26,6 @@ import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Implementation of the OpenAPI-generated {@link LabsapiApi}.
@@ -275,14 +271,14 @@ public class LabsapiService implements LabsapiApi {
      * @return StreamingOutput containing zip file with all illustrations from query returned as jpeg images.
      */
     @Override
-    public StreamingOutput exportImages(String query, Integer max) {
+    public StreamingOutput exportImages(String query, Integer startTime , Integer endTime, Integer max) {
         ByteArrayOutputStream images;
 
         try {
             String filename = getCurrentTimeISO() + "_illustrations_for_query_" + query.replaceAll("\\s+","_") + ".zip";
             httpServletResponse.setHeader(
                     "Content-Disposition", "inline; swaggerDownload=\"attachment\"; filename=\"" + filename + "\"");
-            images = ImageExport.getImageFromTextQuery(query, max);
+            images = ImageExport.getImageFromTextQuery(query, startTime, endTime, max);
         } catch (IOException e) {
             throw new RuntimeException(e);
             // TODO: Add logging

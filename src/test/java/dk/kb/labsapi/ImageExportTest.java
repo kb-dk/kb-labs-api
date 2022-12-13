@@ -7,10 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -32,7 +29,7 @@ public class ImageExportTest {
     @Test
     void testSolrCall() {
         int max = 10;
-        QueryResponse response = ImageExport.illustrationSolrCall("hest AND py:[1800 TO 1880]", max);
+        QueryResponse response = ImageExport.illustrationSolrCall("hest", 1800, 1880, max);
         for (int i = 0; i<max; i++){
             System.out.println(response.getResults().get(i).jsonStr());
         }
@@ -130,7 +127,7 @@ public class ImageExportTest {
 
     //@Test
     public void testUrlConstruction() throws IOException {
-        QueryResponse response = ImageExport.illustrationSolrCall("politi", 10);
+        QueryResponse response = ImageExport.illustrationSolrCall("politi",1875, 1876, 10);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = ImageExport.getMetadataForIllustrations(response);
         // Get illustration URLS

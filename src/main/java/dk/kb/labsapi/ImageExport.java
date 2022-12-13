@@ -8,7 +8,6 @@ import org.apache.solr.common.params.GroupParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.StreamingOutput;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
@@ -26,13 +25,16 @@ public class ImageExport {
 
     /**
      * Get link to image from newspaper page with given query present in text
-     * @param query to search for
-     * @param max number of images to return
+     *
+     * @param query     to search for
+     * @param startTime
+     * @param endTime
+     * @param max       number of images to return
      * @return urls to images
      */
-    static public ByteArrayOutputStream getImageFromTextQuery(String query, int max) throws IOException {
+    static public ByteArrayOutputStream getImageFromTextQuery(String query, int startTime, int endTime, int max) throws IOException {
         // Query Solr
-        QueryResponse response = illustrationSolrCall(query, max);
+        QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
         // Get illustration URLS
@@ -48,15 +50,18 @@ public class ImageExport {
 
     /**
      * Call Solr for input query and return fields needed to extract images from pages in the query.
-     * @param query to call Solr with.
-     * @param max number of results to return
+     *
+     * @param query     to call Solr with.
+     * @param startTime
+     * @param endTime
+     * @param max       number of results to return
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
-    static public QueryResponse illustrationSolrCall(String query, int max){
+    static public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max){
         // Construct solr query
         String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
-        // TODO: Filter has to be applied differently. Currently it adds a second py filter if users adds that to their query
-        // TODO: SET py filter from statements using inputs from the API
+        // TODO: Filter has to be applied differently. Currently it adds a second py filter if users adds that to their query and that creates an error
+        // TODO: SET py filter from method arguments startTime and endTime from API query
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);

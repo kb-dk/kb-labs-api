@@ -165,7 +165,7 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public StreamingOutput exportImages(String query, Integer max) throws ServiceException {
+    public StreamingOutput exportImages(String query, Integer startTime, Integer endTime, Integer max) throws ServiceException {
         // TODO: Implement...
         // TODO:
     
