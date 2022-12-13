@@ -283,12 +283,14 @@ public class LabsapiService implements LabsapiApi {
         ByteArrayOutputStream images;
 
         try {
+            String filename = getCurrentTimeISO() + "_illustrations_for_query_" + query.replaceAll("\\s+","_") + ".zip";
+            httpServletResponse.setHeader(
+                    "Content-Disposition", "inline; swaggerDownload=\"attachment\"; filename=\"" + filename + "\"");
             images = ImageExport.getImageFromTextQuery(query, max);
         } catch (IOException e) {
             throw new RuntimeException(e);
             // TODO: Add logging
         }
-        // TODO: Change name of output zip file
         return output -> output.write(images.toByteArray());
     }
 
