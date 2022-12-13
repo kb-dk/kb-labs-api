@@ -29,7 +29,7 @@ public class ImageExportTest {
     @Test
     void testSolrCall() {
         int max = 10;
-        QueryResponse response = ImageExport.illustrationSolrCall("hest", 1800, 1880, max);
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1800, 1880, max);
         for (int i = 0; i<max; i++){
             System.out.println(response.getResults().get(i).jsonStr());
         }
@@ -77,7 +77,7 @@ public class ImageExportTest {
         testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
-        URL test = ImageExport.createIllustrationLink(testIllustration);
+        URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
         URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966"+"&CVT=jpeg");
 
         assertEquals(correct, test);
@@ -94,7 +94,7 @@ public class ImageExportTest {
         testList.add(illustration1);
         testList.add(illustration2);
 
-        List<URL> result = ImageExport.createLinkForAllIllustrations(testList);
+        List<URL> result = ImageExport.getInstance().createLinkForAllIllustrations(testList);
 
         HttpURLConnection connection = null;
         int code;
@@ -111,7 +111,7 @@ public class ImageExportTest {
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
 
-        URL result = ImageExport.createIllustrationLink(illustration);
+        URL result = ImageExport.getInstance().createIllustrationLink(illustration);
         System.out.println(result);
     }
 
@@ -121,17 +121,17 @@ public class ImageExportTest {
         // Tests that ideal sizes are converted correctly
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-        String region = ImageExport.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
+        String region = ImageExport.getInstance().calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
         assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
 
     //@Test
     public void testUrlConstruction() throws IOException {
-        QueryResponse response = ImageExport.illustrationSolrCall("politi",1875, 1876, 10);
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("politi",1875, 1876, 10);
         // Get illustration metadata
-        List<IllustrationMetadata> illustrationMetadata = ImageExport.getMetadataForIllustrations(response);
+        List<IllustrationMetadata> illustrationMetadata = ImageExport.getInstance().getMetadataForIllustrations(response);
         // Get illustration URLS
-        List<URL> illustrationUrls = ImageExport.createLinkForAllIllustrations(illustrationMetadata);
+        List<URL> illustrationUrls = ImageExport.getInstance().createLinkForAllIllustrations(illustrationMetadata);
 
         for (int i = 0; i < illustrationUrls.size(); i++) {
             System.out.println(("pageUUID: " + illustrationMetadata.get(i).getPageUUID()));
@@ -151,8 +151,8 @@ public class ImageExportTest {
 
     //@Test
     public void testRgnConstruction(){
-        String one = ImageExport.calculateIllustrationRegion(2184,1000,2804,2816,2527,2087);
-        String two = ImageExport.calculateIllustrationRegion(468,2536,1068,1616,2527,4000);
+        String one = ImageExport.getInstance().calculateIllustrationRegion(2184,1000,2804,2816,2527,2087);
+        String two = ImageExport.getInstance().calculateIllustrationRegion(468,2536,1068,1616,2527,4000);
 
         System.out.println(one);
         System.out.println(two);

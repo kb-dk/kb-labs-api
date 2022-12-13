@@ -56,7 +56,7 @@ public class ImageExport {
      * @param max       number of images to return
      * @return urls to images
      */
-    static public ByteArrayOutputStream getImageFromTextQuery(String query, int startTime, int endTime, int max) throws IOException {
+     public ByteArrayOutputStream getImageFromTextQuery(String query, int startTime, int endTime, int max) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
@@ -84,8 +84,7 @@ public class ImageExport {
      * @param max       number of results to return
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
-    static public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max){
-
+     public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max){
 
         // Construct solr query
         String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
@@ -119,7 +118,7 @@ public class ImageExport {
      * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from
      * @return a list of objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
-    static public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) {
+     public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) {
         List<IllustrationMetadata> illustrations = new ArrayList<>();
         // Parse result from query and save into a list of strings
         List<String> illustrationList = getIllustrationsList(solrResponse);
@@ -139,7 +138,7 @@ public class ImageExport {
      * @param solrResponse to extract illustrations from.
      * @return a list of strings. Each string contains metadata for a single illustration from the input query response.
      */
-    static public List<String> getIllustrationsList(QueryResponse solrResponse) {
+     public List<String> getIllustrationsList(QueryResponse solrResponse) {
         SolrDocumentList responseList = solrResponse.getResults();
         List<String> illustrationList = new ArrayList<>();
         // Extract metadata from documents in solr response
@@ -166,7 +165,7 @@ public class ImageExport {
      * @param metadataList a list of objects consisting of metadata used to construct links to the image server
      * @return a list of URLs pointing to the imageserver, that contains the illustrations.
      */
-    public static List<URL> createLinkForAllIllustrations(List<IllustrationMetadata> metadataList) throws IOException {
+    public List<URL> createLinkForAllIllustrations(List<IllustrationMetadata> metadataList) throws IOException {
         List<URL> illustrationUrls = new ArrayList<>();
 
         for (int i = 0; i< metadataList.size(); i++){
@@ -180,7 +179,7 @@ public class ImageExport {
      * @param ill is a class containing metadata for an illustration
      * @return a URL to the illustration described in the input metadata
      */
-    public static URL createIllustrationLink(IllustrationMetadata ill) throws IOException {
+    public URL createIllustrationLink(IllustrationMetadata ill) throws IOException {
         String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
         String baseParams = "&CVT=jpeg";
         String pageUuid = ill.getPageUUID();
@@ -197,7 +196,7 @@ public class ImageExport {
      * The image server containing the images uses the <a href="https://iipimage.sourceforge.io/documentation/protocol/">Internet Imaging Protocol</a>.
      * @return a region string that is ready to be added to an IIP query
      */
-    public static String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
+    public String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
         // Some illustrations have X and Y values greater than the width and height of the page.
         // Currently, these values are turned into zeroes and are therefore returning an incorrect image.
         // TODO: Ideally they should return the correct image (if that exists?) or nothing at all. LOOK INTO ALTO FILES
@@ -220,7 +219,7 @@ public class ImageExport {
         return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;//+"&WID="+width+"&HEI="+height;
     }
 
-    public static List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
+    public List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
         List<byte[]> allIllustrations = new ArrayList<>();
 
         for (int i = 0; i<illustrationUrls.size(); i++) {
@@ -231,7 +230,7 @@ public class ImageExport {
     }
 
 
-    public static byte[] downloadSingleIllustration(URL url) throws IOException {
+    public byte[] downloadSingleIllustration(URL url) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] illustrationAsByteArray = new byte[0];
         InputStream is = null;
@@ -254,7 +253,7 @@ public class ImageExport {
         return illustrationAsByteArray;
     }
 
-    public static ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays) {
+    public ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zos = new ZipOutputStream(baos);
         int count = 0;
@@ -273,7 +272,7 @@ public class ImageExport {
         return baos;
     }
 
-    private static void addToZipStream(byte[] data, String fileName, ZipOutputStream zos) throws IOException{
+    private void addToZipStream(byte[] data, String fileName, ZipOutputStream zos) throws IOException{
         // Create a buffer to read the data into
         byte[] buffer = new byte[1024];
         // Create a new zip entry with the file's name
