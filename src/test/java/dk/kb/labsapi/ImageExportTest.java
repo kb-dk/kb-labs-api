@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * IMPORTANT: All this only works with a proper setup and contact to Solr
  */
 public class ImageExportTest {
+    //TODO: Clean tests for explorative tests
     private static final Logger log = LoggerFactory.getLogger(ImageExportTest.class);
 
     @BeforeAll
@@ -85,7 +86,7 @@ public class ImageExportTest {
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.createIllustrationLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966"+"&CVT=jpeg");
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966&WID=2169&HEI=2644"+"&CVT=jpeg");
 
         assertEquals(correct, test);
     }
@@ -123,6 +124,7 @@ public class ImageExportTest {
         System.out.println(result);
     }
 
+    /*
     @Test
     public void testSizeConversion(){
         IllustrationMetadata illustration = new IllustrationMetadata();
@@ -130,6 +132,8 @@ public class ImageExportTest {
         String region = ImageExport.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
         assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
+
+     */
 
     @Test
     public void testServerConfig(){
@@ -157,15 +161,6 @@ public class ImageExportTest {
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = ImageExport.getMetadataForIllustrations(response);
         // Get illustration URLS
-        //List<URL> illustrationUrls = ImageExport.createLinkForAllIllustrations(illustrationMetadata);
-        // Get illustrations as bytearrays
-        //List<byte[]> illustrationsAsByteArrays = ImageExport.downloadAllIllustrations(illustrationUrls);
-        // Create bytearray of all images as zipArray
-        //ByteArrayOutputStream allImagesAsJpgs = ImageExport.byteArraysToZipArray(illustrationsAsByteArrays);
-
-        System.out.println(response.getResults());
-
-
         int count = 0;
         for (int i = 0; i<illustrationMetadata.size(); i++){
             System.out.println(illustrationMetadata.get(i));
@@ -189,8 +184,25 @@ public class ImageExportTest {
         List<URL> illustrationUrls = ImageExport.createLinkForAllIllustrations(illustrationMetadata);
 
         for (int i = 0; i < illustrationUrls.size(); i++) {
+            System.out.println("X: " + illustrationMetadata.get(i).getX());
+            System.out.println("Y: " + illustrationMetadata.get(i).getY());
+            System.out.println("W: " + illustrationMetadata.get(i).getW());
+            System.out.println("H: " + illustrationMetadata.get(i).getH());
+            System.out.println("pageWidth: " + illustrationMetadata.get(i).getPageWidth());
+            System.out.println("pageHeight: " + illustrationMetadata.get(i).getPageHeight());
             System.out.println(illustrationUrls.get(i));
-
         }
+    }
+
+    @Test
+    public void testRgnConstruction(){
+        String one = ImageExport.calculateIllustrationRegion(2184,1000,2804,2816,2527,2087);
+        String two = ImageExport.calculateIllustrationRegion(468,2536,1068,1616,2527,4000);
+
+        System.out.println(one);
+        System.out.println(two);
+        //&RGN=0.8642659,0.47915667,1.1096162,1.3493053
+        //&RGN=0.18519984,1.2151413,0.42263553,0.7743172
+        System.out.println(Math.max(2184,1000));
     }
 }

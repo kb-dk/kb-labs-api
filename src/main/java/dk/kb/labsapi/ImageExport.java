@@ -160,12 +160,27 @@ public class ImageExport {
      * @return a region string that is ready to be added to an IIP query
      */
     public static String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
-        // TODO: SOMETHING IS DONE WRONG HERE
-        float calculatedX = (float) x / (float) width;
-        float calculatedY = (float) y / (float) height;
-        float calculatedW = (float) w / (float) width;
-        float calculatedH = (float) h / (float) height;
-        return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;
+        // Some illustrations have X and Y values greater than the width and height of the page.
+        // Currently, these values are turned into zeroes and are therefore returning an incorrect image.
+        // TODO: Ideally they should return the correct image (if that exists?) or nothing at all.
+        float calculatedX = (float) x / (float) Math.max(width, x);
+        float calculatedY = (float) y / (float) Math.max(height, y);
+        float calculatedW = (float) w / (float) Math.max(w, width);
+        float calculatedH = (float) h / (float) Math.max(h, height);
+
+        if (calculatedX >= 1.0F){
+            calculatedX = 0;
+        }
+        if (calculatedY >= 1.0F){
+            calculatedY = 0;
+        }
+
+        /*
+        Fraction calculation from: https://math.hws.edu/graphicsbook/c2/s1.html
+        newX = newLeft + ((oldX - oldLeft) / (oldRight - oldLeft)) * (newRight - newLeft))
+        newY = newTop + ((oldY - oldTop) / (oldBottom - oldTop)) * (newBottom - newTop)
+         */
+        return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;//+"&WID="+width+"&HEI="+height;
     }
 
     public static List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
