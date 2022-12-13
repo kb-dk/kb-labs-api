@@ -26,6 +26,8 @@ public class ImageExport {
     public static final int pageSize = SolrExport.getInstance().pageSize;
     private static ImageExport instance;
     private final String ImageExportService;
+    private static int startYear = 0;
+    private static int endYear = 0;
 
     public static ImageExport getInstance() {
         if (instance == null) {
@@ -44,6 +46,8 @@ public class ImageExport {
             return;
         }
         ImageExportService = conf.getString(".url") + (conf.getString(".url").endsWith("/") ? "" : "/");
+        startYear = conf.getInteger(".minYear");
+        endYear = conf.getInteger(".maxYear");
         log.info("Created ImageExport with url '{}'", ImageExportService);
     }
 
@@ -57,11 +61,21 @@ public class ImageExport {
      * @return urls to images
      */
      public ByteArrayOutputStream getImageFromTextQuery(String query, int startTime, int endTime, int max) throws IOException {
-        if (instance.ImageExportService == null) {
+         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
-        }
+         }
+         // Check start and end times
+         int useableStartTime = startTime;
+         int useableEndTime = endTime;
+
+         if (startTime < startYear){
+             useableStartTime = startYear;
+         }
+         if (endTime > endYear){
+             useableEndTime = endYear;
+         }
         // Query Solr
-        QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
+        QueryResponse response = illustrationSolrCall(query, useableStartTime, useableEndTime, max);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
         // Get illustration URLS
