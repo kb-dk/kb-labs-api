@@ -1,6 +1,8 @@
 package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.util.webservice.exception.InternalServiceException;
+import dk.kb.util.yaml.YAML;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocumentList;
@@ -22,6 +24,28 @@ import java.util.zip.ZipOutputStream;
 public class ImageExport {
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
     public static final int pageSize = SolrExport.getInstance().pageSize;
+    private static ImageExport instance;
+    private final String ImageExportService;
+
+    public static ImageExport getInstance() {
+        if (instance == null) {
+            instance = new ImageExport();
+        }
+        return instance;
+    }
+
+    private ImageExport() {
+        YAML conf;
+        try {
+            conf = ServiceConfig.getConfig().getSubMap(".labsapi.aviser.imageserver");
+        } catch (Exception e) {
+            log.error("The configuration sub map '.labsapi.aviser.imageserver' was not defined");
+            ImageExportService = null;
+            return;
+        }
+        ImageExportService = conf.getString(".url") + (conf.getString(".url").endsWith("/") ? "" : "/");
+        log.info("Created ImageExport with url '{}'", ImageExportService);
+    }
 
     /**
      * Get link to image from newspaper page with given query present in text
@@ -33,6 +57,9 @@ public class ImageExport {
      * @return urls to images
      */
     static public ByteArrayOutputStream getImageFromTextQuery(String query, int startTime, int endTime, int max) throws IOException {
+        if (instance.ImageExportService == null) {
+            throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
+        }
         // Query Solr
         QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
         // Get illustration metadata
@@ -58,6 +85,8 @@ public class ImageExport {
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
     static public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max){
+
+
         // Construct solr query
         String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
         // TODO: Filter has to be applied differently. Currently it adds a second py filter if users adds that to their query and that creates an error

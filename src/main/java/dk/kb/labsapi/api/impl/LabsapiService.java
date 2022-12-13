@@ -278,7 +278,7 @@ public class LabsapiService implements LabsapiApi {
             String filename = getCurrentTimeISO() + "_illustrations_for_query_" + query.replaceAll("\\s+","_") + ".zip";
             httpServletResponse.setHeader(
                     "Content-Disposition", "inline; swaggerDownload=\"attachment\"; filename=\"" + filename + "\"");
-            images = ImageExport.getImageFromTextQuery(query, startTime, endTime, max);
+            images = ImageExport.getInstance().getImageFromTextQuery(query, startTime, endTime, max);
         } catch (IOException e) {
             throw new RuntimeException(e);
             // TODO: Add logging
