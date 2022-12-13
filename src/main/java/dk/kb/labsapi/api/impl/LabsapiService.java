@@ -269,10 +269,10 @@ public class LabsapiService implements LabsapiApi {
     }
 
     /**
-     * TODO: Write javadoc
-     * @param query
-     * @param max
-     * @return
+     * Deliver all illustrations that are present on newspaper pages where the input query is present in text.
+     * @param query to search for in the newspaper corpus
+     * @param max number of results to return illustrations from. This number restricts the query, not the number of illustrations to return.
+     * @return StreamingOutput containing zip file with all illustrations from query returned as jpeg images.
      */
     @Override
     public StreamingOutput exportImages(String query, Integer max) {
