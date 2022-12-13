@@ -22,6 +22,7 @@ import java.util.zip.ZipOutputStream;
  */
 public class ImageExport {
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
+    public static final int pageSize = SolrExport.getInstance().pageSize;
 
     /**
      * Get link to image from newspaper page with given query present in text
@@ -54,11 +55,13 @@ public class ImageExport {
     static public QueryResponse illustrationSolrCall(String query, int max){
         // Construct solr query
         String filter = "recordBase:doms_aviser_page AND py:[* TO 1880]";
+        // TODO: Filter has to be applied differently. Currently it adds a second py filter if users adds that to their query
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
-        solrQuery.setRows(max); // TODO: Implement -1 to return all
+        solrQuery.setRows(Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize));
+        // TODO: Implement -1 to return all
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
@@ -167,7 +170,7 @@ public class ImageExport {
         float calculatedY = (float) y / (float) Math.max(height, y);
         float calculatedW = (float) w / (float) Math.max(w, width);
         float calculatedH = (float) h / (float) Math.max(h, height);
-
+/*
         if (calculatedX >= 1.0F){
             calculatedX = 0;
         }
@@ -175,11 +178,10 @@ public class ImageExport {
             calculatedY = 0;
         }
 
-        /*
-        Fraction calculation from: https://math.hws.edu/graphicsbook/c2/s1.html
-        newX = newLeft + ((oldX - oldLeft) / (oldRight - oldLeft)) * (newRight - newLeft))
-        newY = newTop + ((oldY - oldTop) / (oldBottom - oldTop)) * (newBottom - newTop)
-         */
+ */
+        // Fraction calculation from: https://math.hws.edu/graphicsbook/c2/s1.html
+        // newX = newLeft + ((oldX - oldLeft) / (oldRight - oldLeft)) * (newRight - newLeft))
+        // newY = newTop + ((oldY - oldTop) / (oldBottom - oldTop)) * (newBottom - newTop)
         return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;//+"&WID="+width+"&HEI="+height;
     }
 

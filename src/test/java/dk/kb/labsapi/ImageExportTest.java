@@ -184,12 +184,20 @@ public class ImageExportTest {
         List<URL> illustrationUrls = ImageExport.createLinkForAllIllustrations(illustrationMetadata);
 
         for (int i = 0; i < illustrationUrls.size(); i++) {
+            System.out.println(("pageUUID: " + illustrationMetadata.get(i).getPageUUID()));
+
+            /*
             System.out.println("X: " + illustrationMetadata.get(i).getX());
             System.out.println("Y: " + illustrationMetadata.get(i).getY());
             System.out.println("W: " + illustrationMetadata.get(i).getW());
             System.out.println("H: " + illustrationMetadata.get(i).getH());
             System.out.println("pageWidth: " + illustrationMetadata.get(i).getPageWidth());
             System.out.println("pageHeight: " + illustrationMetadata.get(i).getPageHeight());
+
+             */
+
+            // Working UUID: 4d4e600d-c3fd-439c-8651-9eaf5ad546bd
+            // Nonworking UUID: a2088805-cc09-4b85-a8f8-c98954d544ca
             System.out.println(illustrationUrls.get(i));
         }
     }

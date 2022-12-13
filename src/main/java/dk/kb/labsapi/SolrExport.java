@@ -63,7 +63,7 @@ public class SolrExport extends SolrBase {
 
     private static final SolrExport instance = new SolrExport();
 
-    private final int pageSize;
+    public final int pageSize;
     private final String linkPrefix;
     private final String exportSort;
 
@@ -149,7 +149,7 @@ public class SolrExport extends SolrBase {
             case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
             case txt:   return streamExportTXT( request, fields, max, structure);
             case xml:   return streamExportXML( request, query, fields, max, structure);
-            case image: return streamExportImages(request);
+            case image: return streamExportImages(request); // TODO: Remove image here as it runs as own endpoint in own class
             default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
         }
     }

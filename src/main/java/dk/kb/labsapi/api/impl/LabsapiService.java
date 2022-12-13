@@ -272,6 +272,12 @@ public class LabsapiService implements LabsapiApi {
         }
     }
 
+    /**
+     * TODO: Write javadoc
+     * @param query
+     * @param max
+     * @return
+     */
     @Override
     public StreamingOutput exportImages(String query, Integer max) {
         ByteArrayOutputStream images;
@@ -282,7 +288,7 @@ public class LabsapiService implements LabsapiApi {
             throw new RuntimeException(e);
             // TODO: Add logging
         }
-        // TODO: Return images instead of links to images
+        // TODO: Change name of output zip file
         return output -> output.write(images.toByteArray());
     }
 
