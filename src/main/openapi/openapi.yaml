@@ -114,7 +114,7 @@ paths:
                       |XML|XML output. UTF-8 Encoded. <br/>This output format is [Voyant](https://voyant-tools.org/docs/#!/guide/about) compliant and makes it possible to export newspaper data directly to Voyant.|
           schema:
             type: string
-            enum:  ['CSV', 'JSON', 'JSONL', 'TXT', 'XML', 'image']
+            enum:  ['CSV', 'JSON', 'JSONL', 'TXT', 'XML']
             # TODO: When default value is CSV it would make more sense to have the example value be CSV as well?
             default: 'CSV'
             example: 'JSON'
