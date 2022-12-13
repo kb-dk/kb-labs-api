@@ -97,7 +97,7 @@ public class SolrExport extends SolrBase {
                     vals.stream().map(STRUCTURE::valueOf).collect(Collectors.toSet());
         }
     }
-    public enum EXPORT_FORMAT { csv, json, jsonl, txt, xml, image;
+    public enum EXPORT_FORMAT { csv, json, jsonl, txt, xml;
       public static EXPORT_FORMAT getDefault() {
           return csv;
       }
@@ -149,7 +149,6 @@ public class SolrExport extends SolrBase {
             case jsonl: return streamExportJSON(request, query, fields, max, structure, format);
             case txt:   return streamExportTXT( request, fields, max, structure);
             case xml:   return streamExportXML( request, query, fields, max, structure);
-            case image: return streamExportImages(request); // TODO: Remove image here as it runs as own endpoint in own class
             default: throw new UnsupportedOperationException("The format '" + format + "' is unsupported");
         }
     }
@@ -321,54 +320,6 @@ public class SolrExport extends SolrBase {
             }
         };
     }
-
-    public StreamingOutput streamExportImages(SolrParams request) {
-        // Manually constructed SolrQuery that returns illustrations metadata for each hit
-        // TODO: This method has to be accesed from own OpenAPI endpoint and not only as an option in export
-        String format = "json"; // Defines the format for Solr response - needs to be json for ImageExtractor class to function correctly
-        // Sets fields to export
-        Set<String> fields = new HashSet<>();
-        fields.add("recordID"); // Is not used for anything
-        fields.add("pageUUID"); // Defines the page
-        fields.add("illustration"); // Used to extract every illustration for each pageUUID
-        fields.add("page_width"); // Overall width of page - used to calculate extraction region
-        fields.add("page_height"); //Overall height of page - used to calculate extraction region
-        // Maximum number of documents to export
-        long max = 10; // should be set by user
-        // Makes the request modifialble
-        ModifiableSolrParams finalRequest = new ModifiableSolrParams(request);
-        // Add fields to SolrParams
-        // Constructs solr query that only contains pages with illustrations
-        SolrParams manualParams = new SolrQuery(
-                //cykel AND py:[1850 TO 1880] AND illustration:[* TO *] this query works in the solr admin panel
-                CommonParams.Q, sanitize("illustration:[* TO *]"),
-                CommonParams.FL, String.join(",", expandRequestFields(fields))
-        );
-
-        // Add extra SolrParams to final request
-        finalRequest.add(manualParams);
-
-        List<STRUCTURE> structure = new ArrayList<>(){};
-        structure.add(STRUCTURE.valueOf("content"));
-
-        return output -> {
-            try (OutputStreamWriter osw = new OutputStreamWriter(output, StandardCharsets.UTF_8);
-                 JSONStreamWriter jw = new JSONStreamWriter(osw, JSONStreamWriter.FORMAT.valueOf(format.toString()))) {
-                Consumer<SolrDocument> docWriter = doc -> jw.writeJSON(
-                        fields.stream()
-                                .filter(doc::containsKey)
-                                // TODO: Convert to DocumentDTO
-                                .collect(Collectors.toMap(
-                                        field -> field, field -> flattenStringList(doc.get(field)))));
-                if (structure.contains(STRUCTURE.content)) {
-                    searchAndProcess(finalRequest, pageSize, max, docWriter, null);
-                }
-            } catch (SolrServerException e) {
-                throw new RuntimeException("SolrException writing " + format + " for " + request, e);
-            }
-        };
-    }
-
 
     private Set<String> expandRequestFields(Set<String> fields) {
         if (fields.contains(LINK) && !fields.contains("pageUUID")) { // link = URL to the page
