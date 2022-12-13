@@ -48,7 +48,7 @@ public class ImageExport {
         ImageExportService = conf.getString(".url") + (conf.getString(".url").endsWith("/") ? "" : "/");
         startYear = conf.getInteger(".minYear");
         endYear = conf.getInteger(".maxYear");
-        log.info("Created ImageExport with url '{}'", ImageExportService);
+        log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
 
     /**
@@ -88,18 +88,19 @@ public class ImageExport {
      * @param max       number of results to return
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
-     public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max){
+     public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max) throws IOException{
          // Check start and end times
-         int usableStartTime = startTime;
-         int usableEndTime = endTime;
-         if (startTime < startYear){
-             usableStartTime = startYear;
+         int usableStartTime = setUsableStartTime(startTime);
+         int usableEndTime = setUsableEndTime(endTime);
+         // TODO: implement chech for start < end
+         if (usableStartTime > usableEndTime){
+             log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
+             throw new IOException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
          }
-         if (endTime > endYear){
-             usableEndTime = endYear;
-         }
+
         // Construct solr query with filter
         String filter = "recordBase:doms_aviser_page AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
+        log.info("The query gets filtered with the following filter: " + filter);
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
@@ -119,6 +120,13 @@ public class ImageExport {
             throw new RuntimeException(message);
         }
         return response;
+    }
+
+    public int setUsableStartTime(int startTime){
+        return Math.max(startTime, startYear);
+    }
+    public int setUsableEndTime(int endTime){
+        return Math.min(endTime, endYear);
     }
 
     /**

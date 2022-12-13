@@ -27,12 +27,9 @@ public class ImageExportTest {
     }
 
     @Test
-    void testSolrCall() {
+    void testSolrCall() throws IOException {
         int max = 10;
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1800, 1880, max);
-        for (int i = 0; i<max; i++){
-            System.out.println(response.getResults().get(i).jsonStr());
-        }
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1820, 1880, max);
         assertNotNull(response);
     }
 
@@ -96,7 +93,7 @@ public class ImageExportTest {
 
         List<URL> result = ImageExport.getInstance().createLinkForAllIllustrations(testList);
 
-        HttpURLConnection connection = null;
+        HttpURLConnection connection;
         int code;
         for (int i = 0; i<result.size(); i++){
             connection = (HttpURLConnection) result.get(0).openConnection();
@@ -115,6 +112,17 @@ public class ImageExportTest {
         System.out.println(result);
     }
 
+    @Test
+    public void testSettingStartYearToLow(){
+        int result = ImageExport.getInstance().setUsableStartTime(1200);
+        assertEquals(1666, result);
+    }
+
+    @Test
+    public void testSettingEndYearToHigh(){
+        int result = ImageExport.getInstance().setUsableEndTime(1945);
+        assertEquals(1880, result);
+    }
 
     @Test
     public void testSizeConversion(){
