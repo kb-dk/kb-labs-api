@@ -1,8 +1,5 @@
 package dk.kb.labsapi;
 
-import dk.kb.labsapi.api.LabsapiApi;
-import dk.kb.labsapi.api.impl.LabsapiApiServiceImpl;
-import dk.kb.labsapi.api.impl.LabsapiService;
 import dk.kb.labsapi.config.ServiceConfig;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * IMPORTANT: All this only works with a proper setup and contact to Solr
  */
 public class ImageExportTest {
-    //TODO: Clean tests for explorative tests
     private static final Logger log = LoggerFactory.getLogger(ImageExportTest.class);
 
     @BeforeAll
@@ -71,7 +67,7 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testIllustrationMetadataConversion() throws IOException {
+    public void testIllustrationMetadataConversion() {
         IllustrationMetadata testIllustration = new IllustrationMetadata();
         testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
 
@@ -80,13 +76,12 @@ public class ImageExportTest {
 
     @Test
     public void testSingleURLConstruction() throws IOException {
-        // img size 2169x2644
         IllustrationMetadata testIllustration = new IllustrationMetadata();
         testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.createIllustrationLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966&WID=2169&HEI=2644"+"&CVT=jpeg");
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966"+"&CVT=jpeg");
 
         assertEquals(correct, test);
     }
@@ -103,7 +98,6 @@ public class ImageExportTest {
         testList.add(illustration2);
 
         List<URL> result = ImageExport.createLinkForAllIllustrations(testList);
-        System.out.println(result);
 
         HttpURLConnection connection = null;
         int code;
@@ -124,58 +118,17 @@ public class ImageExportTest {
         System.out.println(result);
     }
 
-    /*
+
     @Test
     public void testSizeConversion(){
+        // Tests that ideal sizes are converted correctly
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String region = ImageExport.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
         assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
 
-     */
-
-    @Test
-    public void testServerConfig(){
-        String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
-        assertFalse(baseURL.isEmpty());
-    }
-
-    @Test
-    public void testImageDownlaod() throws IOException {
-        IllustrationMetadata illustration1 = new IllustrationMetadata();
-        illustration1.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-        IllustrationMetadata illustration2 = new IllustrationMetadata();
-        illustration2.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-        List<IllustrationMetadata> testList = new ArrayList<>();
-        testList.add(illustration1);
-        testList.add(illustration2);
-
-        List<URL> urls = ImageExport.createLinkForAllIllustrations(testList);
-        ImageExport.downloadAllIllustrations(urls);
-    }
-
-    @Test
-    public void testImageExport() throws IOException {
-        QueryResponse response = ImageExport.illustrationSolrCall("politi", 10);
-        // Get illustration metadata
-        List<IllustrationMetadata> illustrationMetadata = ImageExport.getMetadataForIllustrations(response);
-        // Get illustration URLS
-        int count = 0;
-        for (int i = 0; i<illustrationMetadata.size(); i++){
-            System.out.println(illustrationMetadata.get(i));
-            count += 1;
-        }
-        System.out.println(count);
-
-        ByteArrayOutputStream result = ImageExport.getImageFromTextQuery("politi", 10);
-
-        try(OutputStream outputStream = new FileOutputStream("src/test/resources/test.zip")) {
-            result.writeTo(outputStream);
-        }
-    }
-
-    @Test
+    //@Test
     public void testUrlConstruction() throws IOException {
         QueryResponse response = ImageExport.illustrationSolrCall("politi", 10);
         // Get illustration metadata
@@ -186,7 +139,6 @@ public class ImageExportTest {
         for (int i = 0; i < illustrationUrls.size(); i++) {
             System.out.println(("pageUUID: " + illustrationMetadata.get(i).getPageUUID()));
 
-            /*
             System.out.println("X: " + illustrationMetadata.get(i).getX());
             System.out.println("Y: " + illustrationMetadata.get(i).getY());
             System.out.println("W: " + illustrationMetadata.get(i).getW());
@@ -194,15 +146,13 @@ public class ImageExportTest {
             System.out.println("pageWidth: " + illustrationMetadata.get(i).getPageWidth());
             System.out.println("pageHeight: " + illustrationMetadata.get(i).getPageHeight());
 
-             */
-
             // Working UUID: 4d4e600d-c3fd-439c-8651-9eaf5ad546bd
             // Nonworking UUID: a2088805-cc09-4b85-a8f8-c98954d544ca
-            System.out.println(illustrationUrls.get(i));
+            System.out.println(illustrationUrls.get(i) + "\n");
         }
     }
 
-    @Test
+    //@Test
     public void testRgnConstruction(){
         String one = ImageExport.calculateIllustrationRegion(2184,1000,2804,2816,2527,2087);
         String two = ImageExport.calculateIllustrationRegion(468,2536,1068,1616,2527,4000);
