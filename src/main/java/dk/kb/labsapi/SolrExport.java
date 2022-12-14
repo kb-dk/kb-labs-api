@@ -63,7 +63,7 @@ public class SolrExport extends SolrBase {
 
     private static final SolrExport instance = new SolrExport();
 
-    public final int pageSize;
+    private final int pageSize;
     private final String linkPrefix;
     private final String exportSort;
 
