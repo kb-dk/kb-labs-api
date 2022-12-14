@@ -14,6 +14,7 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -23,7 +24,7 @@ import java.util.zip.ZipOutputStream;
  */
 public class ImageExport {
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
-    public static final int pageSize = SolrExport.getInstance().pageSize;
+    public static int pageSize;
     private static ImageExport instance;
     private final String ImageExportService;
     private static int startYear;
@@ -43,6 +44,7 @@ public class ImageExport {
             ImageExportService = null;
             return;
         }
+        pageSize = conf.getInteger(".solr.pagesize", 500);
         ImageExportService = conf.getString(".imageserver.url") + (conf.getString(".imageserver.url").endsWith("/") ? "" : "/");
         startYear = conf.getInteger(".imageserver.minYear");
         endYear = conf.getInteger(".imageserver.maxYear");
@@ -104,8 +106,7 @@ public class ImageExport {
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
-        solrQuery.setRows(Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize));
-        // TODO: Implement -1 correctly
+        solrQuery.setRows( Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize));
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
@@ -283,6 +284,7 @@ public class ImageExport {
     public ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zos = new ZipOutputStream(baos);
+        zos.setLevel(Deflater.NO_COMPRESSION);
         int count = 0;
         try {
             // Add byte arrays from input to zip
