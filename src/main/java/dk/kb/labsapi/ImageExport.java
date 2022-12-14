@@ -26,8 +26,8 @@ public class ImageExport {
     public static final int pageSize = SolrExport.getInstance().pageSize;
     private static ImageExport instance;
     private final String ImageExportService;
-    private static int startYear = 0;
-    private static int endYear = 0;
+    private static int startYear;
+    private static int endYear;
 
     public static ImageExport getInstance() {
         instance = new ImageExport();
@@ -58,7 +58,7 @@ public class ImageExport {
      * @param max       number of images to return
      * @return urls to images
      */
-     public ByteArrayOutputStream getImageFromTextQuery(String query, int startTime, int endTime, int max) throws IOException {
+     public ByteArrayOutputStream getImageFromTextQuery(String query, Integer startTime, Integer endTime, int max) throws IOException {
          if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
          }
@@ -86,10 +86,12 @@ public class ImageExport {
      * @param max       number of results to return
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
-     public QueryResponse illustrationSolrCall(String query, int startTime, int endTime, int max) throws IOException{
+     public QueryResponse illustrationSolrCall(String query, Integer startTime, Integer endTime, int max) throws IOException{
          // Check start and end times
          int usableStartTime = setUsableStartTime(startTime);
          int usableEndTime = setUsableEndTime(endTime);
+         log.info("Usable start time is: " + usableStartTime);
+         log.info("usable end time is: " + usableEndTime);
          if (usableStartTime > usableEndTime){
              log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
              throw new IOException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
@@ -120,10 +122,26 @@ public class ImageExport {
     }
 
     public int setUsableStartTime(int startTime){
-        return Math.max(startTime, startYear);
+         log.info("Input startTime is: " + startTime);
+         log.info("Default startYear is: " + startYear);
+         if (startTime < startYear){
+             log.info("Using startYear");
+             return startYear;
+         } else {
+             log.info("using startTime");
+             return startTime;
+         }
     }
     public int setUsableEndTime(int endTime){
-        return Math.min(endTime, endYear);
+        log.info("Input endTime is: " + endTime);
+        log.info("Default endYear is: " + endYear);
+         if (endTime > endYear){
+             log.info("Using endYear");
+             return endYear;
+         } else {
+             log.info("Using endTime");
+             return endTime;
+         }
     }
 
     /**
@@ -154,7 +172,8 @@ public class ImageExport {
      * @return a list of strings. Each string contains metadata for a single illustration from the input query response.
      */
      public List<String> getIllustrationsList(QueryResponse solrResponse) {
-        SolrDocumentList responseList = solrResponse.getResults();
+        SolrDocumentList responseList = new SolrDocumentList();
+        responseList = solrResponse.getResults();
         List<String> illustrationList = new ArrayList<>();
         // Extract metadata from documents in solr response
         for (int i = 0; i<responseList.size(); i++) {
@@ -247,9 +266,7 @@ public class ImageExport {
     public byte[] downloadSingleIllustration(URL url) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] illustrationAsByteArray = new byte[0];
-        InputStream is = null;
-        try {
-            is = url.openStream();
+        try (InputStream is = url.openStream()) {
             byte[] bytes = new byte[4096];
             int n;
 
@@ -259,10 +276,6 @@ public class ImageExport {
             illustrationAsByteArray = baos.toByteArray();
         } catch (IOException e) {
             log.error("Failed to download illustration from " + url + " while reading bytes");
-        } finally {
-            if (is != null) {
-                is.close();
-            }
         }
         return illustrationAsByteArray;
     }
@@ -287,9 +300,9 @@ public class ImageExport {
     }
 
     private void addToZipStream(byte[] data, String fileName, ZipOutputStream zos) throws IOException{
-        // Create a buffer to read the data into
+        // Create a buffer to read into
         byte[] buffer = new byte[1024];
-        // Create a new zip entry with the file's name
+        // Create a zip entry with individual filename
         ZipEntry ze = new ZipEntry(fileName);
         // Add the zip entry to the zip output stream
         zos.putNextEntry(ze);
@@ -303,7 +316,5 @@ public class ImageExport {
         // Close the zip entry
         zos.closeEntry();
         zos.flush();
-        // Close the byte array input stream
-        bais.close();
     }
 }

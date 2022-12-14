@@ -1,11 +1,10 @@
 package dk.kb.labsapi.api.impl;
 
 import dk.kb.labsapi.api.*;
-
+import dk.kb.labsapi.model.ErrorDto;
+import java.io.File;
 import dk.kb.labsapi.model.HitsDto;
-
-import java.util.ArrayList;
-import java.util.List;
+import dk.kb.labsapi.model.TimelineEntryDto;
 
 import dk.kb.webservice.exception.ServiceException;
 import dk.kb.webservice.exception.InternalServiceException;
@@ -13,15 +12,30 @@ import dk.kb.webservice.exception.InternalServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.List;
+import java.util.Map;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.*;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.*;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Request;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Providers;
-
+import javax.ws.rs.core.MediaType;
+import org.apache.cxf.jaxrs.model.wadl.Description;
+import org.apache.cxf.jaxrs.model.wadl.DocTarget;
 import org.apache.cxf.jaxrs.ext.MessageContext;
+import org.apache.cxf.jaxrs.ext.multipart.*;
+
+import io.swagger.annotations.Api;
 
 /**
  * labsapi
@@ -103,13 +117,8 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
         // TODO: Implement...
     
         
-        try{ 
-            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
-            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        } catch (Exception e){
-            throw handleException(e);
-        }
     
+        return null;
     }
 
     /**
@@ -142,42 +151,37 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
         // TODO: Implement...
     
         
-        try{ 
-            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
-            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        } catch (Exception e){
-            throw handleException(e);
-        }
     
+        return null;
     }
 
     /**
      * Export images from newspapers
-     *
-     * @param query: A query for the newspapers to export metadata for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied. This means that the API returns material from 1880 and before.  Even though a query like &#39;*cykel AND lplace:København*&#39; might return more and newer results in a [Mediestream search](https://www2.statsbiblioteket.dk/mediestream/avis/search/cykel%20AND%20lplace%3AK%C3%B8benhavn) the response from the API is limited to material at least 140 years old.
-     * @param max:   Number of max results to return. For all results use -1.
+     * 
+     * @param query: A query for the newspapers to export metadata for.  The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis  A filter restricting the result to newspapers older than 140 years will be automatically applied. This means that the API returns material from 1880 and before.  Even though a query like &#39;*cykel AND lplace:København*&#39; might return more and newer results in a [Mediestream search](https://www2.statsbiblioteket.dk/mediestream/avis/search/cykel%20AND%20lplace%3AK%C3%B8benhavn) the response from the API is limited to material at least 140 years old. 
+     * 
+     * @param max: Number of max results to return. For all results use -1. 
+     * 
+     * @param startTime: The starting year of the query (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. This cannot be earlier than 1666 as we do not have material from before 1666. 
+     * 
+     * @param endTime: The ending point of the query (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD. If blank, the year 1880 is used. The API does not expose data from after 1880. 
+     * 
      * @return <ul>
-     * <li>code = 200, message = "OK", response = String.class, responseContainer = "List"</li>
-     * </ul>
-     * @throws ServiceException when other http codes should be returned
-     *                          <p>
-     *                          Export images from pages of newspapers that contains the given query.
-     * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
+      *   <li>code = 200, message = "OK", response = File.class</li>
+      *   </ul>
+      * @throws ServiceException when other http codes should be returned
+      *
+      * Export images from pages of newspapers that contains the given query. 
+      *
+      * @implNote return will always produce a HTTP 200 code. Throw ServiceException if you need to return other codes
      */
     @Override
-    public StreamingOutput exportImages(String query, Integer startTime, Integer endTime, Integer max) throws ServiceException {
+    public javax.ws.rs.core.StreamingOutput exportImages(String query, Integer max, Integer startTime, Integer endTime) throws ServiceException {
         // TODO: Implement...
-        // TODO:
     
         
-        try{ 
-            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
-            StreamingOutput output = null;
-            return output;
-        } catch (Exception e){
-            throw handleException(e);
-        }
     
+        return null;
     }
 
     /**
@@ -211,13 +215,8 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
         // TODO: Implement...
     
         
-        try{ 
-            httpServletResponse.setHeader("Content-Disposition", "inline; filename=\"filename.ext\"");
-            return output -> output.write("Magic".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        } catch (Exception e){
-            throw handleException(e);
-        }
     
+        return null;
     }
 
     /**
@@ -239,13 +238,8 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
         // TODO: Implement...
     
         
-        try{ 
-            String response = "MVO2h";
-        return response;
-        } catch (Exception e){
-            throw handleException(e);
-        }
     
+        return null;
     }
 
     /**
@@ -266,15 +260,8 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
         // TODO: Implement...
     
         
-        try{ 
-            HitsDto response = new HitsDto();
-        response.setPublic(-4760299121817466880L);
-        response.setRestricted(7360523006580054016L);
-        return response;
-        } catch (Exception e){
-            throw handleException(e);
-        }
     
+        return null;
     }
 
     /**
@@ -294,13 +281,8 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
         // TODO: Implement...
     
         
-        try{ 
-            String response = "I504r91";
-        return response;
-        } catch (Exception e){
-            throw handleException(e);
-        }
     
+        return null;
     }
 
 
