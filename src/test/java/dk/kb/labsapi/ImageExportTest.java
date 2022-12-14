@@ -156,4 +156,41 @@ public class ImageExportTest {
         //&RGN=0.18519984,1.2151413,0.42263553,0.7743172
         System.out.println(Math.max(2184,1000));
     }
+
+    @Test
+    public void testAltoIllustrations() throws IOException {
+        // Query Solr
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1800, 1840, 20);
+        // Get illustration metadata
+        List<IllustrationMetadata> illustrationMetadata = ImageExport.getInstance().getMetadataForIllustrations(response);
+        List<URL> illustrationUrls = ImageExport.getInstance().createLinkForAllIllustrations(illustrationMetadata);
+
+        for (IllustrationMetadata item: illustrationMetadata){
+            System.out.println("pageUUID: " + item.getPageUUID() +
+                    "\nX: " + item.getX() +
+                    "\nY: " + item.getY() +
+                    "\nW: " + item.getW() +
+                    "\nH: " + item.getH() +
+                    "\npageWidth: " + item.getPageWidth() +
+                    "\npageHeight: " + item.getPageHeight() + "\n");
+        }
+        /*
+        pageUUID: b8f6e6a0-6772-4cc0-a705-17b311b51626
+        X: 616
+        Y: 12020
+        W: 700
+        H: 684
+        pageWidth: 2804
+        pageHeight: 4080
+
+        pageUUID: aac00e7d-e26a-4ab9-b169-2d0704ffce3d
+        X: 1868
+        Y: 1200
+        W: 2212
+        H: 984
+        pageWidth: 3049
+        pageHeight: 4701
+         */
+
+    }
 }
