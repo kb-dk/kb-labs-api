@@ -23,6 +23,7 @@ import java.util.zip.ZipOutputStream;
  * Images are defined by alto boxes.
  */
 public class ImageExport {
+    //TODO: Change internal methods to be private
     private static final Logger log = LoggerFactory.getLogger(ImageExport.class);
     public static int pageSize;
     private static ImageExport instance;
@@ -122,25 +123,32 @@ public class ImageExport {
         return response;
     }
 
+    /**
+     * Evaluate that startTime is allowed in configuration of service.
+     * @param startTime the chosen year for start of query.
+     * @return startTime if allowed else return default start year.
+     */
     public int setUsableStartTime(int startTime){
-         log.info("Input startTime is: " + startTime);
-         log.info("Default startYear is: " + startYear);
          if (startTime < startYear){
-             log.info("Using startYear");
+             log.info("Using startYear " + startYear);
              return startYear;
          } else {
-             log.info("using startTime");
+             log.info("using startTime " + startTime);
              return startTime;
          }
     }
+
+    /**
+     * Evaluate that endTime is allowed in configuration of service.
+     * @param endTime the chosen year for end of query.
+     * @return endTime if allowed else return default end year.
+     */
     public int setUsableEndTime(int endTime){
-        log.info("Input endTime is: " + endTime);
-        log.info("Default endYear is: " + endYear);
          if (endTime > endYear){
-             log.info("Using endYear");
+             log.info("Using endYear " + endYear);
              return endYear;
          } else {
-             log.info("Using endTime");
+             log.info("Using endTime" + endTime);
              return endTime;
          }
     }
@@ -196,8 +204,8 @@ public class ImageExport {
     }
 
     /**
-     * Create a link for each illustration in the given metadataList
-     * @param metadataList a list of objects consisting of metadata used to construct links to the image server
+     * Create a link for each illustration in the given metadataList.
+     * @param metadataList a list of objects consisting of metadata used to construct links to the image server.
      * @return a list of URLs pointing to the imageserver, that contains the illustrations.
      */
     public List<URL> createLinkForAllIllustrations(List<IllustrationMetadata> metadataList) throws IOException {
@@ -211,8 +219,8 @@ public class ImageExport {
 
     /**
      * Construct link to illustration from metadata.
-     * @param ill is a class containing metadata for an illustration
-     * @return a URL to the illustration described in the input metadata
+     * @param ill is a class containing metadata for an illustration.
+     * @return a URL to the illustration described in the input metadata.
      */
     public URL createIllustrationLink(IllustrationMetadata ill) throws IOException {
         String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
@@ -229,7 +237,7 @@ public class ImageExport {
     /**
      * Calculate X & W coordinates, width and height for region parameter. Converts input pixel values to fractions of image size.
      * The image server containing the images uses the <a href="https://iipimage.sourceforge.io/documentation/protocol/">Internet Imaging Protocol</a>.
-     * @return a region string that is ready to be added to an IIP query
+     * @return a region string that is ready to be added to an IIP query.
      */
     public String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
         // Some illustrations have X and Y values greater than the width and height of the page.
@@ -253,7 +261,13 @@ public class ImageExport {
         return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;//+"&WID="+width+"&HEI="+height;
     }
 
+    /**
+     * Download all images from a list of URLs.
+     * @param illustrationUrls List of URLs pointing to imageserver.
+     * @return list of byte arrays, where each array contains an image.
+     */
     public List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
+        // TODO: Stream directly to Streaming output
         List<byte[]> allIllustrations = new ArrayList<>();
 
         for (int i = 0; i<illustrationUrls.size(); i++) {
@@ -263,8 +277,12 @@ public class ImageExport {
         return allIllustrations;
     }
 
-
-    public byte[] downloadSingleIllustration(URL url) throws IOException {
+    /**
+     * Download an illustration from given URL and return it as a byte array.
+     * @param url pointing to the image to download.
+     * @return downloaded image as byte array.
+     */
+    public byte[] downloadSingleIllustration(URL url) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] illustrationAsByteArray = new byte[0];
         try (InputStream is = url.openStream()) {
@@ -281,6 +299,11 @@ public class ImageExport {
         return illustrationAsByteArray;
     }
 
+    /**
+     * Converts a list of byte arrays to an output stream containing hte images packed into a zip file.
+     * @param illustrationsAsByteArrays is a list of byte arrays, where each byte array contains an image.
+     * @return a zip file containing images as an output stream
+     */
     public ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zos = new ZipOutputStream(baos);
@@ -289,6 +312,7 @@ public class ImageExport {
         try {
             // Add byte arrays from input to zip
             for (int i = 0; i < illustrationsAsByteArrays.size(); i++) {
+                // TODO: Add pageUUIDs as prefix to filnames
                 addToZipStream(illustrationsAsByteArrays.get(i), "illustration_" + count + ".jpeg", zos);
                 count += 1;
             }
@@ -301,6 +325,12 @@ public class ImageExport {
         return baos;
     }
 
+    /**
+     * Add the content of a byte array to a given zip output stream.
+     * @param data to write to zip stream as individual zip entry.
+     * @param fileName given to data input in the zip stream.
+     * @param zos ZipOutputStream that gets streamed to.
+     */
     private void addToZipStream(byte[] data, String fileName, ZipOutputStream zos) throws IOException{
         // Create a buffer to read into
         byte[] buffer = new byte[1024];
