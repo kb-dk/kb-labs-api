@@ -30,24 +30,22 @@ public class ImageExport {
     private static int endYear = 0;
 
     public static ImageExport getInstance() {
-        if (instance == null) {
-            instance = new ImageExport();
-        }
+        instance = new ImageExport();
         return instance;
     }
 
     private ImageExport() {
         YAML conf;
         try {
-            conf = ServiceConfig.getConfig().getSubMap(".labsapi.aviser.imageserver");
+            conf = ServiceConfig.getConfig().getSubMap(".labsapi.aviser");
         } catch (Exception e) {
-            log.error("The configuration sub map '.labsapi.aviser.imageserver' was not defined");
+            log.error("The configuration sub map '.labsapi.aviser' was not defined");
             ImageExportService = null;
             return;
         }
-        ImageExportService = conf.getString(".url") + (conf.getString(".url").endsWith("/") ? "" : "/");
-        startYear = conf.getInteger(".minYear");
-        endYear = conf.getInteger(".maxYear");
+        ImageExportService = conf.getString(".imageserver.url") + (conf.getString(".imageserver.url").endsWith("/") ? "" : "/");
+        startYear = conf.getInteger(".imageserver.minYear");
+        endYear = conf.getInteger(".imageserver.maxYear");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
 
@@ -98,7 +96,7 @@ public class ImageExport {
          }
 
         // Construct solr query with filter
-        String filter = "recordBase:doms_aviser_page AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
+        String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
         log.info("The query gets filtered with the following filter: " + filter);
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
@@ -112,7 +110,7 @@ public class ImageExport {
 
         QueryResponse response;
         try {
-            response = SolrExport.getInstance().callSolr(solrQuery);
+            response = SolrExport.getInstance().callSolr(solrQuery, true);
         } catch (Exception e) {
             String message = "Error calling Solr for query: " + query;
             log.warn(message, e);
