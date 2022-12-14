@@ -143,30 +143,8 @@ public class ImageExportTest {
         assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
 
-    //@Test
-    public void testUrlConstruction() throws IOException {
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("politi",1875, 1876, 10);
-        // Get illustration metadata
-        List<IllustrationMetadata> illustrationMetadata = ImageExport.getInstance().getMetadataForIllustrations(response);
-        // Get illustration URLS
-        List<URL> illustrationUrls = ImageExport.getInstance().createLinkForAllIllustrations(illustrationMetadata);
-
-        for (int i = 0; i < illustrationUrls.size(); i++) {
-            System.out.println(("pageUUID: " + illustrationMetadata.get(i).getPageUUID()));
-
-            System.out.println("X: " + illustrationMetadata.get(i).getX());
-            System.out.println("Y: " + illustrationMetadata.get(i).getY());
-            System.out.println("W: " + illustrationMetadata.get(i).getW());
-            System.out.println("H: " + illustrationMetadata.get(i).getH());
-            System.out.println("pageWidth: " + illustrationMetadata.get(i).getPageWidth());
-            System.out.println("pageHeight: " + illustrationMetadata.get(i).getPageHeight());
-
-            // Working UUID: 4d4e600d-c3fd-439c-8651-9eaf5ad546bd
-            // Nonworking UUID: a2088805-cc09-4b85-a8f8-c98954d544ca
-            System.out.println(illustrationUrls.get(i) + "\n");
-        }
-    }
-
+    // Region construction contains errors as of now
+    // TODO: create this test when region things are working
     //@Test
     public void testRgnConstruction(){
         String one = ImageExport.getInstance().calculateIllustrationRegion(2184,1000,2804,2816,2527,2087);
@@ -177,24 +155,5 @@ public class ImageExportTest {
         //&RGN=0.8642659,0.47915667,1.1096162,1.3493053
         //&RGN=0.18519984,1.2151413,0.42263553,0.7743172
         System.out.println(Math.max(2184,1000));
-    }
-
-    @Test
-    public void testDifferentResponses() throws IOException {
-        ByteArrayOutputStream first = ImageExport.getInstance().getImageFromTextQuery("politi", 1870, 1880, 10);
-        ByteArrayOutputStream second = ImageExport.getInstance().getImageFromTextQuery("politi", 1845, 1850, 10);
-
-        //assertEquals(first, second);
-
-
-        try(OutputStream outputStream = new FileOutputStream("src/test/resources/firstFile.zip")) {
-            first.writeTo(outputStream);
-        }
-
-        try(OutputStream outputStream = new FileOutputStream("src/test/resources/secondFile.zip")) {
-            second.writeTo(outputStream);
-        }
-
-
     }
 }
