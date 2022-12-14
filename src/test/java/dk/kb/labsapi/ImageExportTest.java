@@ -2,12 +2,14 @@ package dk.kb.labsapi;
 
 import dk.kb.labsapi.config.ServiceConfig;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocumentList;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.awt.*;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -28,9 +30,17 @@ public class ImageExportTest {
 
     @Test
     void testSolrCall() throws IOException {
-        int max = 10;
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1820, 1880, max);
-        assertNotNull(response);
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1700, 1800, -1);
+        log.info("testSolrCall returns " + response.getResults().getNumFound() + " SolrDocuments as result.");
+        assertTrue(0 < response.getResults().getNumFound());
+    }
+
+    @Test
+    public void testIllustrationCount() throws IOException {
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1680, 1750, -1);
+        List<IllustrationMetadata> list = ImageExport.getInstance().getMetadataForIllustrations(response);
+        log.info("In these documents there are " + list.size() + " illustrations.");
+        assertTrue(0 < list.size());
     }
 
     @Test
@@ -167,5 +177,24 @@ public class ImageExportTest {
         //&RGN=0.8642659,0.47915667,1.1096162,1.3493053
         //&RGN=0.18519984,1.2151413,0.42263553,0.7743172
         System.out.println(Math.max(2184,1000));
+    }
+
+    @Test
+    public void testDifferentResponses() throws IOException {
+        ByteArrayOutputStream first = ImageExport.getInstance().getImageFromTextQuery("politi", 1870, 1880, 10);
+        ByteArrayOutputStream second = ImageExport.getInstance().getImageFromTextQuery("politi", 1845, 1850, 10);
+
+        //assertEquals(first, second);
+
+
+        try(OutputStream outputStream = new FileOutputStream("src/test/resources/firstFile.zip")) {
+            first.writeTo(outputStream);
+        }
+
+        try(OutputStream outputStream = new FileOutputStream("src/test/resources/secondFile.zip")) {
+            second.writeTo(outputStream);
+        }
+
+
     }
 }
