@@ -153,7 +153,8 @@ public class ImageExport {
      * @return a list of objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
      public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) {
-        List<IllustrationMetadata> illustrations = new ArrayList<>();
+         // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
+         List<IllustrationMetadata> illustrations = new ArrayList<>();
         // Parse result from query and save into a list of strings
         List<String> illustrationList = getIllustrationsList(solrResponse);
         // Map strings to illustration metadata
