@@ -52,41 +52,32 @@ public class ImageExport {
     }
 
     /**
-     * Get link to image from newspaper page with given query present in text
-     *
-     * @param query     to search for
-     * @param startTime
-     * @param endTime
-     * @param max       number of images to return
-     * @return urls to images
+     * Get link to image from newspaper page with given query present in text.
+     * @param query     to search for.
+     * @param startTime is the earliest boundary for the query.
+     * @param endTime   is the latest boundary for the query.
+     * @param max       number of documents to query for illustrations.
+     * @param output    to write images to as one combined zip file.
      */
-     public ByteArrayOutputStream getImageFromTextQuery(String query, Integer startTime, Integer endTime, int max) throws IOException {
-         if (instance.ImageExportService == null) {
+    public void getImageFromTextQueryAsStream(String query, Integer startTime, Integer endTime, Integer max, OutputStream output) throws IOException {
+        if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
-         }
+        }
         // Query Solr
         QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
         // Get illustration URLS
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
-        // Get illustrations as bytearrays
-        //List<byte[]> illustrationsAsByteArrays = downloadAllIllustrations(illustrationUrls);
-        // Create bytearray of all images as zipArray
-        //ByteArrayOutputStream allImagesAsJpgs = byteArraysToZipArray(illustrationsAsByteArrays, illustrationMetadata);
-
-        List<ByteArrayInputStream> streamedIllustrations= streamAllIllustrations(illustrationUrls);
-        //ByteArrayOutputStream allImagesAsJpgs = byteStreamToZipStream(streamedIllustrations, illustrationMetadata);
-        return null;
-
+        // Streams illustration from URL to zip file with all illustrations
+        illustrationURLSToStream(illustrationUrls, illustrationMetadata, output);
     }
 
     /**
      * Call Solr for input query and return fields needed to extract images from pages in the query.
-     *
-     * @param query     to call Solr with.
-     * @param startTime
-     * @param endTime
+     * @param query     to query Solr with.
+     * @param startTime startTime is the earliest boundary for the query.
+     * @param endTime   endTime is the latest boundary for the query.
      * @param max       number of results to return
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
@@ -228,11 +219,11 @@ public class ImageExport {
         String baseParams = "&CVT=jpeg";
         String pageUuid = ill.getPageUUID();
         String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
-        // TODO: Should some encoding happen here, so that we are not using commas directly in URL?
+        // Question: Should some encoding happen here, so that we are not using commas directly in URL?
         String region = calculateIllustrationRegion(ill.getX(), ill.getY(), ill.getW(), ill.getH(), ill.getPageWidth(), ill.getPageHeight());
 
-        URL finalUrl = new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
-        return finalUrl;
+        return new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
+
     }
 
     /**
@@ -254,25 +245,7 @@ public class ImageExport {
     }
 
     /**
-     * Download all images from a list of URLs.
-     *
-     * @param illustrationUrls List of URLs pointing to imageserver.
-     * @return list of byte arrays, where each array contains an image.
-     */
-    private List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) {
-        // TODO: Stream directly to Streaming output
-        List<byte[]> allIllustrations = new ArrayList<>();
-
-        for (int i = 0; i<illustrationUrls.size(); i++) {
-            byte[] illustrationAsByteArray = downloadSingleIllustration(illustrationUrls.get(i));
-            allIllustrations.add(illustrationAsByteArray);
-        }
-        return allIllustrations;
-    }
-
-    /**
      * Download an illustration from given URL and return it as a byte array.
-     *
      * @param url pointing to the image to download.
      * @return downloaded image as byte array.
      */
@@ -294,22 +267,20 @@ public class ImageExport {
     }
 
     /**
-     * Converts a list of byte arrays to an output stream containing the images packed into a zip file.
-     *
-     * @param illustrationsAsByteArrays is a list of byte arrays, where each byte array contains an image.
-     * @param metadataList used to construct individual filenames containing pageUUID for each newspaper page.
-     * @return a zip file containing images as an output stream.
+     * Streams content of all URLs given in input list to an output stream that delivers a zip file of all images from the URLs.
+     * @param illustrationURLs List of URls to get content from.
+     * @param illustrationMetadata List of metadata for each image returned from the URL list. Used to construct filenames.
+     * @param output output stream which holds the outputted zip file.
      */
-    private ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays, List<IllustrationMetadata> metadataList) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ZipOutputStream zos = new ZipOutputStream(baos);
+    private void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output) {
+        ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
         int count = 0;
         try {
-            // Add byte arrays from input to zip
-            for (int i = 0; i < illustrationsAsByteArrays.size(); i++) {
-                String pageUuid = metadataList.get(i).getPageUUID();
-                addToZipStream(illustrationsAsByteArrays.get(i),  "pageUUID_" + pageUuid + "_illustration_" + count + ".jpeg", zos);
+            for (int i = 0; i < illustrationURLs.size() ; i++) {
+                byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
+                String pageUuid = illustrationMetadata.get(i).getPageUUID();
+                addToZipStream(illustration,  "pageUUID_" + pageUuid + "_illustration_" + count + ".jpeg", zos);
                 count += 1;
             }
             // Close the zip output stream
@@ -318,7 +289,6 @@ public class ImageExport {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return baos;
     }
 
     /**
@@ -344,92 +314,5 @@ public class ImageExport {
         // Close the zip entry
         zos.closeEntry();
         zos.flush();
-    }
-
-
-    private List<ByteArrayInputStream> streamAllIllustrations(List<URL> illustrationUrls) {
-        // TODO: Stream directly to Streaming output
-        List<ByteArrayInputStream> streamOfAllIllustrations = new ArrayList<>();
-
-        for (int i = 0; i < illustrationUrls.size(); i++) {
-            ByteArrayInputStream illustrationAsInputStream = streamSingleIllustration(illustrationUrls.get(i));
-            streamOfAllIllustrations.add(illustrationAsInputStream);
-        }
-        return streamOfAllIllustrations;
-    }
-
-
-
-    private ByteArrayInputStream streamSingleIllustration(URL url) {
-        byte[] bytes = new byte[4096];
-        ByteArrayInputStream inputStreamIllustration = new ByteArrayInputStream(bytes);
-        try (InputStream is = url.openStream()) {
-            int n;
-            while ((n = is.read(bytes)) > 0) {
-                inputStreamIllustration.read(bytes, 0, n);
-            }
-        } catch (IOException e) {
-            log.error("Failed to download illustration from " + url + " while reading bytes");
-        }
-        return inputStreamIllustration;
-    }
-    private void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output) {
-        ZipOutputStream zos = new ZipOutputStream(output);
-        zos.setLevel(Deflater.NO_COMPRESSION);
-        int count = 0;
-        try {
-            for (int i = 0; i < illustrationURLs.size() ; i++) {
-                byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
-                String pageUuid = illustrationMetadata.get(i).getPageUUID();
-                addToZipStream(illustration,  "pageUUID_" + pageUuid + "_illustration_" + count + ".jpeg", zos);
-                count += 1;
-            }
-            // Close the zip output stream
-            zos.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    /*
-    private void addUrlToZipStream(Byte[] data, String fileName, ZipOutputStream zos) throws IOException{
-        // Create a buffer to read into
-        byte[] buffer = new byte[1024];
-        // Create a zip entry with individual filename
-        ZipEntry ze = new ZipEntry(fileName);
-        // Add the zip entry to the zip output stream
-        zos.putNextEntry(ze);
-        // Read the data into the buffer
-        int len;
-        while ((len = data.read(buffer)) > 0) {
-            // Write the buffer to the zip output stream
-            zos.write(buffer, 0, len);
-        }
-        // Close the zip entry
-        zos.closeEntry();
-        zos.flush();
-    }
-
-     */
-
-    public void getImageFromTextQueryAsStream(String query, Integer startTime, Integer endTime, Integer max, OutputStream output) throws IOException {
-        if (instance.ImageExportService == null) {
-            throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
-        }
-        // Query Solr
-        QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
-        // Get illustration metadata
-        List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
-        // Get illustration URLS
-        List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
-        // Get illustrations as bytearrays
-        //List<byte[]> illustrationsAsByteArrays = downloadAllIllustrations(illustrationUrls);
-        // Create bytearray of all images as zipArray
-        //ByteArrayOutputStream allImagesAsJpgs = byteArraysToZipArray(illustrationsAsByteArrays, illustrationMetadata);
-
-        //List<ByteArrayInputStream> streamedIllustrations= streamAllIllustrations(illustrationUrls);
-        illustrationURLSToStream(illustrationUrls, illustrationMetadata, output);
     }
 }
