@@ -56,8 +56,8 @@ public class ImageExportTest {
         assertEquals(652, illustration.getW());
         assertEquals(100, illustration.getH());
         assertEquals("0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4", illustration.getPageUUID());
-        assertEquals(2938, illustration.getPageWidth());
-        assertEquals(1234, illustration.getPageHeight());
+        assertEquals(10800, illustration.getPageWidth());
+        assertEquals(4800, illustration.getPageHeight());
 
         illustration.setData(testString2);
         assertEquals("ART1-2_SUB", illustration.getId());
@@ -66,8 +66,8 @@ public class ImageExportTest {
         assertEquals(2816, illustration.getW());
         assertEquals(2804, illustration.getH());
         assertEquals("a2088805-cc09-4b85-a8f8-c98954d544ca", illustration.getPageUUID());
-        assertEquals(2087, illustration.getPageWidth());
-        assertEquals(2527, illustration.getPageHeight());
+        assertEquals(7200, illustration.getPageWidth());
+        assertEquals(9600, illustration.getPageHeight());
     }
 
     @Test
@@ -85,7 +85,7 @@ public class ImageExportTest {
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.013831259,0.045385778,0.18441679,0.075642966"+"&CVT=jpeg");
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.0035714286,0.0125,0.04761905,0.020833334"+"&CVT=jpeg");
 
         assertEquals(correct, test);
     }
@@ -143,54 +143,9 @@ public class ImageExportTest {
         assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
     }
 
-    // Region construction contains errors as of now
-    // TODO: create this test when region things are working
-    //@Test
-    public void testRgnConstruction(){
-        String one = ImageExport.getInstance().calculateIllustrationRegion(2184,1000,2804,2816,2527,2087);
-        String two = ImageExport.getInstance().calculateIllustrationRegion(468,2536,1068,1616,2527,4000);
-
-        System.out.println(one);
-        System.out.println(two);
-        //&RGN=0.8642659,0.47915667,1.1096162,1.3493053
-        //&RGN=0.18519984,1.2151413,0.42263553,0.7743172
-        System.out.println(Math.max(2184,1000));
-    }
-
     @Test
-    public void testAltoIllustrations() throws IOException {
-        // Query Solr
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1800, 1840, 20);
-        // Get illustration metadata
-        List<IllustrationMetadata> illustrationMetadata = ImageExport.getInstance().getMetadataForIllustrations(response);
-        List<URL> illustrationUrls = ImageExport.getInstance().createLinkForAllIllustrations(illustrationMetadata);
-
-        for (IllustrationMetadata item: illustrationMetadata){
-            System.out.println("pageUUID: " + item.getPageUUID() +
-                    "\nX: " + item.getX() +
-                    "\nY: " + item.getY() +
-                    "\nW: " + item.getW() +
-                    "\nH: " + item.getH() +
-                    "\npageWidth: " + item.getPageWidth() +
-                    "\npageHeight: " + item.getPageHeight() + "\n");
-        }
-        /*
-        pageUUID: b8f6e6a0-6772-4cc0-a705-17b311b51626
-        X: 616
-        Y: 12020
-        W: 700
-        H: 684
-        pageWidth: 2804
-        pageHeight: 4080
-
-        pageUUID: aac00e7d-e26a-4ab9-b169-2d0704ffce3d
-        X: 1868
-        Y: 1200
-        W: 2212
-        H: 984
-        pageWidth: 3049
-        pageHeight: 4701
-         */
-
+    public void testRgnConstruction(){
+        String calculated = ImageExport.getInstance().calculateIllustrationRegion(2184,1000,2804,2816,4000,6000);
+        assertEquals("&RGN=0.546,0.16666666666666666,0.701,0.4693333333333333",calculated);
     }
 }
