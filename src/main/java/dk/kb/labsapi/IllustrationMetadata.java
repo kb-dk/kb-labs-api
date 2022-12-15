@@ -7,11 +7,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Object that can contain metadata for single illustrations from historical newspapers.
+ * Object that contains metadata for single illustrations from historical newspapers.
+ * All integer variables are stored as <a href="https://www.leadtools.com/help/sdk/v22/dh/ft/altoxmlmeasurementunit.html">inch1200</a> numbers.
  * The variables of the object are used when querying the image server containing the newspapers.
  * The metadata gets used to extract single illustrations instead of complete pages.
  * <br/><br/>
- * Each object contains the following information:
+ * Each object contains the following information as inch1200 values:
  * <ul>
  *     <li>pageUUID: Unique ID for each page</li>
  *     <li>pageWidth: Width of the newspaper page</li>
@@ -48,8 +49,8 @@ public class IllustrationMetadata {
             this.w = Integer.parseInt(m.group(4));
             this.h = Integer.parseInt(m.group(5));
             this.pageUUID = m.group(6);
-            this.pageWidth = Integer.parseInt(m.group(7));
-            this.pageHeight = Integer.parseInt(m.group(8));
+            this.pageWidth = convertPixelsToInch1200(Integer.parseInt(m.group(7)));
+            this.pageHeight = convertPixelsToInch1200(Integer.parseInt(m.group(8)));
         } else {
             log.error("Regex matching failed. Please check that input and pattern aligns.");
         }
@@ -59,15 +60,12 @@ public class IllustrationMetadata {
     public String getPageUUID(){
         return pageUUID;
     }
-
     public int getPageWidth() {
         return pageWidth;
     }
-
     public int getPageHeight() {
         return pageHeight;
     }
-
     public String getId() {
         return id;
     }
@@ -82,5 +80,15 @@ public class IllustrationMetadata {
     }
     public int getH() {
         return h;
+    }
+
+    /**
+     * Convert values from pixel to <a href="https://www.leadtools.com/help/sdk/v22/dh/ft/altoxmlmeasurementunit.html">inch1200</a> using known DPI.
+     * @param pixelValue to convert to inch1200 value.
+     * @return the inch1200 equal of the input pixel value.
+     */
+    private int convertPixelsToInch1200(int pixelValue){
+        final int DPI = 300;
+        return pixelValue / DPI * 1200;
     }
 }
