@@ -273,41 +273,14 @@ public class LabsapiService implements LabsapiApi {
      */
     @Override
     public StreamingOutput exportImages(String query, Integer startTime , Integer endTime, Integer max) {
-        // TODO: Output from two concurrent API calls return same output. How to close the zip stream
-        ByteArrayOutputStream images = new ByteArrayOutputStream();
-        byte[] imagesAsArray;
-
         try {
             String filename = getCurrentTimeISO() + "_illustrations_for_query_" + query.replaceAll("\\s+", "_") + ".zip";
             httpServletResponse.setHeader(
                     "Content-Disposition", "inline; swaggerDownload=\"attachment\"; filename=\"" + filename + "\"");
-            //return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query, startTime, endTime, max, output);
-/*            return new Consumer<OutputStream>() {
-                @Override
-                public void accept(OutputStream output) {
-                    ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
-
-                }
-            }*/
             return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
-
-            /*
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            imagesAsArray = images.toByteArray();
-            try {
-                images.flush();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-
-             */
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-        //return output -> output.write(imagesAsArray);
     }
 
     /**
