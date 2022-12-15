@@ -56,8 +56,8 @@ public class ImageExportTest {
         assertEquals(652, illustration.getW());
         assertEquals(100, illustration.getH());
         assertEquals("0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4", illustration.getPageUUID());
-        assertEquals(10800, illustration.getPageWidth());
-        assertEquals(4800, illustration.getPageHeight());
+        assertEquals(11752.0, illustration.getPageWidth());
+        assertEquals(4936.0, illustration.getPageHeight());
 
         illustration.setData(testString2);
         assertEquals("ART1-2_SUB", illustration.getId());
@@ -66,8 +66,8 @@ public class ImageExportTest {
         assertEquals(2816, illustration.getW());
         assertEquals(2804, illustration.getH());
         assertEquals("a2088805-cc09-4b85-a8f8-c98954d544ca", illustration.getPageUUID());
-        assertEquals(7200, illustration.getPageWidth());
-        assertEquals(9600, illustration.getPageHeight());
+        assertEquals(8348.0, illustration.getPageWidth());
+        assertEquals(10108.0, illustration.getPageHeight());
     }
 
     @Test
@@ -85,7 +85,7 @@ public class ImageExportTest {
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.0035714286,0.0125,0.04761905,0.020833334"+"&CVT=jpeg");
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.003457814661134163,0.0113464447806354,0.046104195481788846,0.018910741301059002"+"&CVT=jpeg");
 
         assertEquals(correct, test);
     }
@@ -140,7 +140,8 @@ public class ImageExportTest {
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String region = ImageExport.getInstance().calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
-        assertEquals("&RGN=0.46104196,0.45385778,0.18441679,0.075642966", region);
+        assertEquals("&RGN=0.46104195481788846,0.45385779122541603,0.18441678192715538,0.07564296520423601" +
+                "", region);
     }
 
     @Test
