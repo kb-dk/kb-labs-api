@@ -74,7 +74,7 @@ public class ImageExport {
         // Get illustrations as bytearrays
         List<byte[]> illustrationsAsByteArrays = downloadAllIllustrations(illustrationUrls);
         // Create bytearray of all images as zipArray
-        ByteArrayOutputStream allImagesAsJpgs = byteArraysToZipArray(illustrationsAsByteArrays);
+        ByteArrayOutputStream allImagesAsJpgs = byteArraysToZipArray(illustrationsAsByteArrays, illustrationMetadata);
 
         return allImagesAsJpgs;
 
@@ -239,34 +239,28 @@ public class ImageExport {
      * The image server containing the images uses the <a href="https://iipimage.sourceforge.io/documentation/protocol/">Internet Imaging Protocol</a>.
      * @return a region string that is ready to be added to an IIP query.
      */
-    public String calculateIllustrationRegion(int x, int y, int w, int h, int width, int height){
+    public String calculateIllustrationRegion(double x, double y, double w, double h, double width, double height){
         // Some illustrations have X and Y values greater than the width and height of the page.
         // Currently, these values are turned into zeroes and are therefore returning an incorrect image.
         // TODO: Ideally they should return the correct image (if that exists?) or nothing at all. LOOK INTO ALTO FILES
-        float calculatedX = (float) x / (float) Math.max(width, x);
-        float calculatedY = (float) y / (float) Math.max(height, y);
-        float calculatedW = (float) w / (float) Math.max(w, width);
-        float calculatedH = (float) h / (float) Math.max(h, height);
-        /* Hack to make weird illustrationboxes return something
-        if (calculatedX >= 1.0F){
-            calculatedX = 0;
-        }
-        if (calculatedY >= 1.0F){
-            calculatedY = 0;
-        }
-        */
+        double calculatedX = x / width;
+        double calculatedY = y / height;
+        double calculatedW = w / width;
+        double calculatedH = h / height;
+
         // Fraction calculation from: https://math.hws.edu/graphicsbook/c2/s1.html
         // newX = newLeft + ((oldX - oldLeft) / (oldRight - oldLeft)) * (newRight - newLeft))
         // newY = newTop + ((oldY - oldTop) / (oldBottom - oldTop)) * (newBottom - newTop)
-        return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH;//+"&WID="+width+"&HEI="+height;
+        return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH; //+"&WID="+width+"&HEI="+height;
     }
 
     /**
      * Download all images from a list of URLs.
+     *
      * @param illustrationUrls List of URLs pointing to imageserver.
      * @return list of byte arrays, where each array contains an image.
      */
-    public List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) throws IOException {
+    public List<byte[]> downloadAllIllustrations(List<URL> illustrationUrls) {
         // TODO: Stream directly to Streaming output
         List<byte[]> allIllustrations = new ArrayList<>();
 
@@ -279,6 +273,7 @@ public class ImageExport {
 
     /**
      * Download an illustration from given URL and return it as a byte array.
+     *
      * @param url pointing to the image to download.
      * @return downloaded image as byte array.
      */
@@ -301,10 +296,12 @@ public class ImageExport {
 
     /**
      * Converts a list of byte arrays to an output stream containing hte images packed into a zip file.
+     *
      * @param illustrationsAsByteArrays is a list of byte arrays, where each byte array contains an image.
+     * @param metadataList
      * @return a zip file containing images as an output stream
      */
-    public ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays) {
+    public ByteArrayOutputStream byteArraysToZipArray(List<byte[]> illustrationsAsByteArrays, List<IllustrationMetadata> metadataList) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ZipOutputStream zos = new ZipOutputStream(baos);
         zos.setLevel(Deflater.NO_COMPRESSION);
@@ -312,8 +309,8 @@ public class ImageExport {
         try {
             // Add byte arrays from input to zip
             for (int i = 0; i < illustrationsAsByteArrays.size(); i++) {
-                // TODO: Add pageUUIDs as prefix to filnames
-                addToZipStream(illustrationsAsByteArrays.get(i), "illustration_" + count + ".jpeg", zos);
+                String pageUuid = metadataList.get(i).getPageUUID();
+                addToZipStream(illustrationsAsByteArrays.get(i),  "page_" + pageUuid + "_illustration_" + count + ".jpeg", zos);
                 count += 1;
             }
             // Close the zip output stream

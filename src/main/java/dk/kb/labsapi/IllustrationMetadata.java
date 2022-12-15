@@ -27,13 +27,13 @@ import java.util.regex.Pattern;
 public class IllustrationMetadata {
     private static final Logger log = LoggerFactory.getLogger(IllustrationMetadata.class);
     private String pageUUID;
-    private int pageWidth;
-    private int pageHeight;
+    private double pageWidth;
+    private double pageHeight;
     private String id;
-    private int x;
-    private int y;
-    private int w;
-    private int h;
+    private double x;
+    private double y;
+    private double w;
+    private double h;
     static final Pattern illustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*),doms_aviser_page:uuid:(\\S*),(\\d*),(\\d*)");
 
     public IllustrationMetadata(){
@@ -44,10 +44,10 @@ public class IllustrationMetadata {
         Matcher m = illustrationPattern.matcher(input);
         if (m.matches()) {
             this.id = m.group(1);
-            this.x = Integer.parseInt(m.group(2));
-            this.y = Integer.parseInt(m.group(3));
-            this.w = Integer.parseInt(m.group(4));
-            this.h = Integer.parseInt(m.group(5));
+            this.x = Double.parseDouble(m.group(2));
+            this.y = Double.parseDouble(m.group(3));
+            this.w = Double.parseDouble(m.group(4));
+            this.h = Double.parseDouble(m.group(5));
             this.pageUUID = m.group(6);
             this.pageWidth = convertPixelsToInch1200(Integer.parseInt(m.group(7)));
             this.pageHeight = convertPixelsToInch1200(Integer.parseInt(m.group(8)));
@@ -60,25 +60,25 @@ public class IllustrationMetadata {
     public String getPageUUID(){
         return pageUUID;
     }
-    public int getPageWidth() {
+    public double getPageWidth() {
         return pageWidth;
     }
-    public int getPageHeight() {
+    public double getPageHeight() {
         return pageHeight;
     }
     public String getId() {
         return id;
     }
-    public int getX() {
+    public double getX() {
         return x;
     }
-    public int getY() {
+    public double getY() {
         return y;
     }
-    public int getW() {
+    public double getW() {
         return w;
     }
-    public int getH() {
+    public double getH() {
         return h;
     }
 
@@ -87,8 +87,8 @@ public class IllustrationMetadata {
      * @param pixelValue to convert to inch1200 value.
      * @return the inch1200 equal of the input pixel value.
      */
-    private int convertPixelsToInch1200(int pixelValue){
+    private double convertPixelsToInch1200(double pixelValue){
         final int DPI = 300;
-        return pixelValue / DPI * 1200;
+        return pixelValue / DPI * 1200.0;
     }
 }
