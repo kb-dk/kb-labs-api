@@ -310,7 +310,7 @@ public class ImageExport {
             // Add byte arrays from input to zip
             for (int i = 0; i < illustrationsAsByteArrays.size(); i++) {
                 String pageUuid = metadataList.get(i).getPageUUID();
-                addToZipStream(illustrationsAsByteArrays.get(i),  "page_" + pageUuid + "_illustration_" + count + ".jpeg", zos);
+                addToZipStream(illustrationsAsByteArrays.get(i),  "pageUUID_" + pageUuid + "_illustration_" + count + ".jpeg", zos);
                 count += 1;
             }
             // Close the zip output stream
