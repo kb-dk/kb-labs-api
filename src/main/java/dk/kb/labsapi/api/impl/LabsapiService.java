@@ -25,6 +25,7 @@ import java.io.*;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -280,7 +281,17 @@ public class LabsapiService implements LabsapiApi {
             String filename = getCurrentTimeISO() + "_illustrations_for_query_" + query.replaceAll("\\s+", "_") + ".zip";
             httpServletResponse.setHeader(
                     "Content-Disposition", "inline; swaggerDownload=\"attachment\"; filename=\"" + filename + "\"");
-            images = ImageExport.getInstance().getImageFromTextQuery(query, startTime, endTime, max);
+            //return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query, startTime, endTime, max, output);
+/*            return new Consumer<OutputStream>() {
+                @Override
+                public void accept(OutputStream output) {
+                    ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
+
+                }
+            }*/
+            return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
+
+            /*
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
@@ -290,9 +301,13 @@ public class LabsapiService implements LabsapiApi {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+
+             */
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
 
-        return output -> output.write(imagesAsArray);
+        //return output -> output.write(imagesAsArray);
     }
 
     /**
