@@ -6,6 +6,13 @@ info:
     ${project.description}
     
     If you have any ideas or experience any issues please report them at the projects github issues [page](https://github.com/kb-dk/kb-labs-api/issues).
+    
+    Data from the API is licensed under a [${data.license.name}](${data.license.url}). <br/>
+    The software/API itself is licensed under an [${license.name}](${license.url}).
+
+  contact:
+    name: "Royal Danish Library"
+    url: "https://github.com/kb-dk/kb-labs-api/issues"
   license:
     name: "${license.name}"
     url: "${license.url}"
