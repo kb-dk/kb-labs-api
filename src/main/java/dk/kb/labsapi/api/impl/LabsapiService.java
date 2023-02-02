@@ -274,7 +274,7 @@ public class LabsapiService implements LabsapiApi {
     @Override
     public StreamingOutput exportImages(String query, Integer startTime , Integer endTime, Integer max) {
         try {
-            String filename = getCurrentTimeISO() + "_illustrations_for_query_" + query.replaceAll("\\s+", "_") + ".zip";
+            String filename = getCurrentTimeISO() + "_illustrations.zip";
             httpServletResponse.setHeader(
                     "Content-Disposition", "inline; swaggerDownload=\"attachment\"; filename=\"" + filename + "\"");
             return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
