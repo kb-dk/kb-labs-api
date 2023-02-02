@@ -176,7 +176,7 @@ paths:
         - "${project.name}"
       summary: Export images from newspapers
       description: |
-        Export images from pages of newspapers that contains the given query.
+        Export images from pages of newspapers that contains the given query. If images are too tiny, they will not be included in the export.
       operationId: exportImages
       parameters:
         - name: query
