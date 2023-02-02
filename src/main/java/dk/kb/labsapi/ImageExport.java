@@ -230,6 +230,12 @@ public class ImageExport {
     /**
      * Calculate X & W coordinates, width and height for region parameter. Converts input pixel values to fractions of image size.
      * The image server containing the images uses the <a href="https://iipimage.sourceforge.io/documentation/protocol/">Internet Imaging Protocol</a>.
+     * @param x coordinate for individual illustration.
+     * @param y coordinate for individual illustration.
+     * @param w represents the width of the individual illustration.
+     * @param h represents the height of the individual illustration.
+     * @param width of page where the illustration is found.
+     * @param height of page where the illustration is found.
      * @return a region string that is ready to be added to an IIP query.
      */
     public String calculateIllustrationRegion(double x, double y, double w, double h, double width, double height){
