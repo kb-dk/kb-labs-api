@@ -68,6 +68,7 @@ public class ImageExport {
         QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
+        // TODO: Add minimum size for images to extract
         // Get illustration URLS
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
         // Streams illustration from URL to zip file with all illustrations
