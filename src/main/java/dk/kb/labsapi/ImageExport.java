@@ -3,6 +3,7 @@ package dk.kb.labsapi;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.util.webservice.exception.InternalServiceException;
 import dk.kb.util.yaml.YAML;
+import org.apache.commons.io.IOUtils;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocumentList;
@@ -220,7 +221,6 @@ public class ImageExport {
         String baseParams = "&CVT=jpeg";
         String pageUuid = ill.getPageUUID();
         String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
-        // Question: Should some encoding happen here, so that we are not using commas directly in URL?
         String region = calculateIllustrationRegion(ill.getX(), ill.getY(), ill.getW(), ill.getH(), ill.getPageWidth(), ill.getPageHeight());
 
         return new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
@@ -248,7 +248,7 @@ public class ImageExport {
         double calculatedW = w / width;
         double calculatedH = h / height;
 
-        return "&RGN="+calculatedX+","+calculatedY+","+calculatedW+","+calculatedH; //+"&WID="+width+"&HEI="+height;
+        return String.format(Locale.ROOT, "&RGN=%1.5f,%1.5f,%1.5f,%1.5f", calculatedX, calculatedY, calculatedW, calculatedH);
     }
 
     /**
@@ -257,6 +257,7 @@ public class ImageExport {
      * @return downloaded image as byte array.
      */
     private byte[] downloadSingleIllustration(URL url) {
+        /*
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] illustrationAsByteArray = new byte[0];
         try (InputStream is = url.openStream()) {
@@ -271,6 +272,13 @@ public class ImageExport {
             log.error("Failed to download illustration from " + url + " while reading bytes");
         }
         return illustrationAsByteArray;
+         */
+        try {
+            return IOUtils.toByteArray(url);
+        }  catch (IOException e) {
+            log.error("Failed to download illustration from " + url + " while reading bytes");
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -279,7 +287,7 @@ public class ImageExport {
      * @param illustrationMetadata List of metadata for each image returned from the URL list. Used to construct filenames.
      * @param output output stream which holds the outputted zip file.
      */
-    private void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output) {
+    private void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
         int count = 0;
@@ -287,14 +295,15 @@ public class ImageExport {
             for (int i = 0; i < illustrationURLs.size() ; i++) {
                 byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
                 String pageUuid = illustrationMetadata.get(i).getPageUUID();
-                addToZipStream(illustration,  "pageUUID_" + pageUuid + "_illustration_" + count + ".jpeg", zos);
+                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_illustration_%3d.jpeg", pageUuid, count), zos);
                 count += 1;
             }
             // Close the zip output stream
             zos.close();
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error adding illustration to ZIP stream.");
+            throw new IOException();
         }
     }
 
