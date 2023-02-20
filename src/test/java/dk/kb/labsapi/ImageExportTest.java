@@ -1,5 +1,6 @@
 package dk.kb.labsapi;
 
+import dk.kb.labsapi.api.impl.LabsapiService;
 import dk.kb.labsapi.config.ServiceConfig;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocumentList;
@@ -14,6 +15,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 

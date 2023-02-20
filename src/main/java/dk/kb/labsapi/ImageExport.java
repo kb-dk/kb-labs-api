@@ -1,5 +1,8 @@
 package dk.kb.labsapi;
 
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.util.webservice.exception.InternalServiceException;
 import dk.kb.util.yaml.YAML;
@@ -13,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 import java.util.zip.Deflater;
@@ -66,14 +70,38 @@ public class ImageExport {
         }
         // Query Solr
         QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
+        // TODO: create metadata file, that has to be added to output zip
+        Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
         // TODO: Add minimum size for images to extract
         // Get illustration URLS
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
         // Streams illustration from URL to zip file with all illustrations
-        illustrationURLSToStream(illustrationUrls, illustrationMetadata, output);
+        illustrationURLSToStream(illustrationUrls, illustrationMetadata, output, metadataMap);
     }
+
+    /**
+     * Create map of metadata for query
+     * @param query used to query solr
+     * @param startTime for the given query
+     * @param endTime for query
+     * @return a map of metadata used to provide a metadata file
+     */
+    public Map<String, Object> makeMetadataMap(String query, Integer startTime, Integer endTime) {
+        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        Date date = new Date();
+
+        Map<String, Object> metadataMap = new HashMap<>();
+        metadataMap.put("title", "Metadata for image extraction from the Danish Royal Librarys newspaper API.");
+        metadataMap.put("extraction_time", formatter.format(date));
+        metadataMap.put("query", query);
+        metadataMap.put("query_start_year", startTime);
+        metadataMap.put("query_end_year", endTime);
+
+        return metadataMap;
+    }
+
 
     /**
      * Call Solr for input query and return fields needed to extract images from pages in the query.
@@ -288,9 +316,13 @@ public class ImageExport {
      * @param illustrationMetadata List of metadata for each image returned from the URL list. Used to construct filenames.
      * @param output output stream which holds the outputted zip file.
      */
-    private void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output) throws IOException {
+    private void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
+
+        // Add metadata file to zip
+        addMetadataFileToZip(metadataMap, zos);
+
         int count = 0;
         try {
             for (int i = 0; i < illustrationURLs.size() ; i++) {
@@ -306,6 +338,20 @@ public class ImageExport {
             log.error("Error adding illustration to ZIP stream.");
             throw new IOException();
         }
+    }
+
+    /**
+     * Add a metadata file to the created zip file before images are added to the file.
+     * @param metadataMap containing metadata for the given solr query.
+     * @param zos ZipOutputStream to write the metadata file to.
+     */
+    public void addMetadataFileToZip(Map<String, Object> metadataMap, ZipOutputStream zos) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+        ZipEntry ze = new ZipEntry("metadata.json");
+        zos.putNextEntry(ze);
+        writer.writeValue(zos, metadataMap);
+        zos.closeEntry();
     }
 
     /**
