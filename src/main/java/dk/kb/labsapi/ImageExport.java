@@ -89,12 +89,11 @@ public class ImageExport {
      * @return a map of metadata used to provide a metadata file
      */
     public Map<String, Object> makeMetadataMap(String query, Integer startTime, Integer endTime) {
-        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
         Date date = new Date();
 
         Map<String, Object> metadataMap = new HashMap<>();
         metadataMap.put("title", "Metadata for image extraction from the Danish Royal Librarys newspaper API.");
-        metadataMap.put("extraction_time", formatter.format(date));
+        metadataMap.put("extraction_time", date.toString());
         metadataMap.put("query", query);
         metadataMap.put("query_start_year", startTime);
         metadataMap.put("query_end_year", endTime);
