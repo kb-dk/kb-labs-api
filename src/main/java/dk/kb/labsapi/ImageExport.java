@@ -97,7 +97,7 @@ public class ImageExport {
         metadataMap.put("query", query);
         metadataMap.put("query_start_year", startTime);
         metadataMap.put("query_end_year", endTime);
-        metadataMap.put("licens", "Creative Commons Public Domain Mark 1.0 License.");
+        metadataMap.put("license", "Creative Commons Public Domain Mark 1.0 License.");
 
         return metadataMap;
     }
