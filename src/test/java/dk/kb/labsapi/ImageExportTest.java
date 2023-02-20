@@ -88,7 +88,7 @@ public class ImageExportTest {
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.003457814661134163,0.0113464447806354,0.046104195481788846,0.018910741301059002"+"&CVT=jpeg");
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
 
         assertEquals(correct, test);
     }
@@ -143,12 +143,12 @@ public class ImageExportTest {
         IllustrationMetadata illustration = new IllustrationMetadata();
         illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String region = ImageExport.getInstance().calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
-        assertEquals("&RGN=0.46104195481788846,0.45385779122541603,0.18441678192715538,0.07564296520423601", region);
+        assertEquals("&RGN=0.46104,0.45386,0.18442,0.07564", region);
     }
 
     @Test
     public void testRgnConstruction(){
         String calculated = ImageExport.getInstance().calculateIllustrationRegion(2184,1000,2804,2816,4000,6000);
-        assertEquals("&RGN=0.546,0.16666666666666666,0.701,0.4693333333333333",calculated);
+        assertEquals("&RGN=0.54600,0.16667,0.70100,0.46933",calculated);
     }
 }
