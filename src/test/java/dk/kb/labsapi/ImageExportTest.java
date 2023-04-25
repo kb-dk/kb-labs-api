@@ -1,24 +1,30 @@
 package dk.kb.labsapi;
 
-import dk.kb.labsapi.api.impl.LabsapiService;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import org.apache.solr.client.solrj.response.QueryResponse;
-import org.apache.solr.common.SolrDocumentList;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.Deflater;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * IMPORTANT: All this only works with a proper setup and contact to Solr
@@ -151,4 +157,38 @@ public class ImageExportTest {
         String calculated = ImageExport.getInstance().calculateIllustrationRegion(2184,1000,2804,2816,4000,6000);
         assertEquals("&RGN=0.54600,0.16667,0.70100,0.46933",calculated);
     }
+
+    // Created because it looks like the ObjectWriter closes the overall ZipOutputStream in ImageExport
+    @Test
+    public void testZipClose() throws IOException {
+        OutputStream output = new ByteArrayOutputStream();
+        ZipOutputStream zos = new ZipOutputStream(output);
+        zos.setLevel(Deflater.NO_COMPRESSION);
+        ObjectMapper mapper = new ObjectMapper();
+        ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+        ZipEntry ze = new ZipEntry("metadata.json");
+        zos.putNextEntry(ze);
+        writer.writeValue(zos, Map.of("foo", "bar"));
+
+        // An exception is thrown on closeEntry with the message "Stream closed"
+        zos.closeEntry();
+    }
+
+    @Test
+    public void testAvoidZipClose() throws IOException {
+        OutputStream output = new ByteArrayOutputStream();
+        ZipOutputStream zos = new ZipOutputStream(output);
+        zos.setLevel(Deflater.NO_COMPRESSION);
+        ObjectMapper mapper = new ObjectMapper();
+        // https://stackoverflow.com/questions/66441395/jackson-objectwriter-only-writes-first-entry-from-stream
+        ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter()).
+                without(JsonGenerator.Feature.AUTO_CLOSE_TARGET); // This does the trick
+        
+        ZipEntry ze = new ZipEntry("metadata.json");
+        zos.putNextEntry(ze);
+        writer.writeValue(zos, Map.of("foo", "bar"));
+        zos.closeEntry();
+    }
+
+
 }
