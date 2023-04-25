@@ -321,7 +321,17 @@ public class ImageExport {
         zos.setLevel(Deflater.NO_COMPRESSION);
 
         // Add metadata file to zip
-        addMetadataFileToZip(metadataMap, zos);
+        try {
+            addMetadataFileToZip(metadataMap, zos);
+        } catch (Exception e) {
+            String message = String.format(
+                    Locale.ROOT,
+                    "Exception adding metadata entry to ZIP with %s illustrationURLs and %s illustrationMetadatas",
+                    illustrationURLs == null ? "null" : illustrationURLs.size(),
+                    illustrationMetadata == null ? "null" : illustrationMetadata.size());
+            log.warn(message, e);
+            throw new IOException(message, e);
+        }
 
         int count = 0;
         try {
