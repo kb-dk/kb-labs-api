@@ -339,7 +339,7 @@ public class ImageExport {
             for (int i = 0; i < illustrationURLs.size() ; i++) {
                 byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
                 String pageUuid = illustrationMetadata.get(i).getPageUUID();
-                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_illustration_%3d.jpeg", pageUuid, count), zos);
+                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_illustration_%03d.jpeg", pageUuid, count), zos);
                 count += 1;
             }
             // Close the zip output stream
