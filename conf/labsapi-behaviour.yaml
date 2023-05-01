@@ -17,6 +17,10 @@ labsapi:
       cache:
         maxEntries: 50
         maxAgeMS: 3600000 # 1 hour
+    imageserver: # testURL
+      minYear: 1666 # Optional. Default is 1666
+      maxYear: 1880 # Required. Maximum allowed is 1880
+      url: 'https://example.com/?FIF=/avis-show/symlinks'
 
     summarise:
       # A summarise server with newspaper material

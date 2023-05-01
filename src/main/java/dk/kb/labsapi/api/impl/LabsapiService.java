@@ -1,5 +1,6 @@
 package dk.kb.labsapi.api.impl;
 
+import dk.kb.labsapi.ImageExport;
 import dk.kb.labsapi.SummariseExport;
 import dk.kb.labsapi.SolrExport;
 import dk.kb.labsapi.SolrTimeline;
@@ -20,17 +21,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import java.io.*;
 import java.net.URI;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -198,12 +193,12 @@ public class LabsapiService implements LabsapiApi {
                 httpServletResponse.setContentType("text/csv;charset=UTF-8");
                 break;
             }
-            case json: {
+            case json:{
                 httpServletResponse.setContentType("application/json");
                 break;
             }
             case jsonl: {
-                httpServletResponse.setContentType( "application/x-ndjson");
+                httpServletResponse.setContentType("application/x-ndjson");
                 break;
             }
             case txt: {
@@ -269,6 +264,25 @@ public class LabsapiService implements LabsapiApi {
             throw handleException(e);
         }
     }
+
+    /**
+     * Deliver all illustrations that are present on newspaper pages where the input query is present in text.
+     * @param query to search for in the newspaper corpus
+     * @param max number of results to return illustrations from. This number restricts the query, not the number of illustrations to return.
+     * @return StreamingOutput containing zip file with all illustrations from query returned as jpeg images.
+     */
+    @Override
+    public StreamingOutput exportImages(String query, Integer startTime , Integer endTime, Integer max) {
+        try {
+            String filename = getCurrentTimeISO() + "_illustrations.zip";
+            httpServletResponse.setHeader(
+                    "Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
      * Splits candidates on comma and ensured that all candidates are in valids.
      * @param candidates  candidate elements.

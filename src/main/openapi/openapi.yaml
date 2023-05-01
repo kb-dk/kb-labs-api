@@ -170,6 +170,71 @@ paths:
               schema:
                 type: string
 
+  /aviser/export/images:
+    get:
+      tags:
+        - "${project.name}"
+      summary: Export images from newspapers
+      description: |
+        Export images from pages of newspapers that contains the given query. If images are too tiny, they will not be included in the export.
+      operationId: exportImages
+      parameters:
+        - name: query
+          in: query
+          required: true
+          # TODO: Update description to reflect how the images are extracted from pages where text is found from query
+          description: |
+            A query for the newspapers to export metadata for.
+
+            The query can be tested at http://www2.statsbiblioteket.dk/mediestream/avis
+
+            A filter restricting the result to newspapers older than 140 years will be automatically applied. This means that the API returns material from 1880 and before.
+
+            Even though a query like '*cykel AND lplace:København*' might return more and newer results in a [Mediestream search](https://www2.statsbiblioteket.dk/mediestream/avis/search/cykel%20AND%20lplace%3AK%C3%B8benhavn)
+            the response from the API is limited to material at least 140 years old.
+          schema:
+            type: string
+            example: 'politi'
+        - name: startTime
+          in: query
+          required: true
+          description: |
+            The starting year of the query (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+            This cannot be earlier than 1666 as we do not have material from before 1666.
+          schema:
+            type: integer
+            format: int32
+            example: 1666
+        - name: endTime
+          in: query
+          required: true
+          description: |
+            The ending point of the query (inclusive), expressed as YYYY, YYYY-MM or YYYY-MM-DD.
+            If blank, the year 1880 is used. The API does not expose data from after 1880.
+          schema:
+            type: integer
+            format: int32
+            example: 1880
+        - name: max
+          in: query
+          required: true
+          description: | 
+            Number of max results to return. For all results use -1.
+          schema:
+            type: integer
+            format: int32
+            default: 20
+
+      x-streamingOutput: true
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
   /aviser/export/alto:
     get:
       tags:

@@ -28,11 +28,7 @@ import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.response.FacetField;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.params.FacetParams;
-import org.apache.solr.common.params.GroupParams;
-import org.apache.solr.common.params.HighlightParams;
-import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.params.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.ws.rs.core.StreamingOutput;
@@ -324,7 +320,6 @@ public class SolrExport extends SolrBase {
             }
         };
     }
-
 
     private Set<String> expandRequestFields(Set<String> fields) {
         if (fields.contains(LINK) && !fields.contains("pageUUID")) { // link = URL to the page
