@@ -317,7 +317,7 @@ public class ImageExport {
      * @param illustrationMetadata List of metadata for each image returned from the URL list. Used to construct filenames.
      * @param output output stream which holds the outputted zip file.
      */
-    private void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap) throws IOException {
+    public void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
@@ -378,13 +378,8 @@ public class ImageExport {
         ZipEntry ze = new ZipEntry(fileName);
         // Add the zip entry to the zip output stream
         zos.putNextEntry(ze);
-        // Read the data into the buffer
-        ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        int len;
-        while ((len = bais.read(buffer)) > 0) {
-            // Write the buffer to the zip output stream
-            zos.write(buffer, 0, len);
-        }
+        // Write data to zipEntry
+        zos.write(data);
         // Close the zip entry
         zos.closeEntry();
         zos.flush();
