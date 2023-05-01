@@ -258,7 +258,7 @@ public class ImageExport {
     }
 
     /**
-     * Calculate X & W coordinates, width and height for region parameter. Converts input pixel values to fractions of image size.
+     * Calculate X & W coordinates, width and height for region parameter. Converts input <a href="https://www.leadtools.com/help/sdk/v22/dh/ft/altoxmlmeasurementunit.html">inch1200</a> values to fractions of image size.
      * The image server containing the images uses the <a href="https://iipimage.sourceforge.io/documentation/protocol/">Internet Imaging Protocol</a>.
      * @param x coordinate for individual illustration.
      * @param y coordinate for individual illustration.
@@ -278,7 +278,9 @@ public class ImageExport {
         double calculatedW = w / width;
         double calculatedH = h / height;
 
-        return String.format(Locale.ROOT, "&WID=%d&RGN=%1.5f,%1.5f,%1.5f,%1.5f", (int) w, calculatedX, calculatedY, calculatedW, calculatedH);
+        double widthInPixels = convertInch1200ToPixels(w);
+
+        return String.format(Locale.ROOT, "&WID=%d&RGN=%1.5f,%1.5f,%1.5f,%1.5f", (int) widthInPixels, calculatedX, calculatedY, calculatedW, calculatedH);
     }
 
     /**
@@ -383,5 +385,15 @@ public class ImageExport {
         // Close the zip entry
         zos.closeEntry();
         zos.flush();
+    }
+
+    /**
+     * Convert input <a href="https://www.leadtools.com/help/sdk/v22/dh/ft/altoxmlmeasurementunit.html">inch1200</a> value to corrosponding pixel value.
+     * @param inch1200Value to convert.
+     * @return pixel representation of input value.
+     */
+    private double convertInch1200ToPixels(double inch1200Value){
+        final int DPI = 300;
+        return inch1200Value * DPI / 1200.0;
     }
 }
