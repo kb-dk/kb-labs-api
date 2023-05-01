@@ -24,6 +24,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -99,7 +100,8 @@ public class ImageExportTest {
         assertEquals(correct, test);
     }
 
-    @Test
+    // Not enabled due to connection issues.
+    //@Test
     public void testMultipleURLConstructions() throws IOException {
         // img size 2169x2644
         IllustrationMetadata illustration1 = new IllustrationMetadata();
@@ -171,7 +173,14 @@ public class ImageExportTest {
         writer.writeValue(zos, Map.of("foo", "bar"));
 
         // An exception is thrown on closeEntry with the message "Stream closed"
-        zos.closeEntry();
+        Exception exception = assertThrows(IOException.class, () -> {
+            zos.closeEntry();
+        });
+
+        String expectedMessage = "Stream closed";
+        String actualMessage = exception.getMessage();
+
+        assertTrue(actualMessage.contains(expectedMessage));
     }
 
     @Test
