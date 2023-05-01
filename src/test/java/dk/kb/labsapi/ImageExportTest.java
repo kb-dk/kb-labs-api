@@ -95,7 +95,7 @@ public class ImageExportTest {
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e"+"&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
 
         assertEquals(correct, test);
     }

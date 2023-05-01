@@ -249,7 +249,7 @@ public class ImageExport {
     public URL createIllustrationLink(IllustrationMetadata ill) throws IOException {
         String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
         String baseParams = "&CVT=jpeg";
-        String pageUuid = ill.getPageUUID();
+        String pageUuid = ill.getPageUUID() + ".jp2";
         String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
         String region = calculateIllustrationRegion(ill.getX(), ill.getY(), ill.getW(), ill.getH(), ill.getPageWidth(), ill.getPageHeight());
 
