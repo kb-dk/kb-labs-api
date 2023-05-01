@@ -278,7 +278,7 @@ public class ImageExport {
         double calculatedW = w / width;
         double calculatedH = h / height;
 
-        return String.format(Locale.ROOT, "&RGN=%1.5f,%1.5f,%1.5f,%1.5f", calculatedX, calculatedY, calculatedW, calculatedH);
+        return String.format(Locale.ROOT, "&WID=%d&RGN=%1.5f,%1.5f,%1.5f,%1.5f", (int) w, calculatedX, calculatedY, calculatedW, calculatedH);
     }
 
     /**
