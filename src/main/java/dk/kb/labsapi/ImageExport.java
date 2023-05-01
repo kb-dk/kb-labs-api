@@ -1,5 +1,6 @@
 package dk.kb.labsapi;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -357,7 +358,7 @@ public class ImageExport {
      */
     public void addMetadataFileToZip(Map<String, Object> metadataMap, ZipOutputStream zos) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+        ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter()).without(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
         ZipEntry ze = new ZipEntry("metadata.json");
         zos.putNextEntry(ze);
         writer.writeValue(zos, metadataMap);
