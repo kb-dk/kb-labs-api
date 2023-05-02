@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.util.webservice.exception.InternalServiceException;
+import dk.kb.util.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.util.yaml.YAML;
 import org.apache.commons.io.IOUtils;
 import org.apache.solr.client.solrj.SolrQuery;
@@ -37,6 +38,7 @@ public class ImageExport {
     private final String ImageExportService;
     private static int startYear;
     private static int endYear;
+    private static int maxExport;
 
     public static ImageExport getInstance() {
         instance = new ImageExport();
@@ -56,6 +58,7 @@ public class ImageExport {
         ImageExportService = conf.getString(".imageserver.url") + (conf.getString(".imageserver.url").endsWith("/") ? "" : "/");
         startYear = conf.getInteger(".imageserver.minYear");
         endYear = conf.getInteger(".imageserver.maxYear");
+        maxExport = conf.getInteger(".imageserver.maxExport");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
 
@@ -124,6 +127,10 @@ public class ImageExport {
              log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
              throw new IOException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
          }
+         if (max > maxExport){
+             log.error("Maximum value is to high. Highest value is: " + maxExport);
+             throw new InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
+         }
 
         // Construct solr query with filter
         String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
@@ -132,7 +139,8 @@ public class ImageExport {
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
-        solrQuery.setRows( Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize));
+        //solrQuery.setRows( Math.min(max == -1 ? Integer.MAX_VALUE : max, pageSize));
+        solrQuery.setRows( Math.min(max == -1 ? maxExport : max, pageSize));
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);

@@ -218,12 +218,15 @@ paths:
         - name: max
           in: query
           required: true
-          description: | 
-            Number of max results to return. For all results use -1.
+          description: |
+            Number of max results to return.
+            
+            Maximum allowed results per call are 10000.
           schema:
             type: integer
             format: int32
             default: 20
+            maximum: "${conf/labsapi*.yaml/lapsapi.aviser.imageServer.maxExport}"
 
       x-streamingOutput: true
       responses:
@@ -234,6 +237,12 @@ paths:
               schema:
                 type: string
                 format: binary
+        '500':
+          description: Parameters are probably out of range.
+          content:
+            text/plain:
+              schema:
+                type: string
 
   /aviser/export/alto:
     get:
