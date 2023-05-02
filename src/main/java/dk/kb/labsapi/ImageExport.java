@@ -10,6 +10,7 @@ import dk.kb.util.yaml.YAML;
 import org.apache.commons.io.IOUtils;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.GroupParams;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -204,25 +206,31 @@ public class ImageExport {
      * @param solrResponse to extract illustrations from.
      * @return a list of strings. Each string contains metadata for a single illustration from the input query response.
      */
-     private List<String> getIllustrationsList(QueryResponse solrResponse) {
+     public List<String> getIllustrationsList(QueryResponse solrResponse) {
         SolrDocumentList responseList = new SolrDocumentList();
         responseList = solrResponse.getResults();
         List<String> illustrationList = new ArrayList<>();
+
+        // Set for deduplication on pageUUID level
+        Set<String> uniqueUUIDs = new HashSet<>();
+
         // Extract metadata from documents in solr response
         for (int i = 0; i<responseList.size(); i++) {
             String pageUUID = responseList.get(i).getFieldValue("pageUUID").toString();
-            long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
-            long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
-            List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
-            // Check if illustrations are present. If not, continue to next SolrDocument in list
-            if (illustrations == null) {
-                continue;
+            if (uniqueUUIDs.add(pageUUID)){
+                long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
+                long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
+                List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
+                // Check if illustrations are present. If not, continue to next SolrDocument in list
+                if (illustrations == null) {
+                    continue;
+                }
+                // Create metadata string for each illustration
+                for (int j = 0; j< illustrations.size(); j++){
+                    illustrations.set(j, illustrations.get(j) + "," + pageUUID + "," + pageWidth + "," + pageHeight);
+                }
+                illustrationList.addAll(illustrations);
             }
-            // Create metadata string for each illustration
-            for (int j = 0; j< illustrations.size(); j++){
-                illustrations.set(j, illustrations.get(j) + "," + pageUUID + "," + pageWidth + "," + pageHeight);
-            }
-            illustrationList.addAll(illustrations);
         }
         return illustrationList;
     }
