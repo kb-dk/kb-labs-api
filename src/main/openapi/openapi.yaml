@@ -217,16 +217,16 @@ paths:
             example: 1880
         - name: max
           in: query
-          required: true
+          required: false
           description: |
-            Number of max results to return.
+            Maximum number of images to return
             
             Maximum allowed results per call are 10000.
           schema:
             type: integer
             format: int32
-            default: 20
-            maximum: "${conf/labsapi*.yaml/lapsapi.aviser.imageServer.maxExport}"
+            default: 100
+            maximum: 1000
 
       x-streamingOutput: true
       responses:
@@ -237,7 +237,7 @@ paths:
               schema:
                 type: string
                 format: binary
-        '500':
+        '400':
           description: Parameters are probably out of range.
           content:
             text/plain:

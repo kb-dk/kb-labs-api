@@ -45,6 +45,7 @@ public class LabsapiService implements LabsapiApi {
 
     final static Set<String> allowedFacetFields = new HashSet<>();
     private static final Integer facetLimitMax;
+    private static final Integer maxExport;
 
     static {
         final YAML conf = ServiceConfig.getConfig();
@@ -71,6 +72,9 @@ public class LabsapiService implements LabsapiApi {
             log.error("Unable to retrieve list of facet fields from {} in config. Facet is not possible", key);
         }
         facetLimitMax = ServiceConfig.getConfig().getInteger(".labsapi.aviser.facet.limit.max", 1000);
+
+        maxExport = conf.getInteger(".labsapi.aviser.imageserver.maxExport", 1000);
+
     }
 
     /**
@@ -273,6 +277,10 @@ public class LabsapiService implements LabsapiApi {
      */
     @Override
     public StreamingOutput exportImages(String query, Integer startTime , Integer endTime, Integer max) {
+        if (max > maxExport){
+            log.error("Maximum value is to high. Highest value is: " + maxExport);
+            throw new dk.kb.util.webservice.exception.InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
+        }
         try {
             String filename = getCurrentTimeISO() + "_illustrations.zip";
             httpServletResponse.setHeader(
