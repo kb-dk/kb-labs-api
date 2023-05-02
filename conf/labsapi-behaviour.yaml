@@ -21,6 +21,7 @@ labsapi:
       minYear: 1666 # Optional. Default is 1666
       maxYear: 1880 # Required. Maximum allowed is 1880
       url: 'https://example.com/?FIF=/avis-show/symlinks'
+      maxExport: 10000
 
     summarise:
       # A summarise server with newspaper material
