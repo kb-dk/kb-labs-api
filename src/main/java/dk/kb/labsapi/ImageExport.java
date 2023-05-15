@@ -5,6 +5,9 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.labsapi.metadataFormats.BasicMetadata;
+import dk.kb.labsapi.metadataFormats.FullPageMetadata;
+import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
 import dk.kb.util.webservice.exception.InternalServiceException;
 import dk.kb.util.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.util.yaml.YAML;
@@ -19,10 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URL;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -76,7 +77,7 @@ public class ImageExport {
         }
         // Query Solr
         QueryResponse response = illustrationSolrCall(query, startTime, endTime, max);
-        // TODO: create metadata file, that has to be added to output zip
+        // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
         // Get illustration metadata
         List<IllustrationMetadata> illustrationMetadata = getMetadataForIllustrations(response);
@@ -84,15 +85,32 @@ public class ImageExport {
         // Get illustration URLS
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
         // Streams illustration from URL to zip file with all illustrations
-        illustrationURLSToStream(illustrationUrls, illustrationMetadata, output, metadataMap);
+        urlsToStream(illustrationUrls, illustrationMetadata, output, metadataMap);
+    }
+
+    public void getFullpageFromQueryAsStream(String query, Integer startTime, Integer endTime, Integer max, OutputStream output) throws IOException {
+        if (instance.ImageExportService == null) {
+            throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
+        }
+        // Query Solr
+        QueryResponse response = fullpageSolrCall(query, startTime, endTime, max);
+        // Create metadata file, that has to be added to output zip
+        Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
+
+        // Get fullPage metadata
+        List<FullPageMetadata> pageMetadata = getMetadataForFullPage(response);
+        // Get illustration URLS
+        List<URL> pageUrls = createLinkForAllFullPages(pageMetadata);
+        // Streams pages from URL to zip file with all illustrations
+        urlsToStream(pageUrls, pageMetadata, output, metadataMap);
     }
 
     /**
-     * Create map of metadata for query
-     * @param query used to query solr
-     * @param startTime for the given query
-     * @param endTime for query
-     * @return a map of metadata used to provide a metadata file
+     * Create map of metadata for query.
+     * @param query used to query solr.
+     * @param startTime for the given query.
+     * @param endTime for query.
+     * @return a map of metadata used to provide a metadata file.
      */
     public Map<String, Object> makeMetadataMap(String query, Integer startTime, Integer endTime) {
         Date date = new Date();
@@ -118,19 +136,30 @@ public class ImageExport {
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
      public QueryResponse illustrationSolrCall(String query, Integer startTime, Integer endTime, int max) throws IOException{
-         // Check start and end times
+         validateQueryParams(startTime, endTime, max);
          int usableStartTime = setUsableStartTime(startTime);
          int usableEndTime = setUsableEndTime(endTime);
-         log.info("Usable start time is: " + usableStartTime);
-         log.info("usable end time is: " + usableEndTime);
-         if (usableStartTime > usableEndTime){
-             log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
-             throw new IOException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
-         }
-         if (max > maxExport){
-             log.error("Maximum value is to high. Highest value is: " + maxExport);
-             throw new InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
-         }
+
+         // Construct solr query with filter
+         String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
+         log.info("The query gets filtered with the following filter: " + filter);
+         SolrQuery solrQuery = new SolrQuery();
+         solrQuery.setQuery(query);
+         solrQuery.setFilterQueries(filter);
+         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
+         solrQuery.setRows( Math.min(max == -1 ? maxExport : max, maxExport));
+         solrQuery.setFacet(false);
+         solrQuery.setHighlight(false);
+         solrQuery.set(GroupParams.GROUP, false);
+
+         QueryResponse response = callSolr(solrQuery);
+         return response;
+    }
+
+    private QueryResponse fullpageSolrCall(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
+        validateQueryParams(startTime, endTime, max);
+        int usableStartTime = setUsableStartTime(startTime);
+        int usableEndTime = setUsableEndTime(endTime);
 
         // Construct solr query with filter
         String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
@@ -138,15 +167,47 @@ public class ImageExport {
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
-        solrQuery.setFields("pageUUID, illustration, page_width, page_height");
+        solrQuery.setFields("pageUUID, page_width, page_height");
         solrQuery.setRows( Math.min(max == -1 ? maxExport : max, maxExport));
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
 
+        QueryResponse response = callSolr(solrQuery);
+        return response;
+    }
+
+    /**
+     * Validate query parameters that are to be used for image extraction.
+     * @param startTime of timespan for query.
+     * @param endTime of timespan for query.
+     * @param max number of queries.
+     */
+    private void validateQueryParams(Integer startTime, Integer endTime, Integer max) throws IOException {
+        // Check start and end times
+        int usableStartTime = setUsableStartTime(startTime);
+        int usableEndTime = setUsableEndTime(endTime);
+        log.info("Usable start time is: " + usableStartTime);
+        log.info("usable end time is: " + usableEndTime);
+        if (usableStartTime > usableEndTime){
+            log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
+            throw new IOException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
+        }
+        if (max > maxExport){
+            log.error("Maximum value is to high. Highest value is: " + maxExport);
+            throw new InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
+        }
+    }
+
+    /**
+     * Call solr with given query.
+     * @param query to search for.
+     * @return the result from Solr as a response object.
+     */
+    private QueryResponse callSolr(SolrQuery query){
         QueryResponse response;
         try {
-            response = SolrExport.getInstance().callSolr(solrQuery, true);
+            response = SolrExport.getInstance().callSolr(query, true);
         } catch (Exception e) {
             String message = "Error calling Solr for query: " + query;
             log.warn(message, e);
@@ -206,6 +267,23 @@ public class ImageExport {
             illustrations.add(singleIllustration);
         }
         return illustrations;
+    }
+
+    /**
+     * Get metadata values for all pages from query.
+     * The returned list contains an object of metadata from each single page.
+     * @return a list of objects consisting of pageUUID, pageWidth and pageHeight values for each page in the response from solr.
+     */
+    public List<FullPageMetadata> getMetadataForFullPage(QueryResponse solrResponse) {
+         List<FullPageMetadata> pages = new ArrayList<>();
+
+         SolrDocumentList documents = solrResponse.getResults();
+         for (SolrDocument doc : documents){
+             FullPageMetadata page = new FullPageMetadata(doc.get("pageUUID").toString(), (double) doc.get("pageWidth"), (double) doc.get("pageHeight"));
+             pages.add(page);
+         }
+
+         return pages;
     }
 
     /**
@@ -301,27 +379,41 @@ public class ImageExport {
     }
 
     /**
+     * Create a link for each page in the given metadataList.
+     * @param metadataList a list of objects consisting of metadata used to construct links to the image server.
+     * @return a list of URLs pointing to the imageserver, that contains the illustrations.
+     */
+    public List<URL> createLinkForAllFullPages (List<FullPageMetadata> metadataList) throws IOException {
+        List<URL> illustrationUrls = new ArrayList<>();
+
+        for (FullPageMetadata pageMetadata : metadataList) {
+            illustrationUrls.add(createFullPageLink(pageMetadata));
+        }
+        return illustrationUrls;
+    }
+
+    /**
+     * Construct link to pages from metadata.
+     * @param page contains metadate for extracting a full page.
+     * @return a URL to the page described in the input metadata.
+     */
+    public URL createFullPageLink(FullPageMetadata page) throws IOException {
+        String baseURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
+        String baseParams = "&CVT=jpeg";
+        String pageUuid = page.getPageUUID() + ".jp2";
+        String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
+        String region = "&RGN=1,1,1,1";
+
+        return new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
+
+    }
+
+    /**
      * Download an illustration from given URL and return it as a byte array.
      * @param url pointing to the image to download.
      * @return downloaded image as byte array.
      */
     private byte[] downloadSingleIllustration(URL url) {
-        /*
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] illustrationAsByteArray = new byte[0];
-        try (InputStream is = url.openStream()) {
-            byte[] bytes = new byte[4096];
-            int n;
-
-            while ((n = is.read(bytes)) > 0) {
-                baos.write(bytes, 0, n);
-            }
-            illustrationAsByteArray = baos.toByteArray();
-        } catch (IOException e) {
-            log.error("Failed to download illustration from " + url + " while reading bytes");
-        }
-        return illustrationAsByteArray;
-         */
         try {
             return IOUtils.toByteArray(url);
         }  catch (IOException e) {
@@ -336,7 +428,7 @@ public class ImageExport {
      * @param illustrationMetadata List of metadata for each image returned from the URL list. Used to construct filenames.
      * @param output output stream which holds the outputted zip file.
      */
-    public void illustrationURLSToStream(List<URL> illustrationURLs, List<IllustrationMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap) throws IOException {
+    public void urlsToStream(List<URL> illustrationURLs, List<? extends BasicMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 

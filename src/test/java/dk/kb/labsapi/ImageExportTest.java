@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.labsapi.metadataFormats.FullPageMetadata;
+import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -89,13 +91,24 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testSingleURLConstruction() throws IOException {
+    public void testSingleIllustrationURLConstruction() throws IOException {
         IllustrationMetadata testIllustration = new IllustrationMetadata();
         testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
         URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&WID=100&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
+
+        assertEquals(correct, test);
+    }
+
+    @Test
+    public void testSinglePageURLConstruction() throws IOException {
+        FullPageMetadata testIllustration = new FullPageMetadata("00001afe-9d6b-46e7-b7f3-5fb70d832d4e", 2000, 4000);
+        String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
+
+        URL test = ImageExport.getInstance().createFullPageLink(testIllustration);
+        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&RGN=1,1,1,1&CVT=jpeg");
 
         assertEquals(correct, test);
     }
@@ -122,15 +135,6 @@ public class ImageExportTest {
             code = connection.getResponseCode();
             assertEquals(200,code);
         }
-    }
-
-    @Test
-    public void testIllustrationLink() throws IOException {
-        IllustrationMetadata illustration = new IllustrationMetadata();
-        illustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-
-        URL result = ImageExport.getInstance().createIllustrationLink(illustration);
-        System.out.println(result);
     }
 
     @Test
