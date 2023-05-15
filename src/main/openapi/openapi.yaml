@@ -226,7 +226,7 @@ paths:
             type: integer
             format: int32
             default: 100
-            maximum: 1000
+            maximum: 10000
 
       x-streamingOutput: true
       responses:

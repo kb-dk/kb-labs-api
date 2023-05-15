@@ -279,7 +279,7 @@ public class LabsapiService implements LabsapiApi {
     public StreamingOutput exportImages(String query, Integer startTime , Integer endTime, Integer max) {
         if (max > maxExport){
             log.error("Maximum value is to high. Highest value is: " + maxExport);
-            throw new dk.kb.util.webservice.exception.InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
+            throw new dk.kb.webservice.exception.InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
         }
         try {
             String filename = getCurrentTimeISO() + "_illustrations.zip";
