@@ -26,6 +26,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,6 +54,13 @@ public class ImageExportTest {
         List<IllustrationMetadata> list = ImageExport.getInstance().getMetadataForIllustrations(response);
         log.info("In these documents there are " + list.size() + " illustrations.");
         assertTrue(0 < list.size());
+    }
+
+    @Test
+    public void testQueryForIllustratoins() throws IOException {
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("politi", 1680, 1750, 1);
+        Object illustrations = response.getResults().get(0).getFieldValue("illustration");
+        assertNotNull(illustrations);
     }
 
     @Test

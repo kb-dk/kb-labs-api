@@ -24,6 +24,7 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -40,6 +41,7 @@ public class ImageExport {
     private static int startYear;
     private static int endYear;
     private static int maxExport;
+    private static int defaultExport;
 
     public static ImageExport getInstance() {
         instance = new ImageExport();
@@ -60,6 +62,7 @@ public class ImageExport {
         startYear = conf.getInteger(".imageserver.minYear");
         endYear = conf.getInteger(".imageserver.maxYear");
         maxExport = conf.getInteger(".imageserver.maxExport");
+        defaultExport = conf.getInteger(".imageserver.defaultExport");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
 
@@ -140,20 +143,21 @@ public class ImageExport {
          int usableStartTime = setUsableStartTime(startTime);
          int usableEndTime = setUsableEndTime(endTime);
 
-         // Construct solr query with filter
-         String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
-         log.info("The query gets filtered with the following filter: " + filter);
-         SolrQuery solrQuery = new SolrQuery();
-         solrQuery.setQuery(query);
-         solrQuery.setFilterQueries(filter);
-         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
-         solrQuery.setRows( Math.min(max == -1 ? maxExport : max, maxExport));
-         solrQuery.setFacet(false);
-         solrQuery.setHighlight(false);
-         solrQuery.set(GroupParams.GROUP, false);
+        // Construct solr query with filter
+        String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
+        log.info("The query gets filtered with the following filter: " + filter);
+        SolrQuery solrQuery = new SolrQuery();
+        solrQuery.setQuery(query);
+        solrQuery.addFilterQuery(filter);
+        solrQuery.addFilterQuery("illustration: [* TO *]");
+        solrQuery.setFields("pageUUID, illustration, page_width, page_height");
+        solrQuery.setRows( max == -1 ? defaultExport : max);
+        solrQuery.setFacet(false);
+        solrQuery.setHighlight(false);
+        solrQuery.set(GroupParams.GROUP, false);
 
-         QueryResponse response = callSolr(solrQuery);
-         return response;
+        QueryResponse response = callSolr(solrQuery);
+        return response;
     }
 
     private QueryResponse fullpageSolrCall(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
