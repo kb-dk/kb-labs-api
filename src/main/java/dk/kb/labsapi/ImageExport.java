@@ -214,7 +214,7 @@ public class ImageExport {
      * @param solrResponse to extract illustrations from.
      * @return a list of strings. Each string contains metadata for a single illustration from the input query response.
      */
-     public List<String> getIllustrationsList(QueryResponse solrResponse) {
+     private List<String> getIllustrationsList(QueryResponse solrResponse) {
         SolrDocumentList responseList = new SolrDocumentList();
         responseList = solrResponse.getResults();
         List<String> illustrationList = new ArrayList<>();
@@ -225,20 +225,22 @@ public class ImageExport {
         // Extract metadata from documents in solr response
         for (int i = 0; i<responseList.size(); i++) {
             String pageUUID = responseList.get(i).getFieldValue("pageUUID").toString();
-            if (uniqueUUIDs.add(pageUUID)){
-                long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
-                long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
-                List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
-                // Check if illustrations are present. If not, continue to next SolrDocument in list
-                if (illustrations == null) {
-                    continue;
-                }
-                // Create metadata string for each illustration
-                for (int j = 0; j< illustrations.size(); j++){
-                    illustrations.set(j, illustrations.get(j) + "," + pageUUID + "," + pageWidth + "," + pageHeight);
-                }
-                illustrationList.addAll(illustrations);
+            if (!uniqueUUIDs.add(pageUUID)){
+                continue;
             }
+            long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
+            long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
+            List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
+            // Check if illustrations are present. If not, continue to next SolrDocument in list
+            if (illustrations == null) {
+                continue;
+            }
+            // Create metadata string for each illustration
+            for (int j = 0; j< illustrations.size(); j++){
+                illustrations.set(j, illustrations.get(j) + "," + pageUUID + "," + pageWidth + "," + pageHeight);
+            }
+            illustrationList.addAll(illustrations);
+
         }
         return illustrationList;
     }
