@@ -276,19 +276,32 @@ public class LabsapiService implements LabsapiApi {
      * @return StreamingOutput containing zip file with all illustrations from query returned as jpeg images.
      */
     @Override
-    public StreamingOutput exportImages(String query, Integer startTime , Integer endTime, Integer max) {
+    public StreamingOutput exportImages(String exportFormat, String query, Integer startTime , Integer endTime, Integer max) {
         if (max > maxExport){
             log.error("Maximum value is to high. Highest value is: " + maxExport);
             throw new dk.kb.webservice.exception.InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
         }
-        try {
-            String filename = getCurrentTimeISO() + "_illustrations.zip";
-            httpServletResponse.setHeader(
-                    "Content-Disposition", "attachment; filename=\"" + filename + "\"");
-            return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        switch (exportFormat){
+            case "illustrations":
+                try {
+                    String filename = getCurrentTimeISO() + "_illustrations.zip";
+                    httpServletResponse.setHeader(
+                            "Content-Disposition", "attachment; filename=\"" + filename + "\"");
+                    return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            case "fullPage":
+                try {
+                    String filename = getCurrentTimeISO() + "_fullPages.zip";
+                    httpServletResponse.setHeader(
+                            "Content-Disposition", "attachment; filename=\"" + filename + "\"");
+                    return output -> ImageExport.getInstance().getFullpageFromQueryAsStream(query, startTime, endTime, max, output);
+                } catch (Exception e){
+                    throw new RuntimeException(e);
+                }
         }
+        return null;
     }
 
     /**

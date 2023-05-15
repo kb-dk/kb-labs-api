@@ -179,6 +179,15 @@ paths:
         Export images from pages of newspapers that contains the given query. If images are too tiny, they will not be included in the export.
       operationId: exportImages
       parameters:
+        - name: exportFormat
+          in: query
+          required: true
+          description: |
+            Type of export
+          schema:
+            type: string
+            enum: [fullPage, illustrations]
+            default: illustrations
         - name: query
           in: query
           required: true
