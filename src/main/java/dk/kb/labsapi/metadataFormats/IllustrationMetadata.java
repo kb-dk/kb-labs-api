@@ -1,4 +1,4 @@
-package dk.kb.labsapi;
+package dk.kb.labsapi.metadataFormats;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  *     <li>x: height of illustration</li>
  * </ul>
  */
-public class IllustrationMetadata {
+public class IllustrationMetadata extends BasicMetadata {
     private static final Logger log = LoggerFactory.getLogger(IllustrationMetadata.class);
     private String pageUUID;
     private double pageWidth;
@@ -36,6 +36,7 @@ public class IllustrationMetadata {
     private double h;
     static final Pattern illustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*),doms_aviser_page:uuid:(\\S*),(\\d*),(\\d*)");
 
+    // TODO: Update this object so that it creates from constructor and not setData method.
     public IllustrationMetadata(){
     }
 
