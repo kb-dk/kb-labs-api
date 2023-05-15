@@ -160,7 +160,7 @@ public class ImageExport {
         return response;
     }
 
-    private QueryResponse fullpageSolrCall(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
+    public QueryResponse fullpageSolrCall(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
         validateQueryParams(startTime, endTime, max);
         int usableStartTime = setUsableStartTime(startTime);
         int usableEndTime = setUsableEndTime(endTime);
@@ -283,7 +283,7 @@ public class ImageExport {
 
          SolrDocumentList documents = solrResponse.getResults();
          for (SolrDocument doc : documents){
-             FullPageMetadata page = new FullPageMetadata(doc.get("pageUUID").toString(), (double) doc.get("pageWidth"), (double) doc.get("pageHeight"));
+             FullPageMetadata page = new FullPageMetadata(doc.get("pageUUID").toString(), (Long) doc.get("page_width"), (Long) doc.get("page_height"));
              pages.add(page);
          }
 

@@ -8,6 +8,8 @@ import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -64,6 +66,15 @@ public class ImageExportTest {
     }
 
     @Test
+    public void testFullPageMetadata() throws IOException {
+        QueryResponse response = ImageExport.getInstance().fullpageSolrCall("politi", 1680, 1750, 1);
+        List<FullPageMetadata> list = ImageExport.getInstance().getMetadataForFullPage(response);
+
+        assertEquals("doms_aviser_page:uuid:a308fb24-8ab2-4e72-92e0-0588892bdaa0", list.get(0).getPageUUID());
+        assertNotNull(list.get(0).getPageHeight());
+    }
+
+    @Test
     public void testRegexFormatting(){
         String testString1 = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100,doms_aviser_page:uuid:0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4,2938,1234";
         String testString2 = "id=ART1-2_SUB,x=2184,y=1000,w=2816,h=2804,doms_aviser_page:uuid:a2088805-cc09-4b85-a8f8-c98954d544ca,2087,2527";
@@ -112,7 +123,7 @@ public class ImageExportTest {
 
     @Test
     public void testSinglePageURLConstruction() throws IOException {
-        FullPageMetadata testIllustration = new FullPageMetadata("00001afe-9d6b-46e7-b7f3-5fb70d832d4e", 2000, 4000);
+        FullPageMetadata testIllustration = new FullPageMetadata("00001afe-9d6b-46e7-b7f3-5fb70d832d4e", 2000L, 4000L);
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.getInstance().createFullPageLink(testIllustration);
