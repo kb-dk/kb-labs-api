@@ -8,7 +8,8 @@ public class FullPageMetadata extends BasicMetadata {
     private Long pageHeight;
 
     public FullPageMetadata(String pageUUID, Long pageWidth, Long pageHeight){
-        this.pageUUID = pageUUID;
+        String realUUID = pageUUID.replace("doms_aviser_page:uuid:", "");
+        this.pageUUID = realUUID;
         this.pageHeight = pageHeight;
         this.pageWidth = pageWidth;
     }

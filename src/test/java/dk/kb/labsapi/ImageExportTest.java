@@ -70,7 +70,7 @@ public class ImageExportTest {
         QueryResponse response = ImageExport.getInstance().fullpageSolrCall("politi", 1680, 1750, 1);
         List<FullPageMetadata> list = ImageExport.getInstance().getMetadataForFullPage(response);
 
-        assertEquals("doms_aviser_page:uuid:a308fb24-8ab2-4e72-92e0-0588892bdaa0", list.get(0).getPageUUID());
+        assertEquals("a308fb24-8ab2-4e72-92e0-0588892bdaa0", list.get(0).getPageUUID());
         assertNotNull(list.get(0).getPageHeight());
     }
 
