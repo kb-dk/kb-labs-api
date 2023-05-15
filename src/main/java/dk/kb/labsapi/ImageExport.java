@@ -39,6 +39,7 @@ public class ImageExport {
     private static int startYear;
     private static int endYear;
     private static int maxExport;
+    private static int defaultExport;
 
     public static ImageExport getInstance() {
         instance = new ImageExport();
@@ -59,6 +60,7 @@ public class ImageExport {
         startYear = conf.getInteger(".imageserver.minYear");
         endYear = conf.getInteger(".imageserver.maxYear");
         maxExport = conf.getInteger(".imageserver.maxExport");
+        defaultExport = conf.getInteger(".imageserver.defaultExport");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
 
@@ -139,7 +141,7 @@ public class ImageExport {
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
-        solrQuery.setRows( max == -1 ? maxExport : max);
+        solrQuery.setRows( max == -1 ? defaultExport : max);
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
