@@ -139,7 +139,7 @@ public class ImageExport {
         solrQuery.setQuery(query);
         solrQuery.setFilterQueries(filter);
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
-        solrQuery.setRows( Math.min(max == -1 ? maxExport : max, maxExport));
+        solrQuery.setRows( max == -1 ? maxExport : max);
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
