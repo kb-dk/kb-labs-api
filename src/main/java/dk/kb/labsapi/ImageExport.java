@@ -193,11 +193,10 @@ public class ImageExport {
         // Check start and end times
         int usableStartTime = setUsableStartTime(startTime);
         int usableEndTime = setUsableEndTime(endTime);
-        log.info("Usable start time is: " + usableStartTime);
-        log.info("usable end time is: " + usableEndTime);
+        log.debug("Usable start time is: " + usableStartTime + "and usable end time is: " + usableEndTime );
         if (usableStartTime > usableEndTime){
             log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
-            throw new IOException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
+            throw new InvalidArgumentServiceException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
         }
         if (max > maxExport){
             log.error("Maximum value is to high. Highest value is: " + maxExport);
