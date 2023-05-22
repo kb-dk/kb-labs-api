@@ -21,11 +21,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
-import java.io.*;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -287,7 +285,7 @@ public class LabsapiService implements LabsapiApi {
                     String filename = getCurrentTimeISO() + "_illustrations.zip";
                     httpServletResponse.setHeader(
                             "Content-Disposition", "attachment; filename=\"" + filename + "\"");
-                    return output -> ImageExport.getInstance().getImageFromTextQueryAsStream(query,startTime, endTime, max, output);
+                    return output -> ImageExport.getInstance().getIllustrationsFromTextQueryAsStream(query,startTime, endTime, max, output, exportFormat);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -296,7 +294,7 @@ public class LabsapiService implements LabsapiApi {
                     String filename = getCurrentTimeISO() + "_fullPages.zip";
                     httpServletResponse.setHeader(
                             "Content-Disposition", "attachment; filename=\"" + filename + "\"");
-                    return output -> ImageExport.getInstance().getFullpageFromQueryAsStream(query, startTime, endTime, max, output);
+                    return output -> ImageExport.getInstance().getFullpageFromQueryAsStream(query, startTime, endTime, max, output, exportFormat);
                 } catch (Exception e){
                     throw new RuntimeException(e);
                 }

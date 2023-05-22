@@ -24,7 +24,6 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -74,7 +73,7 @@ public class ImageExport {
      * @param max       number of documents to query for illustrations.
      * @param output    to write images to as one combined zip file.
      */
-    public void getImageFromTextQueryAsStream(String query, Integer startTime, Integer endTime, Integer max, OutputStream output) throws IOException {
+    public void getIllustrationsFromTextQueryAsStream(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
@@ -88,10 +87,10 @@ public class ImageExport {
         // Get illustration URLS
         List<URL> illustrationUrls = createLinkForAllIllustrations(illustrationMetadata);
         // Streams illustration from URL to zip file with all illustrations
-        urlsToStream(illustrationUrls, illustrationMetadata, output, metadataMap);
+        urlsToStream(illustrationUrls, illustrationMetadata, output, metadataMap, exportFormat);
     }
 
-    public void getFullpageFromQueryAsStream(String query, Integer startTime, Integer endTime, Integer max, OutputStream output) throws IOException {
+    public void getFullpageFromQueryAsStream(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
@@ -105,7 +104,7 @@ public class ImageExport {
         // Get illustration URLS
         List<URL> pageUrls = createLinkForAllFullPages(pageMetadata);
         // Streams pages from URL to zip file with all illustrations
-        urlsToStream(pageUrls, pageMetadata, output, metadataMap);
+        urlsToStream(pageUrls, pageMetadata, output, metadataMap, exportFormat);
     }
 
     /**
@@ -266,7 +265,6 @@ public class ImageExport {
         for (String s : illustrationList) {
             // Create Illustration metadata object
             IllustrationMetadata singleIllustration = new IllustrationMetadata(s);
-            //singleIllustration.setData(s);
             // Add object to list of object
             illustrations.add(singleIllustration);
         }
@@ -432,7 +430,7 @@ public class ImageExport {
      * @param illustrationMetadata List of metadata for each image returned from the URL list. Used to construct filenames.
      * @param output output stream which holds the outputted zip file.
      */
-    public void urlsToStream(List<URL> illustrationURLs, List<? extends BasicMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap) throws IOException {
+    public void urlsToStream(List<URL> illustrationURLs, List<? extends BasicMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
@@ -454,7 +452,7 @@ public class ImageExport {
             for (int i = 0; i < illustrationURLs.size() ; i++) {
                 byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
                 String pageUuid = illustrationMetadata.get(i).getPageUUID();
-                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_illustration_%03d.jpeg", pageUuid, count), zos);
+                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count), zos);
                 count += 1;
             }
             // Close the zip output stream
