@@ -79,8 +79,7 @@ public class ImageExportTest {
         String testString1 = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100,doms_aviser_page:uuid:0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4,2938,1234";
         String testString2 = "id=ART1-2_SUB,x=2184,y=1000,w=2816,h=2804,doms_aviser_page:uuid:a2088805-cc09-4b85-a8f8-c98954d544ca,2087,2527";
 
-        IllustrationMetadata illustration = new IllustrationMetadata();
-        illustration.setData(testString1);
+        IllustrationMetadata illustration = new IllustrationMetadata(testString1);
         assertEquals("ART88-1_SUB", illustration.getId());
         assertEquals(2364, illustration.getX());
         assertEquals(4484, illustration.getY());
@@ -90,7 +89,7 @@ public class ImageExportTest {
         assertEquals(11752.0, illustration.getPageWidth());
         assertEquals(4936.0, illustration.getPageHeight());
 
-        illustration.setData(testString2);
+        illustration = new IllustrationMetadata(testString2);
         assertEquals("ART1-2_SUB", illustration.getId());
         assertEquals(2184, illustration.getX());
         assertEquals(1000, illustration.getY());
@@ -103,22 +102,22 @@ public class ImageExportTest {
 
     @Test
     public void testIllustrationMetadataConversion() {
-        IllustrationMetadata testIllustration = new IllustrationMetadata();
-        testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        String test = "id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644";
+        IllustrationMetadata testIllustration = new IllustrationMetadata(test);
 
         assertEquals(IllustrationMetadata.class, testIllustration.getClass());
     }
 
     @Test
     public void testSingleIllustrationURLConstruction() throws IOException {
-        IllustrationMetadata testIllustration = new IllustrationMetadata();
-        testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        String test = "id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644";
+        IllustrationMetadata testIllustration = new IllustrationMetadata(test);
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
-        URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
+        URL testUrl = ImageExport.getInstance().createIllustrationLink(testIllustration);
         URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&WID=100&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
 
-        assertEquals(correct, test);
+        assertEquals(correct, testUrl);
     }
 
     @Test
@@ -135,10 +134,11 @@ public class ImageExportTest {
     //@Test
     public void testMultipleURLConstructions() throws IOException {
         // img size 2169x2644
-        IllustrationMetadata illustration1 = new IllustrationMetadata();
-        illustration1.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-        IllustrationMetadata illustration2 = new IllustrationMetadata();
-        illustration2.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        String test1 = "";
+        String test2 = "";
+        IllustrationMetadata illustration1 = new IllustrationMetadata(test1);
+        IllustrationMetadata illustration2 = new IllustrationMetadata(test2);
+
         List<IllustrationMetadata> testList = new ArrayList<>();
         testList.add(illustration1);
         testList.add(illustration2);
@@ -170,8 +170,8 @@ public class ImageExportTest {
     @Test
     public void testSizeConversion(){
         // Tests that ideal sizes are converted correctly
-        IllustrationMetadata illustration = new IllustrationMetadata();
-        illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        String test = "id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644";
+        IllustrationMetadata illustration = new IllustrationMetadata(test);
         String region = ImageExport.getInstance().calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
         assertEquals("&WID=100&RGN=0.46104,0.45386,0.18442,0.07564", region);
     }

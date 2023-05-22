@@ -265,8 +265,8 @@ public class ImageExport {
         // Map strings to illustration metadata
         for (String s : illustrationList) {
             // Create Illustration metadata object
-            IllustrationMetadata singleIllustration = new IllustrationMetadata();
-            singleIllustration.setData(s);
+            IllustrationMetadata singleIllustration = new IllustrationMetadata(s);
+            //singleIllustration.setData(s);
             // Add object to list of object
             illustrations.add(singleIllustration);
         }
