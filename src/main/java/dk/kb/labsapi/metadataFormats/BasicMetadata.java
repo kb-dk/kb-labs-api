@@ -1,5 +1,14 @@
 package dk.kb.labsapi.metadataFormats;
 
+/**
+ * Object containing basic metadata for newspaper pages.
+ * Each object contains the following information:
+ *   <ul>
+ *       <li>pageUUID: Unique ID for each page</li>
+ *       <li>pageWidth: Width of the newspaper page</li>
+ *       <li>pageHeight: Height of the newspaper page</li>
+ *   </ul>
+ */
 public class BasicMetadata {
     String pageUUID;
     Long pageWidth;

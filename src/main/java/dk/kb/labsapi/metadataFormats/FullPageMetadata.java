@@ -2,6 +2,10 @@ package dk.kb.labsapi.metadataFormats;
 
 import org.apache.solr.client.solrj.response.QueryResponse;
 
+/**
+ * Object containing metadata about a full page from a newspaper.
+ * The variables of the object are used when querying the image server containing the newspapers.
+ */
 public class FullPageMetadata extends BasicMetadata {
     private String pageUUID;
 

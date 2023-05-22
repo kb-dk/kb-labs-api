@@ -159,6 +159,14 @@ public class ImageExport {
         return response;
     }
 
+    /**
+     * Call Solr for input query and return fields needed to extract images of all full pages.
+     * @param query to query solr with
+     * @param startTime is the earliest boundary for the query.
+     * @param endTime is the latest boundary for the query
+     * @param max number of results to return
+     * @return a response containing metadata used to deliver images of all pages. The fields returned are the following: <em>pageUUID, page_width and page_height</em>
+     */
     public QueryResponse fullpageSolrCall(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
         validateQueryParams(startTime, endTime, max);
         int usableStartTime = setUsableStartTime(startTime);
