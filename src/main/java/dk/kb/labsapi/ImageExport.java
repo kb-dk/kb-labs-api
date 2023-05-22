@@ -262,15 +262,19 @@ public class ImageExport {
          // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
          List<IllustrationMetadata> illustrations = new ArrayList<>();
         // Parse result from query and save into a list of strings
-        List<String> illustrationList = getIllustrationsList(solrResponse);
-        // Map strings to illustration metadata
+        //List<String> illustrationList = getIllustrationsList(solrResponse);
+        List<IllustrationMetadata> illustrationList = getIllustrationsList(solrResponse);
+
+        /*
+         // Map strings to illustration metadata
         for (String s : illustrationList) {
             // Create Illustration metadata object
             IllustrationMetadata singleIllustration = new IllustrationMetadata(s);
             // Add object to list of object
             illustrations.add(singleIllustration);
         }
-        return illustrations;
+         */
+        return illustrationList;
     }
 
     /**
@@ -295,10 +299,11 @@ public class ImageExport {
      * @param solrResponse to extract illustrations from.
      * @return a list of strings. Each string contains metadata for a single illustration from the input query response.
      */
-     private List<String> getIllustrationsList(QueryResponse solrResponse) {
+     private List<IllustrationMetadata> getIllustrationsList(QueryResponse solrResponse) {
         SolrDocumentList responseList = new SolrDocumentList();
         responseList = solrResponse.getResults();
         List<String> illustrationList = new ArrayList<>();
+        List<IllustrationMetadata> metadataList = new ArrayList<>();
 
         // Set for deduplication on pageUUID level
         Set<String> uniqueUUIDs = new HashSet<>();
@@ -319,11 +324,14 @@ public class ImageExport {
             // Create metadata string for each illustration
             for (int j = 0; j< illustrations.size(); j++){
                 illustrations.set(j, illustrations.get(j) + "," + pageUUID + "," + pageWidth + "," + pageHeight);
+                IllustrationMetadata metadata = new IllustrationMetadata(illustrations.get(j), pageUUID, pageWidth, pageHeight);
+                metadataList.add(j, metadata);
             }
             illustrationList.addAll(illustrations);
 
+
         }
-        return illustrationList;
+        return metadataList;
     }
 
     /**
