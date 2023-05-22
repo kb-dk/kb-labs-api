@@ -287,7 +287,7 @@ public class LabsapiService implements LabsapiApi {
                             "Content-Disposition", "attachment; filename=\"" + filename + "\"");
                     return output -> ImageExport.getInstance().getIllustrationsFromTextQueryAsStream(query,startTime, endTime, max, output, exportFormat);
                 } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    throw handleException(e);
                 }
             case "fullPage":
                 try {
@@ -296,7 +296,7 @@ public class LabsapiService implements LabsapiApi {
                             "Content-Disposition", "attachment; filename=\"" + filename + "\"");
                     return output -> ImageExport.getInstance().getFullpageFromQueryAsStream(query, startTime, endTime, max, output, exportFormat);
                 } catch (Exception e){
-                    throw new RuntimeException(e);
+                    throw handleException(e);
                 }
         }
         return null;
