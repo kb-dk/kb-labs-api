@@ -123,12 +123,11 @@ public class ImageExportTest {
 
     @Test
     public void testSinglePageURLConstruction() throws IOException {
-        FullPageMetadata testIllustration = new FullPageMetadata("00001afe-9d6b-46e7-b7f3-5fb70d832d4e", 2000L, 4000L);
+        FullPageMetadata testIllustration = new FullPageMetadata("3dbdca4e-d450-424b-b300-cf0a88773cb0", 2000L, 4000L);
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
         URL test = ImageExport.getInstance().createFullPageLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&RGN=1,1,1,1&CVT=jpeg");
-
+        URL correct = new URL(serverURL+"/3/d/b/d/3dbdca4e-d450-424b-b300-cf0a88773cb0.jp2"+"&CVT=jpeg");
         assertEquals(correct, test);
     }
 

@@ -408,7 +408,7 @@ public class ImageExport {
         String prePageUuid = "/" + pageUuid.charAt(0) + "/" + pageUuid.charAt(1) + "/" + pageUuid.charAt(2) + "/" + pageUuid.charAt(3) + "/";
         String region = "&RGN=1,1,1,1";
 
-        return new URL(baseURL+prePageUuid+pageUuid+region+baseParams);
+        return new URL(baseURL+prePageUuid+pageUuid+baseParams);
 
     }
 
