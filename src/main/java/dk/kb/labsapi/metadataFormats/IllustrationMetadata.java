@@ -26,9 +26,6 @@ import java.util.regex.Pattern;
  */
 public class IllustrationMetadata extends BasicMetadata {
     private static final Logger log = LoggerFactory.getLogger(IllustrationMetadata.class);
-    private String pageUUID;
-    private double pageWidth;
-    private double pageHeight;
     private String id;
     private double x;
     private double y;
@@ -50,23 +47,14 @@ public class IllustrationMetadata extends BasicMetadata {
             this.w = Double.parseDouble(m.group(4));
             this.h = Double.parseDouble(m.group(5));
             this.pageUUID = m.group(6);
-            this.pageWidth = convertPixelsToInch1200(Integer.parseInt(m.group(7)));
-            this.pageHeight = convertPixelsToInch1200(Integer.parseInt(m.group(8)));
+            this.pageWidth = (long) convertPixelsToInch1200(Integer.parseInt(m.group(7)));
+            this.pageHeight = (long) convertPixelsToInch1200(Integer.parseInt(m.group(8)));
         } else {
             log.error("Regex matching failed. Please check that input and pattern aligns.");
         }
     }
 
     // Getters
-    public String getPageUUID(){
-        return pageUUID;
-    }
-    public double getPageWidth() {
-        return pageWidth;
-    }
-    public double getPageHeight() {
-        return pageHeight;
-    }
     public String getId() {
         return id;
     }
