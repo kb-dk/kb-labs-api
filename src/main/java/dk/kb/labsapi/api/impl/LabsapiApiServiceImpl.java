@@ -285,6 +285,13 @@ public class LabsapiApiServiceImpl implements LabsapiApi {
         return null;
     }
 
+    @Override
+    public String queryConstructor(List<String> text, String booleanOperator, Integer startTime, Integer endTime,  List<String> familyId, List<String> lplace) {
+        // TODO: Implement
+
+        return null;
+    }
+
 
     /**
     * This method simply converts any Exception into a Service exception

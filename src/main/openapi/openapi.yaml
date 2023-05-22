@@ -21,6 +21,88 @@ servers:
     description: "Current server"
 paths:
 
+  /aviser/queryConstructor:
+    get:
+      tags:
+        - "${project.name}"
+      summary: Construct a query that can be used with other endpoints or at http://mediestream.dk/
+      description: |
+                  Construct a query from all available parameters that can be used with other endpoints that have a ```query```-parameter 
+                  or even as a query at http://mediestream.dk/
+      operationId: queryConstructor
+      parameters:
+        - name: text
+          in: query
+          required: false
+          description: Multiple words to search for. This constructs a query where by default all of the words needs to be present in the text.
+                      (This behavior can be changed by the booleanOperator parameter. The operators can be used in combination, when queries are constructed or manipulated manually.)
+          schema:
+            type: array
+            items:
+              type: string
+            example: "cykler i københavn"
+        - name: booleanOperator
+          in: query
+          required: false
+          description: | 
+                      Default boolean operator to use when creating query.
+                      |Boolean operator | Description |
+                      | --- | --- |
+                      | AND | Parameters on both sides of the operator are included in the result. |
+                      | OR | Only one of the parameters need to be present to be included. |
+                      | NOT | First parameter is included, second is not. |
+          schema:
+            type: string
+            default: "AND"
+            enum:
+              - "AND"
+              - "OR"
+              - "NOT"
+        - name: startTime
+          in: query
+          required: false
+          description: Start year for query (inclusive).
+          schema:
+            type: integer
+            minimum: 1666
+            maximum: 1880
+        - name: endTime
+          in: query
+          required: false
+          description: End year for query (inclusive)
+          schema:
+            type: integer
+            minimum: 1666
+            maximum: 1880
+        - name: familyId
+          in: query
+          required: false
+          description: The general name of the newspaper. The name of newspapers can change over time, this familyId will always be the same even though the title of the newspaper changes a little.
+          schema:
+            type: array
+            items:
+              type: string
+        - name: lplace
+          in: query
+          required: false
+          description: Place of publication. Where the paper was published.
+          schema:
+            type: array
+            items:
+              type: string
+
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "hest AND ko AND py:[1740 TO 1740]"
+        '400':
+          description: "startTime has to be less than endTime."
+
+
   /aviser/export/fields:
     get:
       tags:

@@ -1,6 +1,7 @@
 package dk.kb.labsapi.api.impl;
 
 import dk.kb.labsapi.ImageExport;
+import dk.kb.labsapi.QueryConstructor;
 import dk.kb.labsapi.SummariseExport;
 import dk.kb.labsapi.SolrExport;
 import dk.kb.labsapi.SolrTimeline;
@@ -46,6 +47,8 @@ public class LabsapiService implements LabsapiApi {
     final static Set<String> allowedFacetFields = new HashSet<>();
     private static final Integer facetLimitMax;
     private static final Integer maxExport;
+    private static final Integer minYear;
+    private static final Integer maxYear;
 
     static {
         final YAML conf = ServiceConfig.getConfig();
@@ -74,6 +77,8 @@ public class LabsapiService implements LabsapiApi {
         facetLimitMax = ServiceConfig.getConfig().getInteger(".labsapi.aviser.facet.limit.max", 1000);
 
         maxExport = conf.getInteger(".labsapi.aviser.imageserver.maxExport", 1000);
+        minYear = conf.getInteger(".labsapi.aviser.imageserver.minYear", 1666);
+        maxYear = conf.getInteger(".labsapi.aviser.imageserver.maxYear", 1880);
 
     }
 
@@ -409,6 +414,35 @@ public class LabsapiService implements LabsapiApi {
     public String ping() throws ServiceException {
         return "pong";
     }
+
+    @Override
+    public String queryConstructor(List<String> text, String booleanOperator, Integer startTime, Integer endTime, List<String> familyId, List<String> lplace) {
+        List<String> booleanOperators = new ArrayList<>(Arrays.asList("AND", "OR", "NOT"));
+        if (!(booleanOperators.contains(booleanOperator))){
+            throw new InvalidArgumentServiceException("Value for booleanOperator: '" + booleanOperator + "' is not an allowed boolean operator. 'AND', 'OR' and 'NOT' are allowed.");
+        }
+        if ( startTime > endTime){
+            throw new InvalidArgumentServiceException("Value for startTime cannot be higher than value for endTime.");
+        }
+        if (startTime < minYear){
+            startTime = minYear;
+            log.warn("Start time has been set to: " + minYear);
+        }
+        if (startTime > maxYear){
+            throw new InvalidArgumentServiceException("Value for startTime is not allowed. Maximum allowed value is: " + maxYear);
+        }
+        if (endTime < minYear){
+            endTime = minYear;
+            log.warn("End time has been set to: " + minYear);
+        }
+        if (endTime > maxYear){
+            throw new InvalidArgumentServiceException("Value for endTime is not allowed. Maximum allowed value is: " + maxYear);
+        }
+
+        String query = QueryConstructor.constructQuery(text, booleanOperator, startTime, endTime, familyId, lplace);
+        return query;
+    }
+
 
 
 
