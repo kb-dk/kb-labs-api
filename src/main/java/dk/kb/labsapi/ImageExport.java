@@ -449,14 +449,24 @@ public class ImageExport {
 
         int count = 0;
         try {
-            for (int i = 0; i < illustrationURLs.size() ; i++) {
-                byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
-                String pageUuid = illustrationMetadata.get(i).getPageUUID();
-                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count), zos);
-                count += 1;
+            switch (exportFormat){
+                case "illustrations":
+                    for (int i = 0; i < illustrationURLs.size() ; i++) {
+                        byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
+                        String pageUuid = illustrationMetadata.get(i).getPageUUID();
+                        addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count), zos);
+                        count += 1;
+                    }
+                    zos.close();
+
+                case "fullPage":
+                    for (int i = 0; i < illustrationURLs.size() ; i++) {
+                        byte[] illustration = downloadSingleIllustration(illustrationURLs.get(i));
+                        String pageUuid = illustrationMetadata.get(i).getPageUUID();
+                        addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + ".jpeg", pageUuid), zos);
+                    }
+                    zos.close();
             }
-            // Close the zip output stream
-            zos.close();
 
         } catch (IOException e) {
             log.error("Error adding illustration to ZIP stream.");
