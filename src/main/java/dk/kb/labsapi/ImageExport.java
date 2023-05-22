@@ -138,25 +138,14 @@ public class ImageExport {
      * @return a response containing specific metadata used to locate illustration on pages. The fields returned are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
      public QueryResponse illustrationSolrCall(String query, Integer startTime, Integer endTime, int max) throws IOException{
-         validateQueryParams(startTime, endTime, max);
-         int usableStartTime = setUsableStartTime(startTime);
-         int usableEndTime = setUsableEndTime(endTime);
 
-        // Construct solr query with filter
-        String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
-        log.info("The query gets filtered with the following filter: " + filter);
-        SolrQuery solrQuery = new SolrQuery();
-        solrQuery.setQuery(query);
-        solrQuery.addFilterQuery(filter);
-        solrQuery.addFilterQuery("illustration: [* TO *]");
-        solrQuery.setFields("pageUUID, illustration, page_width, page_height");
-        solrQuery.setRows( max == -1 ? defaultExport : max);
-        solrQuery.setFacet(false);
-        solrQuery.setHighlight(false);
-        solrQuery.set(GroupParams.GROUP, false);
+         // Construct solr query with filter
+         SolrQuery solrQuery = createSolrQuery(query, startTime, endTime, max);
+         solrQuery.addFilterQuery("illustration: [* TO *]");
+         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
 
-        QueryResponse response = callSolr(solrQuery);
-        return response;
+         QueryResponse response = callSolr(solrQuery);
+         return response;
     }
 
     /**
@@ -168,6 +157,15 @@ public class ImageExport {
      * @return a response containing metadata used to deliver images of all pages. The fields returned are the following: <em>pageUUID, page_width and page_height</em>
      */
     public QueryResponse fullpageSolrCall(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
+        // Construct solr query with filter
+        SolrQuery solrQuery = createSolrQuery(query, startTime, endTime, max);
+        solrQuery.setFields("pageUUID, page_width, page_height");
+
+        QueryResponse response = callSolr(solrQuery);
+        return response;
+    }
+
+    private SolrQuery createSolrQuery(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
         validateQueryParams(startTime, endTime, max);
         int usableStartTime = setUsableStartTime(startTime);
         int usableEndTime = setUsableEndTime(endTime);
@@ -177,15 +175,12 @@ public class ImageExport {
         log.info("The query gets filtered with the following filter: " + filter);
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.setQuery(query);
-        solrQuery.setFilterQueries(filter);
-        solrQuery.setFields("pageUUID, page_width, page_height");
         solrQuery.setRows(max == -1 ? defaultExport : max);
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
 
-        QueryResponse response = callSolr(solrQuery);
-        return response;
+        return solrQuery;
     }
 
     /**
