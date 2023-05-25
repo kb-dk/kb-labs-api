@@ -177,6 +177,8 @@ paths:
       summary: Export images from newspapers
       description: |
         Export images from pages of newspapers that contains the given query. If images are too tiny, they will not be included in the export.
+        
+        Images are exported as a zip file containing JPEG images.
       operationId: exportImages
       parameters:
         - name: exportFormat
