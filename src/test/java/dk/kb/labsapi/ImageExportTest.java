@@ -5,7 +5,11 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
+import dk.kb.labsapi.metadataFormats.FullPageMetadata;
+import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -55,6 +59,18 @@ public class ImageExportTest {
     }
 
     @Test
+    public void testIllustrationMetadata() throws IOException {
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1680, 1750, -1);
+        List<IllustrationMetadata> list = ImageExport.getInstance().getMetadataForIllustrations(response);
+        IllustrationMetadata metadata = list.get(0);
+        assertEquals("3a728558-7e6d-45da-96b1-9c9405db7d82", metadata.getPageUUID());
+        assertEquals("ART1-2_SUB", metadata.getId());
+        assertEquals(10768.0, metadata.getPageHeight());
+        assertEquals(432.0, metadata.getX());
+        assertEquals(1400.0, metadata.getH());
+    }
+
+    @Test
     public void testQueryForIllustratoins() throws IOException {
         QueryResponse response = ImageExport.getInstance().illustrationSolrCall("politi", 1680, 1750, 1);
         Object illustrations = response.getResults().get(0).getFieldValue("illustration");
@@ -62,12 +78,22 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testRegexFormatting(){
-        String testString1 = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100,doms_aviser_page:uuid:0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4,2938,1234";
-        String testString2 = "id=ART1-2_SUB,x=2184,y=1000,w=2816,h=2804,doms_aviser_page:uuid:a2088805-cc09-4b85-a8f8-c98954d544ca,2087,2527";
+    public void testFullPageMetadata() throws IOException {
+        QueryResponse response = ImageExport.getInstance().fullpageSolrCall("politi", 1680, 1750, 1);
+        List<FullPageMetadata> list = ImageExport.getInstance().getMetadataForFullPage(response);
 
-        IllustrationMetadata illustration = new IllustrationMetadata();
-        illustration.setData(testString1);
+        assertEquals("a308fb24-8ab2-4e72-92e0-0588892bdaa0", list.get(0).getPageUUID());
+        assertNotNull(list.get(0).getPageHeight());
+    }
+
+    @Test
+    public void testRegexFormatting(){
+        String illustrationValues1 = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100";
+        String pageUUID1 = "0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4";
+        String illustrationValues2 = "id=ART1-2_SUB,x=2184,y=1000,w=2816,h=2804";
+        String pageUUID2 = "a2088805-cc09-4b85-a8f8-c98954d544ca";
+
+        IllustrationMetadata illustration = new IllustrationMetadata(illustrationValues1, pageUUID1, 2938, 1234);
         assertEquals("ART88-1_SUB", illustration.getId());
         assertEquals(2364, illustration.getX());
         assertEquals(4484, illustration.getY());
@@ -77,7 +103,7 @@ public class ImageExportTest {
         assertEquals(11752.0, illustration.getPageWidth());
         assertEquals(4936.0, illustration.getPageHeight());
 
-        illustration.setData(testString2);
+        illustration = new IllustrationMetadata(illustrationValues2, pageUUID2, 2087, 2527);
         assertEquals("ART1-2_SUB", illustration.getId());
         assertEquals(2184, illustration.getX());
         assertEquals(1000, illustration.getY());
@@ -89,22 +115,46 @@ public class ImageExportTest {
     }
 
     @Test
+    public void testIllustrationRegex(){
+        String illustrationString = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100";
+        String pageUUID = "0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4";
+        int pageHeight = 2938;
+        int pageWidth = 1234;
+
+        IllustrationMetadata illustration = new IllustrationMetadata(illustrationString, pageUUID, pageWidth, pageHeight);
+        assertEquals("ART88-1_SUB", illustration.getId());
+        assertEquals("0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4", illustration.getPageUUID());
+    }
+
+    @Test
     public void testIllustrationMetadataConversion() {
-        IllustrationMetadata testIllustration = new IllustrationMetadata();
-        testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        String illustration = "id=ART88-1_SUB,x=30,y=120,w=400,h=200";
+        String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
+        IllustrationMetadata testIllustration = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
 
         assertEquals(IllustrationMetadata.class, testIllustration.getClass());
     }
 
     @Test
-    public void testSingleURLConstruction() throws IOException {
-        IllustrationMetadata testIllustration = new IllustrationMetadata();
-        testIllustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+    public void testSingleIllustrationURLConstruction() throws IOException {
+        String illustration = "id=ART88-1_SUB,x=30,y=120,w=400,h=200";
+        String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
+        IllustrationMetadata testIllustration = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
-        URL test = ImageExport.getInstance().createIllustrationLink(testIllustration);
+        URL testUrl = ImageExport.getInstance().createIllustrationLink(testIllustration);
         URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&WID=100&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
 
+        assertEquals(correct, testUrl);
+    }
+
+    @Test
+    public void testSinglePageURLConstruction() throws IOException {
+        FullPageMetadata testIllustration = new FullPageMetadata("3dbdca4e-d450-424b-b300-cf0a88773cb0", 2000L, 4000L);
+        String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
+
+        URL test = ImageExport.getInstance().createFullPageLink(testIllustration);
+        URL correct = new URL(serverURL+"/3/d/b/d/3dbdca4e-d450-424b-b300-cf0a88773cb0.jp2"+"&CVT=jpeg");
         assertEquals(correct, test);
     }
 
@@ -112,10 +162,11 @@ public class ImageExportTest {
     //@Test
     public void testMultipleURLConstructions() throws IOException {
         // img size 2169x2644
-        IllustrationMetadata illustration1 = new IllustrationMetadata();
-        illustration1.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-        IllustrationMetadata illustration2 = new IllustrationMetadata();
-        illustration2.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
+        String illustration = "id=ART88-1_SUB,x=30,y=120,w=400,h=200";
+        String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
+        IllustrationMetadata illustration1 = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
+        IllustrationMetadata illustration2 = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
+
         List<IllustrationMetadata> testList = new ArrayList<>();
         testList.add(illustration1);
         testList.add(illustration2);
@@ -133,15 +184,6 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testIllustrationLink() throws IOException {
-        IllustrationMetadata illustration = new IllustrationMetadata();
-        illustration.setData("id=ART88-1_SUB,x=30,y=120,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
-
-        URL result = ImageExport.getInstance().createIllustrationLink(illustration);
-        System.out.println(result);
-    }
-
-    @Test
     public void testSettingStartYearToLow(){
         int result = ImageExport.getInstance().setUsableStartTime(1200);
         assertEquals(1666, result);
@@ -156,8 +198,6 @@ public class ImageExportTest {
     @Test
     public void testSizeConversion(){
         // Tests that ideal sizes are converted correctly
-        IllustrationMetadata illustration = new IllustrationMetadata();
-        illustration.setData("id=ART88-1_SUB,x=1000,y=1200,w=400,h=200,doms_aviser_page:uuid:00001afe-9d6b-46e7-b7f3-5fb70d832d4e,2169,2644");
         String region = ImageExport.getInstance().calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
         assertEquals("&WID=100&RGN=0.46104,0.45386,0.18442,0.07564", region);
     }

@@ -1,5 +1,6 @@
-package dk.kb.labsapi;
+package dk.kb.labsapi.metadataFormats;
 
+import dk.kb.util.webservice.exception.InternalServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,48 +25,41 @@ import java.util.regex.Pattern;
  *     <li>x: height of illustration</li>
  * </ul>
  */
-public class IllustrationMetadata {
+public class IllustrationMetadata extends BasicMetadata {
     private static final Logger log = LoggerFactory.getLogger(IllustrationMetadata.class);
-    private String pageUUID;
-    private double pageWidth;
-    private double pageHeight;
     private String id;
     private double x;
     private double y;
     private double w;
     private double h;
-    static final Pattern illustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*),doms_aviser_page:uuid:(\\S*),(\\d*),(\\d*)");
+    static final Pattern oldIllustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*),doms_aviser_page:uuid:(\\S*),(\\d*),(\\d*)");
+    static final Pattern singleIllustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*)");
 
-    public IllustrationMetadata(){
-    }
-
-    // Setter
-    public void setData(String input) {
-        Matcher m = illustrationPattern.matcher(input);
-        if (m.matches()) {
+    /**
+     * Create metadata object from solr result. All values are obtained from a solr response.
+     * @param illustrationString in the format: {@code id=ART88-1_SUB,x=2364,y=4484,w=652,h=100}.
+     * @param pageUUID of the page, where the illustration exists.
+     * @param pageWidth of the  entire page, where the illustration is present.
+     * @param pageHeight of the  entire page, where the illustration is present.
+     */
+    public IllustrationMetadata(String illustrationString, String pageUUID, long pageWidth, long pageHeight){
+        Matcher m = singleIllustrationPattern.matcher(illustrationString);
+        if (m.matches()){
             this.id = m.group(1);
             this.x = Double.parseDouble(m.group(2));
             this.y = Double.parseDouble(m.group(3));
             this.w = Double.parseDouble(m.group(4));
             this.h = Double.parseDouble(m.group(5));
-            this.pageUUID = m.group(6);
-            this.pageWidth = convertPixelsToInch1200(Integer.parseInt(m.group(7)));
-            this.pageHeight = convertPixelsToInch1200(Integer.parseInt(m.group(8)));
         } else {
-            log.error("Regex matching failed. Please check that input and pattern aligns.");
+            log.warn("Regex matching failed. Could not create IllustrationMetadata from illustrationString: '" + illustrationString + "'.");
+            throw new InternalServiceException("Regex matching failed. Could not create IllustrationMetadata from illustrationString.");
         }
+        this.pageUUID = pageUUID;
+        this.pageHeight = (long) convertPixelsToInch1200((double) pageHeight);
+        this.pageWidth = (long) convertPixelsToInch1200((double) pageWidth);
     }
 
     // Getters
-    public String getPageUUID(){
-        return pageUUID;
-    }
-    public double getPageWidth() {
-        return pageWidth;
-    }
-    public double getPageHeight() {
-        return pageHeight;
-    }
     public String getId() {
         return id;
     }
