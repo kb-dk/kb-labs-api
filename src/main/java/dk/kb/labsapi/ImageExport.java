@@ -332,7 +332,7 @@ public class ImageExport {
          if (m.matches()){
              correctUUID = m.group(1);
          } else {
-             log.warn("pageUUID conversion failed.");
+             log.warn("pageUUID conversion failed for string: '" + pageUUID + "'.");
              throw new InternalServiceException("pageUUID conversion failed.");
          }
          return correctUUID;

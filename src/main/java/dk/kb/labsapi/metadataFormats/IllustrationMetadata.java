@@ -37,7 +37,7 @@ public class IllustrationMetadata extends BasicMetadata {
 
     /**
      * Create metadata object from solr result. All values are obtained from a solr response.
-     * @param illustrationString in the format: <em>id=ART88-1_SUB,x=2364,y=4484,w=652,h=100</em>.
+     * @param illustrationString in the format: {@code id=ART88-1_SUB,x=2364,y=4484,w=652,h=100}.
      * @param pageUUID of the page, where the illustration exists.
      * @param pageWidth of the  entire page, where the illustration is present.
      * @param pageHeight of the  entire page, where the illustration is present.
@@ -51,7 +51,7 @@ public class IllustrationMetadata extends BasicMetadata {
             this.w = Double.parseDouble(m.group(4));
             this.h = Double.parseDouble(m.group(5));
         } else {
-            log.warn("Regex matching failed. Could not create IllustrationMetadata from illustrationString.");
+            log.warn("Regex matching failed. Could not create IllustrationMetadata from illustrationString: '" + illustrationString + "'.");
             throw new InternalServiceException("Regex matching failed. Could not create IllustrationMetadata from illustrationString.");
         }
         this.pageUUID = pageUUID;
