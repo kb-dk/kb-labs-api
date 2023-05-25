@@ -35,10 +35,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Super class for the Solr-using parts of the API.
@@ -162,6 +164,86 @@ public class SolrBase {
                 .map(docExpander)
                 .filter(Objects::nonNull)
                 .forEach(docConsumer);
+    }
+
+    /**
+     * Perform a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
+     * All matching documents are streamed back, meaning the {@code rows} parameter is ignored.
+     * <p>
+     * To limit the number of documents, use {@code streamSolr(myRequest).limit(maxDocs)}.
+     * <p>
+     * Note: This method does not apply any filtering. It is up to the caller to ensure the rules of export are obeyed.
+     * @param request the request to Solr.
+     * @return a stream of {@link SolrDocument}s.
+     */
+    protected Stream<SolrDocument> streamSolr(SolrParams request) {
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterateSolr(request), 0), false);
+    }
+
+    /**
+     * Perform a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
+     * All matching documents are delivered trough an {@link Iterator>, meaning the {@code rows} parameter is ignored.
+     * @param baseRequest the request to Solr.
+     * @return an iterator of {@link SolrDocument}s.
+     */
+    private Iterator<SolrDocument> iterateSolr(SolrParams baseRequest) {
+        ModifiableSolrParams request = new ModifiableSolrParams(baseRequest);
+        request.set(CommonParams.ROWS, 1000); // TODO: Make the batch size configurable
+        String sort = request.get(CommonParams.SORT);
+        if (sort != null && !sort.isEmpty()) {
+            request.set(CommonParams.SORT, sort + ", recordID asc"); // Tie breaker
+        } else {
+            request.set(CommonParams.SORT, "recordID asc"); // Tie breaker
+        }
+
+        return new Iterator<>() {
+            final LinkedList<SolrDocument> docs = new LinkedList<>();
+            boolean hasMoreRemoteDocs = true;
+            String cursorMark = CursorMarkParams.CURSOR_MARK_START;
+
+            @Override
+            public boolean hasNext() {
+                if (docs.isEmpty() && hasMoreRemoteDocs) {
+                    fillDocs();
+                }
+                return !docs.isEmpty();
+            }
+
+            @Override
+            public SolrDocument next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException("No more documents available");
+                }
+                return docs.removeFirst();
+            }
+
+            private void fillDocs() {
+                if (!hasMoreRemoteDocs) {
+                    return;
+                }
+
+                request.set(CursorMarkParams.CURSOR_MARK_PARAM, cursorMark); // Adjust request for next page
+
+                QueryResponse response;
+                try {
+                    response = callSolr(request);
+                } catch (Exception e) {
+                    throw new RuntimeException("Exception performing streaming export for " + baseRequest, e);
+                }
+                docs.addAll(response.getResults());
+
+                if (docs.isEmpty()) {
+                    hasMoreRemoteDocs = false;
+                    return;
+                }
+
+                if (cursorMark.equals(response.getNextCursorMark())) { // Last page
+                    hasMoreRemoteDocs = false;
+                }
+                cursorMark = response.getNextCursorMark(); // Ready for next page
+            }
+
+        };
     }
 
     /**
