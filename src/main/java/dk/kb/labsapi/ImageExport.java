@@ -43,6 +43,7 @@ public class ImageExport {
     private static int endYear;
     private static int maxExport;
     private static int defaultExport;
+    static final Pattern pagePattern = Pattern.compile("doms_aviser_page:uuid:(\\S*)");
 
     public static ImageExport getInstance() {
         instance = new ImageExport();
@@ -327,7 +328,6 @@ public class ImageExport {
      */
     private String convertPageUUID(String pageUUID){
          String correctUUID = "";
-         final Pattern pagePattern = Pattern.compile("doms_aviser_page:uuid:(\\S*)");
          Matcher m = pagePattern.matcher(pageUUID);
          if (m.matches()){
              correctUUID = m.group(1);
