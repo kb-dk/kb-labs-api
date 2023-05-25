@@ -183,7 +183,11 @@ paths:
           in: query
           required: true
           description: |
-            Type of export
+            Type of export. The following are supported: 
+            | Export | Description |
+            | --- | --- |
+            |fullPage| Export full pages from newspapers.|
+            |illustrations| Export illustrations from newspapers.|
           schema:
             type: string
             enum: [fullPage, illustrations]
