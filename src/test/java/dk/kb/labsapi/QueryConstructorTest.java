@@ -10,7 +10,7 @@ import java.util.List;
 public class QueryConstructorTest {
 
     // TODO: Test for all query params
-    // TODO: Test for text parameters
+    // Tests for text parameters
     @Test
     public void testSingleTextParams(){
         List<String> testText = new ArrayList<>(Arrays.asList("hest"));
@@ -29,7 +29,7 @@ public class QueryConstructorTest {
         Assertions.assertEquals(query, correctString);
     }
 
-    // TODO: Test for boolean constructors
+    // Test for boolean constructors
     @Test
     public void testBooleanValues(){
         List<String> testText = new ArrayList<>(Arrays.asList("hest", "ko", "kylling"));
@@ -40,9 +40,34 @@ public class QueryConstructorTest {
         Assertions.assertEquals(query, correctString);
     }
 
-    // TODO: Tests for startTime
-    // TODO: Tests for endTime
+    // TODO: Tests for timestamps
+    @Test
+    public void testTimestamps(){
+        List<String> text = new ArrayList<>(Arrays.asList("hest"));
+        String correctString = "hest AND py:[1740 TO 1750]";
+        String query = QueryConstructor.constructQuery(text, null, 1740, 1750, null, null);
+        Assertions.assertEquals(correctString, query);
+    }
+
     // TODO: Tests for familyId
+    @Test
+    public void testSingleFamilyId(){
+        List<String> familyId = new ArrayList<>(Arrays.asList("testAvis"));
+        String correctString = "familyId:testAvis";
+        String query = QueryConstructor.constructQuery(null, null, null, null, familyId, null);
+        System.out.println(query);
+        Assertions.assertEquals(correctString, query);
+    }
+
+    @Test
+    public void testMultipleFamilyIds(){
+        List<String> familyId = new ArrayList<>(Arrays.asList("testAvis", "andenAvis", "tredjeAvis"));
+        String correctString = "familyId:(testAvis OR andenAvis OR tredjeAvis)";
+        String query = QueryConstructor.constructQuery(null, null, null, null, familyId, null);
+        System.out.println(query);
+        Assertions.assertEquals(correctString, query);
+    }
+
     // TODO: Tests for lplace
 
 }

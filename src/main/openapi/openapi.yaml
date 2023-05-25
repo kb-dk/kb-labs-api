@@ -45,7 +45,10 @@ paths:
           in: query
           required: false
           description: | 
-                      Default boolean operator to use when creating query.
+                      Default boolean operator to use when creating query. Different ones can be used in the same query, but needs to be specified manually.
+            
+                      An example: "hest AND ko NOT kylling".
+            
                       |Boolean operator | Description |
                       | --- | --- |
                       | AND | Parameters on both sides of the operator are included in the result. |
@@ -98,7 +101,7 @@ paths:
             text/plain:
               schema:
                 type: string
-                example: "hest AND ko AND py:[1740 TO 1740]"
+                example: "hest AND ko AND py:[1740 TO 1745]"
         '400':
           description: "startTime has to be less than endTime."
 
