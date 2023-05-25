@@ -167,6 +167,14 @@ public class ImageExport {
         return response;
     }
 
+    /**
+     * Create base solr query.
+     * @param query to search for.
+     * @param startTime sets the start of period range.
+     * @param endTime sets the end of period range.
+     * @param max results to return.
+     * @return a solrQuery object that can be extended before querying.
+     */
     private SolrQuery createSolrQuery(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
         validateQueryParams(startTime, endTime, max);
         int usableStartTime = setUsableStartTime(startTime);
