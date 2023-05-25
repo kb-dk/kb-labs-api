@@ -34,23 +34,6 @@ public class IllustrationMetadata extends BasicMetadata {
     static final Pattern oldIllustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*),doms_aviser_page:uuid:(\\S*),(\\d*),(\\d*)");
     static final Pattern singleIllustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*)");
 
-
-    public IllustrationMetadata(String input){
-        Matcher m = oldIllustrationPattern.matcher(input);
-        if (m.matches()) {
-            this.id = m.group(1);
-            this.x = Double.parseDouble(m.group(2));
-            this.y = Double.parseDouble(m.group(3));
-            this.w = Double.parseDouble(m.group(4));
-            this.h = Double.parseDouble(m.group(5));
-            this.pageUUID = m.group(6);
-            this.pageWidth = (long) convertPixelsToInch1200(Integer.parseInt(m.group(7)));
-            this.pageHeight = (long) convertPixelsToInch1200(Integer.parseInt(m.group(8)));
-        } else {
-            log.error("Regex matching failed. Please check that input and pattern aligns.");
-        }
-    }
-
     public IllustrationMetadata(String illustrationString, String pageUUID, long pageWidth, long pageHeight){
         Matcher m = singleIllustrationPattern.matcher(illustrationString);
         if (m.matches()){
