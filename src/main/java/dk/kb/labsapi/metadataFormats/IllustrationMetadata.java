@@ -34,6 +34,13 @@ public class IllustrationMetadata extends BasicMetadata {
     static final Pattern oldIllustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*),doms_aviser_page:uuid:(\\S*),(\\d*),(\\d*)");
     static final Pattern singleIllustrationPattern = Pattern.compile("id=(\\S*),x=(\\d*),y=(\\d*),w=(\\d*),h=(\\d*)");
 
+    /**
+     * Create metadata object from solr result. All values are obtained from a solr response.
+     * @param illustrationString in the format: <em>id=ART88-1_SUB,x=2364,y=4484,w=652,h=100</em>.
+     * @param pageUUID of the page, where the illustration exists.
+     * @param pageWidth of the  entire page, where the illustration is present.
+     * @param pageHeight of the  entire page, where the illustration is present.
+     */
     public IllustrationMetadata(String illustrationString, String pageUUID, long pageWidth, long pageHeight){
         Matcher m = singleIllustrationPattern.matcher(illustrationString);
         if (m.matches()){
