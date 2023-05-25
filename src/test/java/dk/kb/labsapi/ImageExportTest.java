@@ -63,11 +63,11 @@ public class ImageExportTest {
         QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1680, 1750, -1);
         List<IllustrationMetadata> list = ImageExport.getInstance().getMetadataForIllustrations(response);
         IllustrationMetadata metadata = list.get(0);
-        assertEquals("7791c99a-bc35-41cc-9b3b-c71988deb8c2", metadata.getPageUUID());
-        assertEquals("ART163-3_SUB", metadata.getId());
-        assertEquals(25784.0, metadata.getPageHeight());
-        assertEquals(1200.0, metadata.getX());
-        assertEquals(2116.0, metadata.getH());
+        assertEquals("3a728558-7e6d-45da-96b1-9c9405db7d82", metadata.getPageUUID());
+        assertEquals("ART1-2_SUB", metadata.getId());
+        assertEquals(10768.0, metadata.getPageHeight());
+        assertEquals(432.0, metadata.getX());
+        assertEquals(1400.0, metadata.getH());
     }
 
     @Test
@@ -82,7 +82,7 @@ public class ImageExportTest {
         QueryResponse response = ImageExport.getInstance().fullpageSolrCall("politi", 1680, 1750, 1);
         List<FullPageMetadata> list = ImageExport.getInstance().getMetadataForFullPage(response);
 
-        assertEquals("68aa5925-008f-4d82-b9e0-d124ad6e82f0", list.get(0).getPageUUID());
+        assertEquals("a308fb24-8ab2-4e72-92e0-0588892bdaa0", list.get(0).getPageUUID());
         assertNotNull(list.get(0).getPageHeight());
     }
 
