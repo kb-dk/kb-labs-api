@@ -24,6 +24,8 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -256,26 +258,42 @@ public class ImageExport {
      * The returned list contains an object of metadata from each single illustration.
      * These inner objects contain the following values in order: String id, int x, int y, int w, int h, string pageUUID, int pageWidth and int pageHeight.
      * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from
-     * @return a list of objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
+     * @return a list of metadata objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
      public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) {
          // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
-         List<IllustrationMetadata> illustrations = new ArrayList<>();
         // Parse result from query and save into a list of strings
-        //List<String> illustrationList = getIllustrationsList(solrResponse);
-        List<IllustrationMetadata> illustrationList = getIllustrationsList(solrResponse);
+         SolrDocumentList responseList = new SolrDocumentList();
+         responseList = solrResponse.getResults();
+         List<String> illustrationList = new ArrayList<>();
+         List<IllustrationMetadata> metadataList = new ArrayList<>();
 
-        /*
-         // Map strings to illustration metadata
-        for (String s : illustrationList) {
-            // Create Illustration metadata object
-            IllustrationMetadata singleIllustration = new IllustrationMetadata(s);
-            // Add object to list of object
-            illustrations.add(singleIllustration);
-        }
-         */
-        return illustrationList;
-    }
+         // Set for deduplication on pageUUID level
+         Set<String> uniqueUUIDs = new HashSet<>();
+
+         // Extract metadata from documents in solr response
+         for (int i = 0; i<responseList.size(); i++) {
+             String pageUUID = responseList.get(i).getFieldValue("pageUUID").toString();
+             String correctUUID = convertPageUUID(pageUUID);
+             if (!uniqueUUIDs.add(correctUUID)){
+                 continue;
+             }
+             long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
+             long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
+             List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
+             // Check if illustrations are present. If not, continue to next SolrDocument in list
+             if (illustrations == null) {
+                 continue;
+             }
+             // Create metadata string for each illustration
+             for (int j = 0; j< illustrations.size(); j++){
+                 IllustrationMetadata metadata = new IllustrationMetadata(illustrations.get(j), correctUUID, pageWidth, pageHeight);
+                 metadataList.add(j, metadata);
+             }
+             illustrationList.addAll(illustrations);
+         }
+         return metadataList;
+     }
 
     /**
      * Get metadata values for all pages from query.
@@ -295,43 +313,18 @@ public class ImageExport {
     }
 
     /**
-     * Parse Solr QueryResponse of newspaper pages into list of individual illustrations.
-     * @param solrResponse to extract illustrations from.
-     * @return a list of strings. Each string contains metadata for a single illustration from the input query response.
+     * Remove prefix <em>doms_aviser_page:uuid</em> from pageUUID.
+     * @param pageUUID to convert.
+     * @return correct pageUUID without prefix.
      */
-     private List<IllustrationMetadata> getIllustrationsList(QueryResponse solrResponse) {
-        SolrDocumentList responseList = new SolrDocumentList();
-        responseList = solrResponse.getResults();
-        List<String> illustrationList = new ArrayList<>();
-        List<IllustrationMetadata> metadataList = new ArrayList<>();
-
-        // Set for deduplication on pageUUID level
-        Set<String> uniqueUUIDs = new HashSet<>();
-
-        // Extract metadata from documents in solr response
-        for (int i = 0; i<responseList.size(); i++) {
-            String pageUUID = responseList.get(i).getFieldValue("pageUUID").toString();
-            if (!uniqueUUIDs.add(pageUUID)){
-                continue;
-            }
-            long pageWidth = (long) responseList.get(i).getFieldValue("page_width");
-            long pageHeight = (long) responseList.get(i).getFieldValue("page_height");
-            List<String> illustrations = (List<String>) responseList.get(i).getFieldValue("illustration");
-            // Check if illustrations are present. If not, continue to next SolrDocument in list
-            if (illustrations == null) {
-                continue;
-            }
-            // Create metadata string for each illustration
-            for (int j = 0; j< illustrations.size(); j++){
-                illustrations.set(j, illustrations.get(j) + "," + pageUUID + "," + pageWidth + "," + pageHeight);
-                IllustrationMetadata metadata = new IllustrationMetadata(illustrations.get(j), pageUUID, pageWidth, pageHeight);
-                metadataList.add(j, metadata);
-            }
-            illustrationList.addAll(illustrations);
-
-
-        }
-        return metadataList;
+    private String convertPageUUID(String pageUUID){
+         String correctUUID = "";
+         final Pattern pagePattern = Pattern.compile("doms_aviser_page:uuid:(\\S*)");
+         Matcher m = pagePattern.matcher(pageUUID);
+         if (m.matches()){
+             correctUUID = m.group(1);
+         }
+         return correctUUID;
     }
 
     /**
