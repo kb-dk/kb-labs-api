@@ -59,6 +59,18 @@ public class ImageExportTest {
     }
 
     @Test
+    public void testIllustrationMetadata() throws IOException {
+        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1680, 1750, -1);
+        List<IllustrationMetadata> list = ImageExport.getInstance().getMetadataForIllustrations(response);
+        IllustrationMetadata metadata = list.get(0);
+        assertEquals("7791c99a-bc35-41cc-9b3b-c71988deb8c2", metadata.getPageUUID());
+        assertEquals("ART163-3_SUB", metadata.getId());
+        assertEquals(25784.0, metadata.getPageHeight());
+        assertEquals(1200.0, metadata.getX());
+        assertEquals(2116.0, metadata.getH());
+    }
+
+    @Test
     public void testQueryForIllustratoins() throws IOException {
         QueryResponse response = ImageExport.getInstance().illustrationSolrCall("politi", 1680, 1750, 1);
         Object illustrations = response.getResults().get(0).getFieldValue("illustration");
@@ -76,6 +88,7 @@ public class ImageExportTest {
 
     @Test
     public void testRegexFormatting(){
+        // This tests the old and more messy formatting from a serialized string.
         String testString1 = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100,doms_aviser_page:uuid:0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4,2938,1234";
         String testString2 = "id=ART1-2_SUB,x=2184,y=1000,w=2816,h=2804,doms_aviser_page:uuid:a2088805-cc09-4b85-a8f8-c98954d544ca,2087,2527";
 
@@ -98,6 +111,18 @@ public class ImageExportTest {
         assertEquals("a2088805-cc09-4b85-a8f8-c98954d544ca", illustration.getPageUUID());
         assertEquals(8348.0, illustration.getPageWidth());
         assertEquals(10108.0, illustration.getPageHeight());
+    }
+
+    @Test
+    public void testIllustrationRegex(){
+        String illustrationString = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100";
+        String pageUUID = "0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4";
+        int pageHeight = 2938;
+        int pageWidth = 1234;
+
+        IllustrationMetadata illustration = new IllustrationMetadata(illustrationString, pageUUID, pageWidth, pageHeight);
+        assertEquals("ART88-1_SUB", illustration.getId());
+        assertEquals("0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4", illustration.getPageUUID());
     }
 
     @Test
