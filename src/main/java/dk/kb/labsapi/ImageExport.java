@@ -331,6 +331,9 @@ public class ImageExport {
          Matcher m = pagePattern.matcher(pageUUID);
          if (m.matches()){
              correctUUID = m.group(1);
+         } else {
+             log.warn("pageUUID conversion failed.");
+             throw new InternalServiceException("pageUUID conversion failed.");
          }
          return correctUUID;
     }

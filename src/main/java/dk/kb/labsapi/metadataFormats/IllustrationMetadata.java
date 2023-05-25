@@ -1,5 +1,6 @@
 package dk.kb.labsapi.metadataFormats;
 
+import dk.kb.util.webservice.exception.InternalServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +51,8 @@ public class IllustrationMetadata extends BasicMetadata {
             this.w = Double.parseDouble(m.group(4));
             this.h = Double.parseDouble(m.group(5));
         } else {
-            log.error("Regex matching failed. Could not create IllustrationMetadata.");
+            log.warn("Regex matching failed. Could not create IllustrationMetadata from illustrationString.");
+            throw new InternalServiceException("Regex matching failed. Could not create IllustrationMetadata from illustrationString.");
         }
         this.pageUUID = pageUUID;
         this.pageHeight = (long) convertPixelsToInch1200((double) pageHeight);
