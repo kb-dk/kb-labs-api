@@ -174,8 +174,9 @@ public class ImageExport {
 
         // Construct solr query with filter
         String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
-        log.info("The query gets filtered with the following filter: " + filter);
         SolrQuery solrQuery = new SolrQuery();
+        solrQuery.addFilterQuery(filter);
+        log.info("The query gets filtered with the following filter: " + filter);
         solrQuery.setQuery(query);
         solrQuery.setRows(max == -1 ? defaultExport : max);
         solrQuery.setFacet(false);
