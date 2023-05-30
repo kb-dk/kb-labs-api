@@ -46,7 +46,7 @@ public class IllustrationMetadata extends BasicMetadata {
      * @param pageWidth of the  entire page, where the illustration is present.
      * @param pageHeight of the  entire page, where the illustration is present.
      */
-    public IllustrationMetadata(String illustrationString, String pageUUID, long pageWidth, long pageHeight) throws IOException {
+    public IllustrationMetadata(String illustrationString, String pageUUID, long pageWidth, long pageHeight)  {
         Matcher m = singleIllustrationPattern.matcher(illustrationString);
         if (m.matches()){
             this.id = m.group(1);
@@ -61,7 +61,11 @@ public class IllustrationMetadata extends BasicMetadata {
         this.pageUUID = pageUUID;
         this.pageHeight = (long) convertPixelsToInch1200((double) pageHeight);
         this.pageWidth = (long) convertPixelsToInch1200((double) pageWidth);
-        this.imageURL = createIllustrationLink();
+        try {
+            this.imageURL = createIllustrationLink();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // Getters
