@@ -44,10 +44,21 @@ class SolrBaseTest {
 
         // Do something with the SolrDocument stream
         long processed = docs.
-                map(doc -> doc.get("recordID")).
+                map(doc -> safeGetID(doc)).
                 limit(1005). // 5 more than batch size in base.streamSolr
                 count();
 
         assertEquals(1005, processed, "The max number of documents should be extracted");
+    }
+
+    private static String safeGetID(SolrDocument doc) {
+        try {
+            return getID(doc);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    private static String getID(SolrDocument doc) throws IOException {
+        return doc.getFieldValue("recordID").toString();
     }
 }
