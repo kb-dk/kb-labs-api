@@ -749,7 +749,7 @@ public class ImageExport {
         byte[] illustration = downloadSingleIllustration(illustrationMetadata.getImageURL());
         String pageUuid = illustrationMetadata.getPageUUID();
         try {
-            addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count), zos);
+            addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count.get()), zos);
             count.addAndGet(1);
         } catch (IOException e) {
             throw new RuntimeException(e);
