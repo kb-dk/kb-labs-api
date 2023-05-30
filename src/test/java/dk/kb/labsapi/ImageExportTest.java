@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
+import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -23,6 +25,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -87,7 +90,7 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testRegexFormatting(){
+    public void testRegexFormatting() throws IOException {
         String illustrationValues1 = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100";
         String pageUUID1 = "0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4";
         String illustrationValues2 = "id=ART1-2_SUB,x=2184,y=1000,w=2816,h=2804";
@@ -115,7 +118,7 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testIllustrationRegex(){
+    public void testIllustrationRegex() throws IOException {
         String illustrationString = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100";
         String pageUUID = "0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4";
         int pageHeight = 2938;
@@ -127,12 +130,23 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testIllustrationMetadataConversion() {
+    public void testIllustrationMetadataConversion() throws IOException {
         String illustration = "id=ART88-1_SUB,x=30,y=120,w=400,h=200";
         String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
         IllustrationMetadata testIllustration = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
 
         assertEquals(IllustrationMetadata.class, testIllustration.getClass());
+    }
+
+    @Test
+    public void testUrlInclusionInMetadataObjects() throws IOException {
+        String illustration = "id=ART88-1_SUB,x=30,y=120,w=400,h=200";
+        String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
+        IllustrationMetadata testIllustration = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
+        FullPageMetadata testFullpage = new FullPageMetadata(pageUUID, 2169L, 2644L);
+
+        assertNotNull(testIllustration.getImageURL());
+        assertNotNull(testFullpage.getImageURL());
     }
 
     @Test
@@ -245,6 +259,57 @@ public class ImageExportTest {
         zos.putNextEntry(ze);
         writer.writeValue(zos, Map.of("foo", "bar"));
         zos.closeEntry();
+    }
+
+    @Test
+    public void testStreaming() throws IOException {
+        String query = "hest";
+        int startTime = 1750;
+        int endTime = 1780;
+        int max = 10;
+        SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
+        Stream<SolrDocument> docs = ImageExport.getInstance().streamSolr(finalQuery, max);
+
+        // Create metadata file, that has to be added to output zip
+        Map<String, Object> metadataMap = ImageExport.makeMetadataMap(query, startTime, endTime);
+
+        // Get fullPage metadata
+        Stream<FullPageMetadata> pageMetadata = docs.map(ImageExport.getInstance()::streamMetadataForFullPage);
+
+        long processed = pageMetadata.count();
+
+        //pageMetadata.forEach(metadata -> System.out.println(metadata.getPageUUID()));
+
+        assertEquals(10, processed);
+    }
+    
+    @Test
+    public void testStreamingOutput() throws IOException {
+        OutputStream output = new ByteArrayOutputStream();
+        String query = "hest";
+        String exportFormat = "illustrations";
+        int startTime = 1750;
+        int endTime = 1780;
+        int max = 10;
+        SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
+        Stream<SolrDocument> docs = ImageExport.getInstance().streamSolr(finalQuery, max);
+
+        // Create metadata file, that has to be added to output zip
+        Map<String, Object> metadataMap = ImageExport.makeMetadataMap(query, startTime, endTime);
+
+        // Get fullPage metadata
+        // List<FullPageMetadata> pageMetadata = getMetadataForFullPage(response);
+        Stream<FullPageMetadata> pageMetadata = docs.map(ImageExport.getInstance()::streamMetadataForFullPage);
+
+        // Get illustration URLS
+        Stream<URL> pageUrls = pageMetadata.map(metadata -> ImageExport.getInstance().safeCreateFullPageLink(metadata));
+        //List<URL> pageUrls = streamLinkForAllFullPages(pageMetadata);
+
+        // Streams pages from URL to zip file with all illustrations
+        ImageExport.getInstance().streamUrls(pageUrls, pageMetadata, output, metadataMap, exportFormat);
+
+        System.out.println(output.toString());
+
     }
 
 
