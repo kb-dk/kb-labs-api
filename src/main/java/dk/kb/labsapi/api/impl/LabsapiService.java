@@ -285,7 +285,7 @@ public class LabsapiService implements LabsapiApi {
                     String filename = getCurrentTimeISO() + "_illustrations.zip";
                     httpServletResponse.setHeader(
                             "Content-Disposition", "attachment; filename=\"" + filename + "\"");
-                    return output -> ImageExport.getInstance().getIllustrationsFromTextQueryAsStream(query,startTime, endTime, max, output, exportFormat);
+                    return output -> ImageExport.getInstance().streamIllustrationsFromQuery(query,startTime, endTime, max, output, exportFormat);
                 } catch (Exception e) {
                     throw handleException(e);
                 }
@@ -294,7 +294,7 @@ public class LabsapiService implements LabsapiApi {
                     String filename = getCurrentTimeISO() + "_fullPages.zip";
                     httpServletResponse.setHeader(
                             "Content-Disposition", "attachment; filename=\"" + filename + "\"");
-                    return output -> ImageExport.getInstance().getFullpageFromQueryAsStream(query, startTime, endTime, max, output, exportFormat);
+                    return output -> ImageExport.getInstance().streamFullpageFromQuery(query, startTime, endTime, max, output, exportFormat);
                 } catch (Exception e){
                     throw handleException(e);
                 }
