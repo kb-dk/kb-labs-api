@@ -24,8 +24,10 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -117,7 +119,7 @@ public class ImageExport {
      * @param endTime for query.
      * @return a map of metadata used to provide a metadata file.
      */
-    public Map<String, Object> makeMetadataMap(String query, Integer startTime, Integer endTime) {
+    public static Map<String, Object> makeMetadataMap(String query, Integer startTime, Integer endTime) {
         Date date = new Date();
 
         Map<String, Object> metadataMap = new HashMap<>();
@@ -269,7 +271,7 @@ public class ImageExport {
      * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from
      * @return a list of metadata objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
-     public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) {
+     public List<IllustrationMetadata> getMetadataForIllustrations(QueryResponse solrResponse) throws IOException {
          // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
         // Parse result from query and save into a list of strings
          SolrDocumentList responseList = new SolrDocumentList();
@@ -309,7 +311,7 @@ public class ImageExport {
      * The returned list contains an object of metadata from each single page.
      * @return a list of objects consisting of pageUUID, pageWidth and pageHeight values for each page in the response from solr.
      */
-    public List<FullPageMetadata> getMetadataForFullPage(QueryResponse solrResponse) {
+    public List<FullPageMetadata> getMetadataForFullPage(QueryResponse solrResponse) throws IOException {
          List<FullPageMetadata> pages = new ArrayList<>();
 
          SolrDocumentList documents = solrResponse.getResults();
@@ -530,5 +532,227 @@ public class ImageExport {
     private double convertInch1200ToPixels(double inch1200Value){
         final int DPI = 300;
         return inch1200Value * DPI / 1200.0;
+    }
+
+
+    /************************************* Streaming implementation **********************************************/
+
+    /**
+     * Get images of newspaper pages with given query present in text.
+     * @param query     to search for.
+     * @param startTime is the earliest boundary for the query.
+     * @param endTime   is the latest boundary for the query.
+     * @param max       number of documents to fetch.
+     * @param output    to write images to as one combined zip file.
+     */
+    public void streamFullpageFromQuery(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
+        if (instance.ImageExportService == null) {
+            throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
+        }
+        // Query Solr
+        // QueryResponse response = fullpageSolrCall(query, startTime, endTime, max);
+        SolrQuery finalQuery = fullpageSolrQuery(query, startTime, endTime, max);
+        Stream<SolrDocument> docs = streamSolr(finalQuery, max);
+        // Create metadata file, that has to be added to output zip
+        Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
+        // Get fullPage metadata
+        Stream<FullPageMetadata> pageMetadata = docs.map(this::streamMetadataForFullPage);
+        // Streams pages from URL to zip file with all illustrations
+        streamUrls(pageMetadata, output, metadataMap, exportFormat);
+    }
+
+    /**
+     * Get illustrations from newspaper pages where given query is present in text.
+     * @param query     to search for.
+     * @param startTime is the earliest boundary for the query.
+     * @param endTime   is the latest boundary for the query.
+     * @param max       number of documents to fetch.
+     * @param output    to write images to as one combined zip file.
+     */
+    public void streamIllustrationsFromQuery(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
+        if (instance.ImageExportService == null) {
+            throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
+        }
+        // Query Solr
+        SolrQuery finalQuery = illustrationSolrQuery(query, startTime, endTime, max);
+        Stream<SolrDocument> docs = streamSolr(finalQuery, max);
+        // Create metadata file, that has to be added to output zip
+        Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
+        // Create metadata objects
+        HashSet<String> uniqueUUIDs = new HashSet<>();
+        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> streamMetadataForIllustrations(doc, uniqueUUIDs));
+
+        // Streams illustration from URL to zip file with all illustrations
+        streamUrls(illustrationMetadata, output, metadataMap, exportFormat);
+    }
+
+    /**
+     * Construct Solr query for input.
+     * @param query to query solr with
+     * @param startTime is the earliest boundary for the query.
+     * @param endTime is the latest boundary for the query
+     * @param max number of results to return
+     * @return a solr query used to deliver images of all pages. The fields asked for are the following: <em>pageUUID, page_width and page_height</em>
+     */
+    public SolrQuery fullpageSolrQuery(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
+        // Construct solr query with filter
+        SolrQuery solrQuery = createSolrQuery(query, startTime, endTime, max);
+        solrQuery.setFields("pageUUID, page_width, page_height");
+
+        return solrQuery;
+    }
+
+    /**
+     * Construct Solr query for input.
+     * @param query     to query Solr with.
+     * @param startTime startTime is the earliest boundary for the query.
+     * @param endTime   endTime is the latest boundary for the query.
+     * @param max       number of results to return
+     * @return a response containing specific metadata used to locate illustration on pages. The fields asked for are the following: <em>pageUUID, illustration, page_width, page_height</em>
+     */
+    public SolrQuery illustrationSolrQuery(String query, Integer startTime, Integer endTime, int max) throws IOException{
+
+        // Construct solr query with filter
+        SolrQuery solrQuery = createSolrQuery(query, startTime, endTime, max);
+        solrQuery.addFilterQuery("illustration: [* TO *]");
+        solrQuery.setFields("pageUUID, illustration, page_width, page_height");
+
+        return solrQuery;
+    }
+
+    /**
+     * Create stream of solr document from query.
+     * @param query to create stream from.
+     * @param max amount of result.
+     * @return a stream of SolrDocuments representing newspaper article hits.
+     */
+    public Stream<SolrDocument> streamSolr(SolrQuery query, Integer max){
+        SolrBase base = new SolrBase(".labsapi.aviser");
+        Stream<SolrDocument> docs = base.streamSolr(query).limit(max);
+        return docs;
+    }
+
+    /**
+     * Get metadata values for a given SolrDocument.
+     * The returned object contains metadata about a single page.
+     * @return an object containing metadata from a single page. metadata values are: pageUUID, pageWidth and pageHeight.
+     */
+    public FullPageMetadata streamMetadataForFullPage(SolrDocument doc) {
+        FullPageMetadata page = null;
+        try {
+            page = new FullPageMetadata(doc.get("pageUUID").toString(), (Long) doc.get("page_width"), (Long) doc.get("page_height"));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return page;
+    }
+
+    /**
+     * Get a stream of IllustrationMetadata from a given SolrDocument
+     * The returned stream contains metadata about each single illustration in the given SolrDocument.
+     * IllustrationMetadata objects contain the following values: String id, int x, int y, int w, int h, string pageUUID, int pageWidth, int pageHeight and imageURL.
+     * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from and imageURL is the URL where the illustration is available.
+     * @return a list of metadata objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
+     */
+    public Stream<IllustrationMetadata> streamMetadataForIllustrations(SolrDocument doc, HashSet<String> uniqueUUIDs) {
+        // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
+        List<String> illustrationList = new ArrayList<>();
+        List<IllustrationMetadata> metadataList = new ArrayList<>();
+
+
+        // Extract metadata from SolrDocument
+        String pageUUID = doc.getFieldValue("pageUUID").toString();
+        String correctUUID = convertPageUUID(pageUUID);
+        if (!uniqueUUIDs.add(correctUUID)){
+            return null;
+        }
+        long pageWidth = (long) doc.getFieldValue("page_width");
+        long pageHeight = (long) doc.getFieldValue("page_height");
+        List<String> illustrations = (List<String>) doc.getFieldValue("illustration");
+        // Check if illustrations are present. If not, continue to next SolrDocument in list
+        if (illustrations == null) {
+            return Stream.empty();
+        }
+
+        return illustrations.stream().map(metadata -> new IllustrationMetadata(metadata, correctUUID, pageWidth, pageHeight));
+    }
+
+    /**
+     * Streams content of all metadatas given in input stream to an output stream that delivers a zip file of all images from the URLs.
+     * @param illustrationMetadata used to stream URLS from and construct filenames.
+     * @param output stream which holds the outputted zip file.
+     * @param metadataMap which delivers overall information on the export.
+     * @param exportFormat determines what kind of export that are to be done.
+     */
+    public void streamUrls(Stream<? extends BasicMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
+        ZipOutputStream zos = new ZipOutputStream(output);
+        zos.setLevel(Deflater.NO_COMPRESSION);
+
+        // Add metadata file to zip
+        try {
+            addMetadataFileToZip(metadataMap, zos);
+        } catch (Exception e) {
+            String message = String.format(
+                    Locale.ROOT,
+                    "Exception adding metadata entry to ZIP with  %s illustrationMetadatas",
+                    illustrationMetadata == null ? "null" : illustrationMetadata.count());
+            log.warn(message, e);
+            throw new IOException(message, e);
+        }
+
+        AtomicInteger count = new AtomicInteger();
+        try {
+            switch (exportFormat){
+                case "illustrations":
+                    illustrationMetadata.map(metadata -> (IllustrationMetadata) metadata)
+                            .forEach(metadata -> exportIllustrations(metadata, exportFormat, count, zos));
+                    zos.close();
+                    break;
+                case "fullPage":
+                    illustrationMetadata.map(metadata -> (FullPageMetadata) metadata)
+                            .forEach(metadata -> exportFullpage(metadata, exportFormat, count, zos));
+                    zos.close();
+                    break;
+            }
+
+        } catch (IOException e) {
+            log.error("Error adding illustration to ZIP stream.");
+            throw new IOException();
+        }
+    }
+
+    /**
+     * Export to use for fullpage extraction.
+     * @param metadata to download image for.
+     * @param exportFormat that determines export type.
+     * @param count to construct filenames.
+     * @param zos to deliver all images to.
+     */
+    private void exportFullpage(FullPageMetadata metadata, String exportFormat, AtomicInteger count, ZipOutputStream zos) {
+        byte[] illustration = downloadSingleIllustration(metadata.getImageURL());
+        String pageUuid = metadata.getPageUUID();
+        try {
+            addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + ".jpeg", pageUuid), zos);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Export to use for illustration extraction.
+     * @param illustrationMetadata to download image for.
+     * @param exportFormat that determines export type.
+     * @param count to construct filenames.
+     * @param zos to deliver all images to.
+     */
+    public void exportIllustrations(IllustrationMetadata illustrationMetadata, String exportFormat, AtomicInteger count, ZipOutputStream zos){
+        byte[] illustration = downloadSingleIllustration(illustrationMetadata.getImageURL());
+        String pageUuid = illustrationMetadata.getPageUUID();
+        try {
+            addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count), zos);
+            count.addAndGet(1);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

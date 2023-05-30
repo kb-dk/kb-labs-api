@@ -10,19 +10,19 @@ import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentList;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -269,47 +269,48 @@ public class ImageExportTest {
         int max = 10;
         SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
         Stream<SolrDocument> docs = ImageExport.getInstance().streamSolr(finalQuery, max);
-
-        // Create metadata file, that has to be added to output zip
-        Map<String, Object> metadataMap = ImageExport.makeMetadataMap(query, startTime, endTime);
-
         // Get fullPage metadata
         Stream<FullPageMetadata> pageMetadata = docs.map(ImageExport.getInstance()::streamMetadataForFullPage);
 
         long processed = pageMetadata.count();
-
-        //pageMetadata.forEach(metadata -> System.out.println(metadata.getPageUUID()));
-
         assertEquals(10, processed);
     }
-    
+
     @Test
-    public void testStreamingOutput() throws IOException {
-        OutputStream output = new ByteArrayOutputStream();
+    public void testStreamingIllustrations() throws IOException {
+        ImageExport exporter = ImageExport.getInstance();
         String query = "hest";
-        String exportFormat = "illustrations";
         int startTime = 1750;
         int endTime = 1780;
         int max = 10;
-        SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
-        Stream<SolrDocument> docs = ImageExport.getInstance().streamSolr(finalQuery, max);
+        SolrQuery finalQuery = exporter.illustrationSolrQuery(query, startTime, endTime, max);
+        Stream<SolrDocument> docs = exporter.streamSolr(finalQuery, max);
+        HashSet<String> uniqueUUIDs = new HashSet<>();
+        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.streamMetadataForIllustrations(doc, uniqueUUIDs));
 
-        // Create metadata file, that has to be added to output zip
-        Map<String, Object> metadataMap = ImageExport.makeMetadataMap(query, startTime, endTime);
+        illustrationMetadata.forEach(Assertions::assertNotNull);
+    }
 
-        // Get fullPage metadata
-        // List<FullPageMetadata> pageMetadata = getMetadataForFullPage(response);
-        Stream<FullPageMetadata> pageMetadata = docs.map(ImageExport.getInstance()::streamMetadataForFullPage);
+    //@Test
+    public void testIllustrationsDataflow() throws IOException {
+        ImageExport export = ImageExport.getInstance();
+        String query = "hest";
+        int startTime = 1750;
+        int endTime = 1780;
+        int max = 10;
+        String exportFormat = "illustrations";
+        OutputStream out = new ByteArrayOutputStream();
 
-        // Get illustration URLS
-        Stream<URL> pageUrls = pageMetadata.map(metadata -> ImageExport.getInstance().safeCreateFullPageLink(metadata));
-        //List<URL> pageUrls = streamLinkForAllFullPages(pageMetadata);
 
-        // Streams pages from URL to zip file with all illustrations
-        ImageExport.getInstance().streamUrls(pageUrls, pageMetadata, output, metadataMap, exportFormat);
+        int count = 0;
+        try {
+            export.streamIllustrationsFromQuery(query, startTime, endTime, max, out, exportFormat);
+        } catch (RuntimeException e){
+          count += 1;
+        }
 
-        System.out.println(output.toString());
-
+        System.out.println(out.toString());
+        System.out.println(count);
     }
 
 
