@@ -352,8 +352,6 @@ public class ImageExport {
      */
     public Stream<IllustrationMetadata> getMetadataForIllustrations(SolrDocument doc, HashSet<String> uniqueUUIDs) {
         // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
-        List<String> illustrationList = new ArrayList<>();
-        List<IllustrationMetadata> metadataList = new ArrayList<>();
 
         // Extract metadata from SolrDocument
         String pageUUID = doc.getFieldValue("pageUUID").toString();
