@@ -82,8 +82,8 @@ public class ImageExport {
         metadataMap.put("title", "Metadata for image extraction from the Danish Royal Librarys newspaper API.");
         metadataMap.put("extraction_time", date.toString());
         metadataMap.put("query", query);
-        metadataMap.put("query_start_year", startYear);
-        metadataMap.put("query_end_year", endYear);
+        metadataMap.put("query_start_year", setUsableStartYear(startYear));
+        metadataMap.put("query_end_year", setUsableEndYear(endYear));
         metadataMap.put("license", "Creative Commons Public Domain Mark 1.0 License.");
 
         return metadataMap;
@@ -141,7 +141,7 @@ public class ImageExport {
      * @param startYear the chosen year for start of query.
      * @return startYear if allowed else return default start year.
      */
-    public int setUsableStartYear(int startYear){
+    public static int setUsableStartYear(int startYear){
          if (startYear < minAllowedStartYear){
              log.info("Using startYear " + minAllowedStartYear);
              return minAllowedStartYear;
@@ -152,17 +152,17 @@ public class ImageExport {
     }
 
     /**
-     * Evaluate that endyear is allowed in configuration of service.
-     * @param endyear the chosen year for end of query.
-     * @return endyear if allowed else return default end year.
+     * Evaluate that endYear is allowed in configuration of service.
+     * @param endYear the chosen year for end of query.
+     * @return endYear if allowed else return default end year.
      */
-    public int setUsableEndYear(int endyear){
-         if (endyear > maxAllowedEndYear){
+    public static int setUsableEndYear(int endYear){
+         if (endYear > maxAllowedEndYear){
              log.info("Using endYear " + maxAllowedEndYear);
              return maxAllowedEndYear;
          } else {
-             log.info("Using endyear" + endyear);
-             return endyear;
+             log.info("Using endYear" + endYear);
+             return endYear;
          }
     }
 
