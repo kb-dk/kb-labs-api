@@ -169,13 +169,13 @@ public class ImageExportTest {
 
     @Test
     public void testSettingStartYearToLow(){
-        int result = ImageExport.getInstance().setUsableStartTime(1200);
+        int result = ImageExport.getInstance().setUsableStartYear(1200);
         assertEquals(1666, result);
     }
 
     @Test
     public void testSettingEndYearToHigh(){
-        int result = ImageExport.getInstance().setUsableEndTime(1945);
+        int result = ImageExport.getInstance().setUsableEndYear(1945);
         assertEquals(1880, result);
     }
 
