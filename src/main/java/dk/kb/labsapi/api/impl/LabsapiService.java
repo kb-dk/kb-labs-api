@@ -416,30 +416,30 @@ public class LabsapiService implements LabsapiApi {
     }
 
     @Override
-    public String queryConstructor(List<String> text, String booleanOperator, Integer startTime, Integer endTime, List<String> familyId, List<String> lplace) {
+    public String queryConstructor(List<String> text, String booleanOperator, Integer startYear, Integer endYear, List<String> familyId, List<String> lplace) {
         List<String> booleanOperators = new ArrayList<>(Arrays.asList("AND", "OR", "NOT"));
         if (!(booleanOperators.contains(booleanOperator))){
             throw new InvalidArgumentServiceException("Value for booleanOperator: '" + booleanOperator + "' is not an allowed boolean operator. 'AND', 'OR' and 'NOT' are allowed.");
         }
-        if ( startTime > endTime){
-            throw new InvalidArgumentServiceException("Value for startTime cannot be higher than value for endTime.");
+        if ( startYear > endYear){
+            throw new InvalidArgumentServiceException("Value for startYear cannot be higher than value for endYear.");
         }
-        if (startTime < minYear){
-            startTime = minYear;
-            log.warn("Start time has been set to: " + minYear);
+        if (startYear < minYear){
+            startYear = minYear;
+            log.debug("Start year has been set to: " + minYear);
         }
-        if (startTime > maxYear){
-            throw new InvalidArgumentServiceException("Value for startTime is not allowed. Maximum allowed value is: " + maxYear);
+        if (startYear > maxYear){
+            throw new InvalidArgumentServiceException("Value for startYear is not allowed. Maximum allowed value is: " + maxYear);
         }
-        if (endTime < minYear){
-            endTime = minYear;
-            log.warn("End time has been set to: " + minYear);
+        if (endYear < minYear){
+            endYear = minYear;
+            log.debug("End year has been set to: " + minYear);
         }
-        if (endTime > maxYear){
-            throw new InvalidArgumentServiceException("Value for endTime is not allowed. Maximum allowed value is: " + maxYear);
+        if (endYear > maxYear){
+            throw new InvalidArgumentServiceException("Value for endYear is not allowed. Maximum allowed value is: " + maxYear);
         }
 
-        String query = QueryConstructor.constructQuery(text, booleanOperator, startTime, endTime, familyId, lplace);
+        String query = QueryConstructor.constructQuery(text, booleanOperator, startYear, endYear, familyId, lplace);
         return query;
     }
 
