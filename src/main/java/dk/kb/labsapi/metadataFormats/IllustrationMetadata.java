@@ -68,6 +68,10 @@ public class IllustrationMetadata extends BasicMetadata {
         }
     }
 
+    public IllustrationMetadata(){
+
+    }
+
     // Getters
     public String getId() {
         return id;

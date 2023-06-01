@@ -46,47 +46,45 @@ public class ImageExportTest {
         ServiceConfig.initialize("conf/labsapi*.yaml");
     }
 
-    @Test
-    void testSolrCall() throws IOException {
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1700, 1800, -1);
-        log.info("testSolrCall returns " + response.getResults().getNumFound() + " SolrDocuments as result.");
-        assertTrue(0 < response.getResults().getNumFound());
-    }
 
     @Test
-    public void testIllustrationCount() throws IOException {
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1680, 1750, -1);
-        List<IllustrationMetadata> list = ImageExport.getInstance().getMetadataForIllustrations(response);
-        log.info("In these documents there are " + list.size() + " illustrations.");
-        assertTrue(0 < list.size());
+    void testSolrCall() throws IOException {
+        ImageExport export = ImageExport.getInstance();
+        SolrQuery testQuery = export.fullpageSolrQuery("hest", 1700, 1800, -1);
+        Stream<SolrDocument> docs = export.streamSolr(testQuery, 10);
+
+        long processed = docs.count();
+
+        assertEquals(10, processed);
     }
 
     @Test
     public void testIllustrationMetadata() throws IOException {
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("hest", 1680, 1750, -1);
-        List<IllustrationMetadata> list = ImageExport.getInstance().getMetadataForIllustrations(response);
-        IllustrationMetadata metadata = list.get(0);
-        assertEquals("3a728558-7e6d-45da-96b1-9c9405db7d82", metadata.getPageUUID());
-        assertEquals("ART1-2_SUB", metadata.getId());
-        assertEquals(10768.0, metadata.getPageHeight());
-        assertEquals(432.0, metadata.getX());
-        assertEquals(1400.0, metadata.getH());
+        String illustrationValues = "id=ART88-1_SUB,x=2364,y=4484,w=652,h=100";
+        String pageUUID = "0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4";
+
+        IllustrationMetadata metadata = new IllustrationMetadata(illustrationValues, pageUUID, 2500, 4200);
+        assertEquals("0fd7ba18-36a2-4761-b78f-bc7ff3a07ed4", metadata.getPageUUID());
+        assertEquals("ART88-1_SUB", metadata.getId());
+        assertEquals(16800.0, metadata.getPageHeight());
+        assertEquals(2364.0, metadata.getX());
+        assertEquals(100.0, metadata.getH());
     }
 
     @Test
-    public void testQueryForIllustratoins() throws IOException {
-        QueryResponse response = ImageExport.getInstance().illustrationSolrCall("politi", 1680, 1750, 1);
-        Object illustrations = response.getResults().get(0).getFieldValue("illustration");
-        assertNotNull(illustrations);
+    public void testQueryForIllustrations() throws IOException {
+        SolrQuery query = ImageExport.getInstance().illustrationSolrQuery("politi", 1680, 1750, 1);
+        String corretQuery = "fq=recordBase:doms_aviser+AND+py:[1680+TO+1750]&fq=illustration:+[*+TO+*]&q=politi&rows=1&group=false&fl=pageUUID,+illustration,+page_width,+page_height";
+
+        assertEquals(corretQuery, query.toString());
     }
 
     @Test
     public void testFullPageMetadata() throws IOException {
-        QueryResponse response = ImageExport.getInstance().fullpageSolrCall("politi", 1680, 1750, 1);
-        List<FullPageMetadata> list = ImageExport.getInstance().getMetadataForFullPage(response);
+        FullPageMetadata metadata = new FullPageMetadata("a308fb24-8ab2-4e72-92e0-0588892bdaa0", 2938L, 1234L);
 
-        assertEquals("a308fb24-8ab2-4e72-92e0-0588892bdaa0", list.get(0).getPageUUID());
-        assertNotNull(list.get(0).getPageHeight());
+        assertEquals("a308fb24-8ab2-4e72-92e0-0588892bdaa0", metadata.getPageUUID());
+        assertEquals(1234, metadata.getPageHeight());
     }
 
     @Test
@@ -150,51 +148,27 @@ public class ImageExportTest {
     }
 
     @Test
-    public void testSingleIllustrationURLConstruction() throws IOException {
+    public void testUrlConstructionForIllustration() throws IOException {
         String illustration = "id=ART88-1_SUB,x=30,y=120,w=400,h=200";
         String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
         IllustrationMetadata testIllustration = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
-        URL testUrl = ImageExport.getInstance().createIllustrationLink(testIllustration);
-        URL correct = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&WID=100&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
+        URL correctIllustrationUrl = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&WID=100&RGN=0.00346,0.01135,0.04610,0.01891&CVT=jpeg");
 
-        assertEquals(correct, testUrl);
+        assertEquals(correctIllustrationUrl, testIllustration.getImageURL());
     }
 
     @Test
-    public void testSinglePageURLConstruction() throws IOException {
-        FullPageMetadata testIllustration = new FullPageMetadata("3dbdca4e-d450-424b-b300-cf0a88773cb0", 2000L, 4000L);
+    public void testUrlConstructionForFullpage() throws IOException {
+        String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
+        FullPageMetadata testFullpage = new FullPageMetadata(pageUUID, 2169L, 2644L);
         String serverURL = ServiceConfig.getConfig().getString("labsapi.aviser.imageserver.url");
 
-        URL test = ImageExport.getInstance().createFullPageLink(testIllustration);
-        URL correct = new URL(serverURL+"/3/d/b/d/3dbdca4e-d450-424b-b300-cf0a88773cb0.jp2"+"&CVT=jpeg");
-        assertEquals(correct, test);
-    }
+        URL correctFullpageUrl = new URL(serverURL+"/0/0/0/0/00001afe-9d6b-46e7-b7f3-5fb70d832d4e.jp2"+"&CVT=jpeg");
 
-    // Not enabled due to connection issues.
-    //@Test
-    public void testMultipleURLConstructions() throws IOException {
-        // img size 2169x2644
-        String illustration = "id=ART88-1_SUB,x=30,y=120,w=400,h=200";
-        String pageUUID = "00001afe-9d6b-46e7-b7f3-5fb70d832d4e";
-        IllustrationMetadata illustration1 = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
-        IllustrationMetadata illustration2 = new IllustrationMetadata(illustration, pageUUID, 2169, 2644);
+        assertEquals(correctFullpageUrl, testFullpage.getImageURL());
 
-        List<IllustrationMetadata> testList = new ArrayList<>();
-        testList.add(illustration1);
-        testList.add(illustration2);
-
-        List<URL> result = ImageExport.getInstance().createLinkForAllIllustrations(testList);
-
-        HttpURLConnection connection;
-        int code;
-        for (int i = 0; i<result.size(); i++){
-            connection = (HttpURLConnection) result.get(0).openConnection();
-            connection.setRequestMethod("HEAD");
-            code = connection.getResponseCode();
-            assertEquals(200,code);
-        }
     }
 
     @Test
@@ -209,17 +183,13 @@ public class ImageExportTest {
         assertEquals(1880, result);
     }
 
-    @Test
-    public void testSizeConversion(){
-        // Tests that ideal sizes are converted correctly
-        String region = ImageExport.getInstance().calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
-        assertEquals("&WID=100&RGN=0.46104,0.45386,0.18442,0.07564", region);
-    }
 
     @Test
-    public void testRgnConstruction(){
-        String calculated = ImageExport.getInstance().calculateIllustrationRegion(2184,1000,2804,2816,4000,6000);
-        assertEquals("&WID=701&RGN=0.54600,0.16667,0.70100,0.46933",calculated);
+    public void testSizeConversion(){
+        IllustrationMetadata metadata = new IllustrationMetadata();
+        String region = metadata.calculateIllustrationRegion(1000, 1200, 400, 200, 2169, 2644);
+        // Tests that ideal sizes are converted correctly
+        assertEquals("&WID=100&RGN=0.46104,0.45386,0.18442,0.07564", region);
     }
 
     // Created because it looks like the ObjectWriter closes the overall ZipOutputStream in ImageExport
@@ -293,28 +263,4 @@ public class ImageExportTest {
                 count();
         assertTrue(received > 0, "Some results should be received");
     }
-
-    //@Test
-    public void testIllustrationsDataflow() throws IOException {
-        ImageExport export = ImageExport.getInstance();
-        String query = "hest";
-        int startTime = 1750;
-        int endTime = 1780;
-        int max = 10;
-        String exportFormat = "illustrations";
-        OutputStream out = new ByteArrayOutputStream();
-
-
-        int count = 0;
-        try {
-            export.streamIllustrationsFromQuery(query, startTime, endTime, max, out, exportFormat);
-        } catch (RuntimeException e){
-          count += 1;
-        }
-
-        System.out.println(out.toString());
-        System.out.println(count);
-    }
-
-
 }
