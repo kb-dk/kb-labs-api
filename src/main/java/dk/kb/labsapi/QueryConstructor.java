@@ -22,21 +22,7 @@ public class QueryConstructor {
         String familyIdString = null;
         String lplaceString = null;
 
-        if (booleanOperator == null){
-            booleanOperator = " AND ";
-        }
-        if (!(booleanOperator.endsWith(" "))){
-            booleanOperator = booleanOperator.concat(" ");
-        }
-        if (!(booleanOperator.startsWith(" "))){
-            booleanOperator = " " +booleanOperator;
-        }
-
-        if (!(text == null)){
-            for (String value : text) {
-                textQuaries = textQuaries.concat(booleanOperator + value);
-            }
-        }
+        booleanOperator = validateBooleanOperator(booleanOperator);
 
         // How should we handle values that are out of range? Should we correct them or let them be created here and then corrected when used in other endpoints?
         // TODO: Handle startYear and endYear on their own.
@@ -97,5 +83,24 @@ public class QueryConstructor {
             output = output.concat(")");
         }
         return output;
+    }
+
+    /**
+     * Validates the format of the given boolean operator.
+     * Users often gives operators as "AND", "OR" or "NOT". However leading and trailing spaces are needed to construct a correct query.
+     * @return the inputted {@code booleanOperator} with leading and trailing spaces.
+     */
+    private static String validateBooleanOperator(String booleanOperator){
+        if (booleanOperator == null){
+            booleanOperator = " AND ";
+        }
+        if (!(booleanOperator.endsWith(" "))){
+            booleanOperator = booleanOperator.concat(" ");
+        }
+        if (!(booleanOperator.startsWith(" "))){
+            booleanOperator = " " +booleanOperator;
+        }
+
+        return booleanOperator;
     }
 }
