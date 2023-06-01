@@ -25,7 +25,6 @@ public class QueryConstructor {
         booleanOperator = validateBooleanOperator(booleanOperator);
 
         // How should we handle values that are out of range? Should we correct them or let them be created here and then corrected when used in other endpoints?
-        // TODO: Handle startYear and endYear on their own.
         if (!(startYear == null) && !(endYear == null)){
             py = "py:[" + startYear + " TO " + endYear+ "]";
         }
@@ -48,18 +47,7 @@ public class QueryConstructor {
 
         // Construct query from values
         query = String.join(booleanOperator, textQuaries, py, familyIdString, lplaceString);
-
-        // Remove 'AND nulls' from query
-        if (query.contains(booleanOperator + "null")){
-            query = query.replaceAll(booleanOperator + "null", "");
-        }
-
-        // Remove leading and trailing boolean operator if present
-        if (query.startsWith(booleanOperator)) {
-            query = query.replaceFirst(booleanOperator, "");
-        }
-
-        query = query.trim();
+        query = cleanQuery(query, booleanOperator);
 
         return query;
     }
@@ -102,5 +90,26 @@ public class QueryConstructor {
         }
 
         return booleanOperator;
+    }
+
+    /**
+     * Perform cleanup on query.
+     * @param query to clean. Can contain null values and leading boolean operators.
+     * @param booleanOperator used to construct the query.
+     * @return a clean query ready for solr.
+     */
+    private static String cleanQuery(String query, String booleanOperator){
+        // Remove 'AND nulls' from query
+        if (query.contains(booleanOperator + "null")){
+            query = query.replaceAll(booleanOperator + "null", "");
+        }
+
+        // Remove leading and trailing boolean operator if present
+        if (query.startsWith(booleanOperator)) {
+            query = query.replaceFirst(booleanOperator, "");
+        }
+
+        query = query.trim();
+        return query;
     }
 }
