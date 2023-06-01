@@ -8,7 +8,6 @@ import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -19,11 +18,8 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
@@ -240,7 +236,7 @@ public class ImageExportTest {
         SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
         Stream<SolrDocument> docs = ImageExport.getInstance().streamSolr(finalQuery, max);
         // Get fullPage metadata
-        Stream<FullPageMetadata> pageMetadata = docs.map(ImageExport.getInstance()::streamMetadataForFullPage);
+        Stream<FullPageMetadata> pageMetadata = docs.map(ImageExport.getInstance()::getMetadataForFullPage);
 
         long processed = pageMetadata.count();
         assertEquals(10, processed);
@@ -256,7 +252,7 @@ public class ImageExportTest {
         SolrQuery finalQuery = exporter.illustrationSolrQuery(query, startTime, endTime, max);
         Stream<SolrDocument> docs = exporter.streamSolr(finalQuery, max);
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.streamMetadataForIllustrations(doc, uniqueUUIDs));
+        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.getMetadataForIllustrations(doc, uniqueUUIDs));
 
         long received = illustrationMetadata.
                 peek(Assertions::assertNotNull).

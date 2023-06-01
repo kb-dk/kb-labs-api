@@ -13,9 +13,7 @@ import dk.kb.util.webservice.exception.InvalidArgumentServiceException;
 import dk.kb.util.yaml.YAML;
 import org.apache.commons.io.IOUtils;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.params.GroupParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -243,7 +241,7 @@ public class ImageExport {
      * @param max       number of documents to fetch.
      * @param output    to write images to as one combined zip file.
      */
-    public void streamFullpageFromQuery(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
+    public void exportFullpages(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
@@ -254,9 +252,9 @@ public class ImageExport {
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
         // Get fullPage metadata
-        Stream<FullPageMetadata> pageMetadata = docs.map(this::streamMetadataForFullPage);
+        Stream<FullPageMetadata> pageMetadata = docs.map(this::getMetadataForFullPage);
         // Streams pages from URL to zip file with all illustrations
-        streamUrls(pageMetadata, output, metadataMap, exportFormat);
+        createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
     }
 
     /**
@@ -267,7 +265,7 @@ public class ImageExport {
      * @param max       number of documents to fetch.
      * @param output    to write images to as one combined zip file.
      */
-    public void streamIllustrationsFromQuery(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
+    public void exportIllustrations(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
@@ -278,10 +276,10 @@ public class ImageExport {
         Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> streamMetadataForIllustrations(doc, uniqueUUIDs));
+        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs));
 
         // Streams illustration from URL to zip file with all illustrations
-        streamUrls(illustrationMetadata, output, metadataMap, exportFormat);
+        createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
     }
 
     /**
@@ -335,7 +333,7 @@ public class ImageExport {
      * The returned object contains metadata about a single page.
      * @return an object containing metadata from a single page. metadata values are: pageUUID, pageWidth and pageHeight.
      */
-    public FullPageMetadata streamMetadataForFullPage(SolrDocument doc) {
+    public FullPageMetadata getMetadataForFullPage(SolrDocument doc) {
         FullPageMetadata page = null;
         try {
             page = new FullPageMetadata(doc.get("pageUUID").toString(), (Long) doc.get("page_width"), (Long) doc.get("page_height"));
@@ -352,11 +350,10 @@ public class ImageExport {
      * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from and imageURL is the URL where the illustration is available.
      * @return a list of metadata objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
-    public Stream<IllustrationMetadata> streamMetadataForIllustrations(SolrDocument doc, HashSet<String> uniqueUUIDs) {
+    public Stream<IllustrationMetadata> getMetadataForIllustrations(SolrDocument doc, HashSet<String> uniqueUUIDs) {
         // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
         List<String> illustrationList = new ArrayList<>();
         List<IllustrationMetadata> metadataList = new ArrayList<>();
-
 
         // Extract metadata from SolrDocument
         String pageUUID = doc.getFieldValue("pageUUID").toString();
@@ -376,13 +373,13 @@ public class ImageExport {
     }
 
     /**
-     * Streams content of all metadatas given in input stream to an output stream that delivers a zip file of all images from the URLs.
+     * Create ZIP file of images created from metadata objects.
      * @param illustrationMetadata used to stream URLS from and construct filenames.
      * @param output stream which holds the outputted zip file.
      * @param metadataMap which delivers overall information on the export.
      * @param exportFormat determines what kind of export that are to be done.
      */
-    public void streamUrls(Stream<? extends BasicMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
+    public void createZipOfImages(Stream<? extends BasicMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
@@ -403,12 +400,12 @@ public class ImageExport {
             switch (exportFormat){
                 case "illustrations":
                     illustrationMetadata.map(metadata -> (IllustrationMetadata) metadata)
-                            .forEach(metadata -> exportIllustrations(metadata, exportFormat, count, zos));
+                            .forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
                     zos.close();
                     break;
                 case "fullPage":
                     illustrationMetadata.map(metadata -> (FullPageMetadata) metadata)
-                            .forEach(metadata -> exportFullpage(metadata, exportFormat, count, zos));
+                            .forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
                     zos.close();
                     break;
             }
@@ -420,35 +417,23 @@ public class ImageExport {
     }
 
     /**
-     * Export to use for fullpage extraction.
+     * Export to use for illustration extraction.
      * @param metadata to download image for.
      * @param exportFormat that determines export type.
      * @param count to construct filenames.
      * @param zos to deliver all images to.
      */
-    private void exportFullpage(FullPageMetadata metadata, String exportFormat, AtomicInteger count, ZipOutputStream zos) {
+    public void exportImage(BasicMetadata metadata, String exportFormat, AtomicInteger count, ZipOutputStream zos){
         byte[] illustration = downloadSingleIllustration(metadata.getImageURL());
         String pageUuid = metadata.getPageUUID();
         try {
-            addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + ".jpeg", pageUuid), zos);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * Export to use for illustration extraction.
-     * @param illustrationMetadata to download image for.
-     * @param exportFormat that determines export type.
-     * @param count to construct filenames.
-     * @param zos to deliver all images to.
-     */
-    public void exportIllustrations(IllustrationMetadata illustrationMetadata, String exportFormat, AtomicInteger count, ZipOutputStream zos){
-        byte[] illustration = downloadSingleIllustration(illustrationMetadata.getImageURL());
-        String pageUuid = illustrationMetadata.getPageUUID();
-        try {
-            addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count.get()), zos);
-            count.addAndGet(1);
+            if (exportFormat.equals("illustrations")) {
+                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count.get()), zos);
+                count.addAndGet(1);
+            }
+            if (exportFormat.equals("fullPage")){
+                addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + ".jpeg", pageUuid), zos);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
