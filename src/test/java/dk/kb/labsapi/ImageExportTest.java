@@ -258,6 +258,9 @@ public class ImageExportTest {
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.streamMetadataForIllustrations(doc, uniqueUUIDs));
 
-        illustrationMetadata.forEach(Assertions::assertNotNull);
+        long received = illustrationMetadata.
+                peek(Assertions::assertNotNull).
+                count();
+        assertTrue(received > 0, "Some results should be received");
     }
 }
