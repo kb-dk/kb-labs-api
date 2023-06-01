@@ -182,7 +182,10 @@ public class SolrBase {
 
     /**
      * Perform a Solr call for the given request, ensuring that the maximum amount of concurrent connections are obeyed.
-     * All matching documents are delivered trough an {@link Iterator>, meaning the {@code rows} parameter is ignored.
+     * The method aims to potentially return all matches using Solr cursors
+     * https://solr.apache.org/guide/8_10/pagination-of-results.html#fetching-a-large-number-of-sorted-results-cursors
+     * To facilitate this the {@code rows} parameter is ignored. If the result set should be limited in size, it must
+     * happen in the calling code.
      * @param baseRequest the request to Solr.
      * @return an iterator of {@link SolrDocument}s.
      */
