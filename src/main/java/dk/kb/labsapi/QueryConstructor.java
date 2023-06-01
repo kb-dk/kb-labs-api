@@ -1,14 +1,15 @@
 package dk.kb.labsapi;
 
 import java.util.List;
+import java.util.StringJoiner;
 
 public class QueryConstructor {
 
     public static String constructQuery(List<String> text, String booleanOperator, Integer startTime, Integer endTime, List<String> familyId, List<String> lplace){
-        String query = "";
+        String query;
         String textQuaries = "";
-        String py = "";
-        String familyIdString = "";
+        String py = null;
+        String familyIdString = null;
 
         if (booleanOperator == null){
             booleanOperator = " AND ";
@@ -27,9 +28,9 @@ public class QueryConstructor {
 
         if (!(familyId == null || familyId.size() == 0)){
             if (familyId.size() == 1){
-                familyIdString = " AND familyId:" + familyId.get(0);
+                familyIdString = "familyId:" + familyId.get(0);
             } else {
-                familyIdString = " AND familyId:(";
+                familyIdString = "familyId:(";
                 for (String id : familyId){
                     familyIdString = familyIdString.concat(id + " OR ");
                 }
@@ -39,9 +40,14 @@ public class QueryConstructor {
         }
 
         // Construct query from values
-        query = textQuaries + booleanOperator + py + booleanOperator + familyIdString;
+        query = String.join(booleanOperator, textQuaries, py, familyIdString);
 
-        // Remove leading boolean operator if present
+        // Remove AND nulls from query
+        if (query.contains("AND null")){
+            query = query.replaceAll("AND null", "");
+        }
+
+        // Remove leading and trailing boolean operator if present
         if (query.startsWith(" " + booleanOperator + " ")) {
             query = query.replaceFirst(" "+booleanOperator+" ", "");
         }

@@ -17,7 +17,7 @@ public class QueryConstructorTest {
         String correctString = "hest";
 
         String query = QueryConstructor.constructQuery(testText, null, null, null, null, null);
-        Assertions.assertEquals(query, correctString);
+        Assertions.assertEquals(correctString, query);
     }
 
     @Test
@@ -26,7 +26,7 @@ public class QueryConstructorTest {
         String correctString = "hest AND ko AND kylling";
 
         String query = QueryConstructor.constructQuery(testText, null, null, null, null, null);
-        Assertions.assertEquals(query, correctString);
+        Assertions.assertEquals(correctString, query);
     }
 
     // Test for boolean constructors
