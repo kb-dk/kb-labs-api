@@ -39,8 +39,8 @@ public class ImageExport {
     public static int pageSize;
     private static ImageExport instance;
     private final String ImageExportService;
-    private static int startYear;
-    private static int endYear;
+    private static int minAllowedStartYear;
+    private static int maxAllowedEndYear;
     private static int maxExport;
     private static int defaultExport;
     static final Pattern pagePattern = Pattern.compile("doms_aviser_page:uuid:(\\S*)");
@@ -61,8 +61,8 @@ public class ImageExport {
         }
         pageSize = conf.getInteger(".solr.pagesize", 500);
         ImageExportService = conf.getString(".imageserver.url") + (conf.getString(".imageserver.url").endsWith("/") ? "" : "/");
-        startYear = conf.getInteger(".imageserver.minYear");
-        endYear = conf.getInteger(".imageserver.maxYear");
+        minAllowedStartYear = conf.getInteger(".imageserver.minYear");
+        maxAllowedEndYear = conf.getInteger(".imageserver.maxYear");
         maxExport = conf.getInteger(".imageserver.maxExport");
         defaultExport = conf.getInteger(".imageserver.defaultExport");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
@@ -71,19 +71,19 @@ public class ImageExport {
     /**
      * Create map of metadata for query.
      * @param query used to query solr.
-     * @param startTime for the given query.
-     * @param endTime for query.
+     * @param startYear for the given query.
+     * @param endYear for query.
      * @return a map of metadata used to provide a metadata file.
      */
-    public static Map<String, Object> makeMetadataMap(String query, Integer startTime, Integer endTime) {
+    public static Map<String, Object> makeMetadataMap(String query, Integer startYear, Integer endYear) {
         Date date = new Date();
 
         Map<String, Object> metadataMap = new HashMap<>();
         metadataMap.put("title", "Metadata for image extraction from the Danish Royal Librarys newspaper API.");
         metadataMap.put("extraction_time", date.toString());
         metadataMap.put("query", query);
-        metadataMap.put("query_start_year", startTime);
-        metadataMap.put("query_end_year", endTime);
+        metadataMap.put("query_start_year", startYear);
+        metadataMap.put("query_end_year", endYear);
         metadataMap.put("license", "Creative Commons Public Domain Mark 1.0 License.");
 
         return metadataMap;
@@ -92,18 +92,18 @@ public class ImageExport {
     /**
      * Create base solr query.
      * @param query to search for.
-     * @param startTime sets the start of period range.
-     * @param endTime sets the end of period range.
+     * @param startYear sets the start of period range.
+     * @param endYear sets the end of period range.
      * @param max results to return.
      * @return a solrQuery object that can be extended before querying.
      */
-    private SolrQuery createSolrQuery(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
-        validateQueryParams(startTime, endTime, max);
-        int usableStartTime = setUsableStartTime(startTime);
-        int usableEndTime = setUsableEndTime(endTime);
+    private SolrQuery createSolrQuery(String query, Integer startYear, Integer endYear, Integer max) throws IOException {
+        validateQueryParams(startYear, endYear, max);
+        int usableStartYear = setUsableStartYear(startYear);
+        int usableEndYear = setUsableEndYear(endYear);
 
         // Construct solr query with filter
-        String filter = "recordBase:doms_aviser AND py:[" + usableStartTime + " TO "+ usableEndTime + "]";
+        String filter = "recordBase:doms_aviser AND py:[" + usableStartYear + " TO "+ usableEndYear + "]";
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.addFilterQuery(filter);
         solrQuery.setQuery(query);
@@ -117,18 +117,18 @@ public class ImageExport {
 
     /**
      * Validate query parameters that are to be used for image extraction.
-     * @param startTime of timespan for query.
-     * @param endTime of timespan for query.
+     * @param startYear of timespan for query.
+     * @param endYear of timespan for query.
      * @param max number of queries.
      */
-    private void validateQueryParams(Integer startTime, Integer endTime, Integer max) {
+    private void validateQueryParams(Integer startYear, Integer endYear, Integer max) {
         // Check start and end times
-        int usableStartTime = setUsableStartTime(startTime);
-        int usableEndTime = setUsableEndTime(endTime);
-        log.debug("Usable start time is: " + usableStartTime + " and usable end time is: " + usableEndTime );
-        if (usableStartTime > usableEndTime){
-            log.error("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
-            throw new InvalidArgumentServiceException("The variable startTime is greater than endTime, which is not allowed. Please make startTime less than endTime.");
+        int usableStartYear = setUsableStartYear(startYear);
+        int usableEndYear = setUsableEndYear(endYear);
+        log.debug("Usable start time is: " + usableStartYear + " and usable end time is: " + usableEndYear );
+        if (usableStartYear > usableEndYear){
+            log.error("The variable startYear is greater than endYear, which is not allowed. Please make startYear less than endYear.");
+            throw new InvalidArgumentServiceException("The variable startYear is greater than endYear, which is not allowed. Please make startYear less than endYear.");
         }
         if (max > maxExport){
             log.error("Maximum value is to high. Highest value is: " + maxExport);
@@ -137,32 +137,32 @@ public class ImageExport {
     }
 
     /**
-     * Evaluate that startTime is allowed in configuration of service.
-     * @param startTime the chosen year for start of query.
-     * @return startTime if allowed else return default start year.
+     * Evaluate that startYear is allowed in configuration of service.
+     * @param startYear the chosen year for start of query.
+     * @return startYear if allowed else return default start year.
      */
-    public int setUsableStartTime(int startTime){
-         if (startTime < startYear){
-             log.info("Using startYear " + startYear);
-             return startYear;
+    public int setUsableStartYear(int startYear){
+         if (startYear < minAllowedStartYear){
+             log.info("Using startYear " + minAllowedStartYear);
+             return minAllowedStartYear;
          } else {
-             log.info("using startTime " + startTime);
-             return startTime;
+             log.info("using startYear " + startYear);
+             return startYear;
          }
     }
 
     /**
-     * Evaluate that endTime is allowed in configuration of service.
-     * @param endTime the chosen year for end of query.
-     * @return endTime if allowed else return default end year.
+     * Evaluate that endyear is allowed in configuration of service.
+     * @param endyear the chosen year for end of query.
+     * @return endyear if allowed else return default end year.
      */
-    public int setUsableEndTime(int endTime){
-         if (endTime > endYear){
-             log.info("Using endYear " + endYear);
-             return endYear;
+    public int setUsableEndYear(int endyear){
+         if (endyear > maxAllowedEndYear){
+             log.info("Using endYear " + maxAllowedEndYear);
+             return maxAllowedEndYear;
          } else {
-             log.info("Using endTime" + endTime);
-             return endTime;
+             log.info("Using endyear" + endyear);
+             return endyear;
          }
     }
 
@@ -236,21 +236,20 @@ public class ImageExport {
     /**
      * Get images of newspaper pages with given query present in text.
      * @param query     to search for.
-     * @param startTime is the earliest boundary for the query. Boundaries are inclusive.
-     * @param endTime   is the latest boundary for the query. Boundaries are inclusive.
+     * @param startYear is the earliest boundary for the query. Boundaries are inclusive.
+     * @param endYear   is the latest boundary for the query. Boundaries are inclusive.
      * @param max       number of documents to fetch.
      * @param output    to write images to as one combined zip file.
      */
-    public void exportFullpages(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
+    public void exportFullpages(String query, Integer startYear, Integer endYear, Integer max, OutputStream output, String exportFormat) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
         // Query Solr
-        // QueryResponse response = fullpageSolrCall(query, startTime, endTime, max);
-        SolrQuery finalQuery = fullpageSolrQuery(query, startTime, endTime, max);
+        SolrQuery finalQuery = fullpageSolrQuery(query, startYear, endYear, max);
         Stream<SolrDocument> docs = streamSolr(finalQuery, max);
         // Create metadata file, that has to be added to output zip
-        Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
+        Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Get fullPage metadata
         Stream<FullPageMetadata> pageMetadata = docs.map(this::getMetadataForFullPage);
         // Streams pages from URL to zip file with all illustrations
@@ -260,20 +259,20 @@ public class ImageExport {
     /**
      * Get illustrations from newspaper pages where given query is present in text.
      * @param query     to search for.
-     * @param startTime is the earliest boundary for the query. Boundaries are inclusive.
-     * @param endTime   is the latest boundary for the query. Boundaries are inclusive.
+     * @param startYear is the earliest boundary for the query. Boundaries are inclusive.
+     * @param endYear   is the latest boundary for the query. Boundaries are inclusive.
      * @param max       number of documents to fetch.
      * @param output    to write images to as one combined zip file.
      */
-    public void exportIllustrations(String query, Integer startTime, Integer endTime, Integer max, OutputStream output, String exportFormat) throws IOException {
+    public void exportIllustrations(String query, Integer startYear, Integer endYear, Integer max, OutputStream output, String exportFormat) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
         // Query Solr
-        SolrQuery finalQuery = illustrationSolrQuery(query, startTime, endTime, max);
+        SolrQuery finalQuery = illustrationSolrQuery(query, startYear, endYear, max);
         Stream<SolrDocument> docs = streamSolr(finalQuery, max);
         // Create metadata file, that has to be added to output zip
-        Map<String, Object> metadataMap = makeMetadataMap(query, startTime, endTime);
+        Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs));
@@ -285,14 +284,14 @@ public class ImageExport {
     /**
      * Construct Solr query for input.
      * @param query to query solr with
-     * @param startTime is the earliest boundary for the query. Boundaries are inclusive.
-     * @param endTime is the latest boundary for the query. Boundaries are inclusive.
+     * @param startYear is the earliest boundary for the query. Boundaries are inclusive.
+     * @param endyear is the latest boundary for the query. Boundaries are inclusive.
      * @param max number of results to return
      * @return a solr query used to deliver images of all pages. The fields asked for are the following: <em>pageUUID, page_width and page_height</em>
      */
-    public SolrQuery fullpageSolrQuery(String query, Integer startTime, Integer endTime, Integer max) throws IOException {
+    public SolrQuery fullpageSolrQuery(String query, Integer startYear, Integer endyear, Integer max) throws IOException {
         // Construct solr query with filter
-        SolrQuery solrQuery = createSolrQuery(query, startTime, endTime, max);
+        SolrQuery solrQuery = createSolrQuery(query, startYear, endyear, max);
         solrQuery.setFields("pageUUID, page_width, page_height");
 
         return solrQuery;
@@ -301,15 +300,14 @@ public class ImageExport {
     /**
      * Construct Solr query for input.
      * @param query     to query Solr with.
-     * @param startTime startTime is the earliest boundary for the query. Boundaries are inclusive.
-     * @param endTime   endTime is the latest boundary for the query. Boundaries are inclusive.
+     * @param startYear startYear is the earliest boundary for the query. Boundaries are inclusive.
+     * @param endYear   endYear is the latest boundary for the query. Boundaries are inclusive.
      * @param max       number of results to return
      * @return a response containing specific metadata used to locate illustration on pages. The fields asked for are the following: <em>pageUUID, illustration, page_width, page_height</em>
      */
-    public SolrQuery illustrationSolrQuery(String query, Integer startTime, Integer endTime, int max) throws IOException{
-
+    public SolrQuery illustrationSolrQuery(String query, Integer startYear, Integer endYear, int max) throws IOException{
         // Construct solr query with filter
-        SolrQuery solrQuery = createSolrQuery(query, startTime, endTime, max);
+        SolrQuery solrQuery = createSolrQuery(query, startYear, endYear, max);
         solrQuery.addFilterQuery("illustration: [* TO *]");
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
 
