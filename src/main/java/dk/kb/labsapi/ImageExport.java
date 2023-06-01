@@ -372,12 +372,12 @@ public class ImageExport {
 
     /**
      * Create ZIP file of images created from metadata objects.
-     * @param illustrationMetadata used to stream URLS from and construct filenames.
+     * @param imageMetadata used to stream URLS from and construct filenames.
      * @param output stream which holds the outputted zip file.
      * @param metadataMap which delivers overall information on the export.
      * @param exportFormat determines what kind of export that are to be done.
      */
-    public void createZipOfImages(Stream<? extends BasicMetadata> illustrationMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
+    public void createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
@@ -388,7 +388,7 @@ public class ImageExport {
             String message = String.format(
                     Locale.ROOT,
                     "Exception adding metadata entry to ZIP with  %s illustrationMetadatas",
-                    illustrationMetadata == null ? "null" : illustrationMetadata.count());
+                    imageMetadata == null ? "null" : imageMetadata.count());
             log.warn(message, e);
             throw new IOException(message, e);
         }
@@ -397,12 +397,12 @@ public class ImageExport {
         try {
             switch (exportFormat){
                 case "illustrations":
-                    illustrationMetadata.map(metadata -> (IllustrationMetadata) metadata)
+                    imageMetadata.map(metadata -> (IllustrationMetadata) metadata)
                             .forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
                     zos.close();
                     break;
                 case "fullPage":
-                    illustrationMetadata.map(metadata -> (FullPageMetadata) metadata)
+                    imageMetadata.map(metadata -> (FullPageMetadata) metadata)
                             .forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
                     zos.close();
                     break;
