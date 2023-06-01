@@ -25,6 +25,12 @@ public class QueryConstructor {
         if (booleanOperator == null){
             booleanOperator = " AND ";
         }
+        if (!(booleanOperator.endsWith(" "))){
+            booleanOperator = booleanOperator.concat(" ");
+        }
+        if (!(booleanOperator.startsWith(" "))){
+            booleanOperator = " " +booleanOperator;
+        }
 
         if (!(text == null)){
             for (String value : text) {

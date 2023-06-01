@@ -40,6 +40,16 @@ public class QueryConstructorTest {
         Assertions.assertEquals(correctString, query);
     }
 
+    @Test
+    public void testSpacesInBooleanOperators(){
+        List<String> testText = new ArrayList<>(Arrays.asList("hest", "ko", "kylling"));
+        String booleanOperator = "AND";
+        String correctString = "hest AND ko AND kylling";
+
+        String query = QueryConstructor.constructQuery(testText, booleanOperator, null, null, null, null);
+        Assertions.assertEquals(correctString, query);
+    }
+
     // Tests for timestamps
     @Test
     public void testStartYear(){
