@@ -17,7 +17,7 @@ public class QueryConstructor {
 
         if (!(text == null)){
             for (String value : text) {
-                textQuaries = textQuaries.concat(" " + booleanOperator + " " + value);
+                textQuaries = textQuaries.concat(booleanOperator + value);
             }
         }
 
@@ -43,14 +43,16 @@ public class QueryConstructor {
         query = String.join(booleanOperator, textQuaries, py, familyIdString);
 
         // Remove AND nulls from query
-        if (query.contains("AND null")){
-            query = query.replaceAll("AND null", "");
+        if (query.contains(booleanOperator + "null")){
+            query = query.replaceAll(booleanOperator + "null", "");
         }
 
         // Remove leading and trailing boolean operator if present
-        if (query.startsWith(" " + booleanOperator + " ")) {
-            query = query.replaceFirst(" "+booleanOperator+" ", "");
+        if (query.startsWith(booleanOperator)) {
+            query = query.replaceFirst(booleanOperator, "");
         }
+
+        query = query.trim();
 
         return query;
     }

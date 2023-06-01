@@ -33,11 +33,11 @@ public class QueryConstructorTest {
     @Test
     public void testBooleanValues(){
         List<String> testText = new ArrayList<>(Arrays.asList("hest", "ko", "kylling"));
-        String booleanOperator = "OR";
+        String booleanOperator = " OR ";
         String correctString = "hest OR ko OR kylling";
 
         String query = QueryConstructor.constructQuery(testText, booleanOperator, null, null, null, null);
-        Assertions.assertEquals(query, correctString);
+        Assertions.assertEquals(correctString, query);
     }
 
     // TODO: Tests for timestamps
@@ -55,7 +55,6 @@ public class QueryConstructorTest {
         List<String> familyId = new ArrayList<>(Arrays.asList("testAvis"));
         String correctString = "familyId:testAvis";
         String query = QueryConstructor.constructQuery(null, null, null, null, familyId, null);
-        System.out.println(query);
         Assertions.assertEquals(correctString, query);
     }
 
@@ -64,7 +63,6 @@ public class QueryConstructorTest {
         List<String> familyId = new ArrayList<>(Arrays.asList("testAvis", "andenAvis", "tredjeAvis"));
         String correctString = "familyId:(testAvis OR andenAvis OR tredjeAvis)";
         String query = QueryConstructor.constructQuery(null, null, null, null, familyId, null);
-        System.out.println(query);
         Assertions.assertEquals(correctString, query);
     }
 
