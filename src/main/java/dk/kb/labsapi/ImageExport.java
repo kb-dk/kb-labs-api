@@ -251,7 +251,8 @@ public class ImageExport {
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Get fullPage metadata
-        Stream<FullPageMetadata> pageMetadata = docs.map(this::getMetadataForFullPage);
+        HashSet<String> uniqueUUIDs = new HashSet<>();
+        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> getMetadataForFullPage(doc, uniqueUUIDs));
         // Streams pages from URL to zip file with all illustrations
         createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
     }
@@ -331,8 +332,15 @@ public class ImageExport {
      * The returned object contains metadata about a single page.
      * @return an object containing metadata from a single page. metadata values are: pageUUID, pageWidth and pageHeight.
      */
-    public FullPageMetadata getMetadataForFullPage(SolrDocument doc) {
+    public FullPageMetadata getMetadataForFullPage(SolrDocument doc, HashSet<String> uniqueUUIDs) {
         FullPageMetadata page = null;
+
+        // Extract metadata from SolrDocument
+        String pageUUID = doc.getFieldValue("pageUUID").toString();
+        String correctUUID = convertPageUUID(pageUUID);
+        if (!uniqueUUIDs.add(correctUUID)){
+            return null;
+        }
         try {
             page = new FullPageMetadata(doc.get("pageUUID").toString(), (Long) doc.get("page_width"), (Long) doc.get("page_height"));
         } catch (IOException e) {

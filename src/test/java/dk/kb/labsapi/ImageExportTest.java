@@ -236,7 +236,8 @@ public class ImageExportTest {
         SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
         Stream<SolrDocument> docs = ImageExport.getInstance().streamSolr(finalQuery, max);
         // Get fullPage metadata
-        Stream<FullPageMetadata> pageMetadata = docs.map(ImageExport.getInstance()::getMetadataForFullPage);
+        HashSet<String> uniqueUUIDs = new HashSet<>();
+        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> ImageExport.getInstance().getMetadataForFullPage(doc, uniqueUUIDs));
 
         long processed = pageMetadata.count();
         assertEquals(10, processed);
