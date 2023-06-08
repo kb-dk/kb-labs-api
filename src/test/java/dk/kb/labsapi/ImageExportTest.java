@@ -47,7 +47,9 @@ public class ImageExportTest {
     void testSolrCall() throws IOException {
         ImageExport export = ImageExport.getInstance();
         SolrQuery testQuery = export.fullpageSolrQuery("hest", 1700, 1800, -1);
-        Stream<SolrDocument> docs = export.streamSolr(testQuery, 10);
+        Stream<SolrDocument> docs = export.
+                streamSolr(testQuery).
+                limit(10);
 
         long processed = docs.count();
 
@@ -234,7 +236,9 @@ public class ImageExportTest {
         int endTime = 1780;
         int max = 10;
         SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
-        Stream<SolrDocument> docs = ImageExport.getInstance().streamSolr(finalQuery, max);
+        Stream<SolrDocument> docs = ImageExport.getInstance().
+                streamSolr(finalQuery).
+                limit(max);
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<FullPageMetadata> pageMetadata = docs.map(doc -> ImageExport.getInstance().getMetadataForFullPage(doc, uniqueUUIDs));
@@ -251,7 +255,9 @@ public class ImageExportTest {
         int endTime = 1780;
         int max = 10;
         SolrQuery finalQuery = exporter.illustrationSolrQuery(query, startTime, endTime, max);
-        Stream<SolrDocument> docs = exporter.streamSolr(finalQuery, max);
+        Stream<SolrDocument> docs = exporter.
+                streamSolr(finalQuery).
+                limit(max);
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.getMetadataForIllustrations(doc, uniqueUUIDs));
 
