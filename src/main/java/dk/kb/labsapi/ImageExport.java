@@ -342,6 +342,7 @@ public class ImageExport {
         if (!uniqueUUIDs.add(correctUUID)){
             return null;
         }
+        log.info("Found: '" + uniqueUUIDs.size() + "' unique UUIDs in query.");
         try {
             page = new FullPageMetadata(doc.get("pageUUID").toString(), (Long) doc.get("page_width"), (Long) doc.get("page_height"));
         } catch (IOException e) {
