@@ -274,12 +274,14 @@ public class ImageExport {
         }
         // Query Solr
         SolrQuery finalQuery = illustrationSolrQuery(query, startYear, endYear, max);
-        Stream<SolrDocument> docs = streamSolr(finalQuery, max);
+        Stream<SolrDocument> docs = streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs));
+        Stream<IllustrationMetadata> illustrationMetadata = docs.
+                flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
+                        limit(max));
 
         // Streams illustration from URL to zip file with all illustrations
         createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
