@@ -247,13 +247,15 @@ public class ImageExport {
         }
         // Query Solr
         SolrQuery finalQuery = fullpageSolrQuery(query, startYear, endYear, max);
-        Stream<SolrDocument> docs = streamSolr(finalQuery, max);
+        Stream<SolrDocument> docs = streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
-                filter(Objects::nonNull);
+        Stream<FullPageMetadata> pageMetadata = docs.
+                map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
+                filter(Objects::nonNull).
+                limit(max);
         // Streams pages from URL to zip file with all illustrations
         createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
     }
@@ -319,12 +321,11 @@ public class ImageExport {
     /**
      * Create stream of solr document from query.
      * @param query to create stream from.
-     * @param max amount of result.
      * @return a stream of SolrDocuments representing newspaper article hits.
      */
-    public Stream<SolrDocument> streamSolr(SolrQuery query, Integer max){
+    public Stream<SolrDocument> streamSolr(SolrQuery query){
         SolrBase base = new SolrBase(".labsapi.aviser");
-        Stream<SolrDocument> docs = base.streamSolr(query).limit(max);
+        Stream<SolrDocument> docs = base.streamSolr(query);
         return docs;
     }
 
