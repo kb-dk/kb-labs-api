@@ -256,6 +256,8 @@ public class ImageExport {
                 map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
                 filter(Objects::nonNull).
                 limit(max);
+
+        log.info("Found: '" + uniqueUUIDs.size() + "' unique UUIDs in query.");
         // Streams pages from URL to zip file with all illustrations
         createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
     }
@@ -281,8 +283,9 @@ public class ImageExport {
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<IllustrationMetadata> illustrationMetadata = docs.
                 flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
-                        limit(max));
+                limit(max));
 
+        log.info("Found: '" + uniqueUUIDs.size() + "' unique UUIDs in query.");
         // Streams illustration from URL to zip file with all illustrations
         createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
     }
@@ -345,7 +348,6 @@ public class ImageExport {
         if (!uniqueUUIDs.add(correctUUID)){
             return null;
         }
-        log.info("Found: '" + uniqueUUIDs.size() + "' unique UUIDs in query.");
         try {
             page = new FullPageMetadata(doc.get("pageUUID").toString(), (Long) doc.get("page_width"), (Long) doc.get("page_height"));
         } catch (IOException e) {
