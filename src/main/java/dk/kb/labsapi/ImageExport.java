@@ -257,7 +257,7 @@ public class ImageExport {
                 filter(Objects::nonNull).
                 limit(max);
 
-        log.info("Found: '" + uniqueUUIDs.size() + "' unique UUIDs in query.");
+        log.info("Downloads: '" + pageMetadata.count() + "' pages from query.");
         // Streams pages from URL to zip file with all illustrations
         createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
     }
@@ -285,7 +285,7 @@ public class ImageExport {
                 flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
                 limit(max));
 
-        log.info("Found: '" + uniqueUUIDs.size() + "' unique UUIDs in query.");
+        log.info("Downloads: '" + illustrationMetadata.count() + "' illustrations from query.");
         // Streams illustration from URL to zip file with all illustrations
         createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
     }
