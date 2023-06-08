@@ -252,7 +252,8 @@ public class ImageExport {
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> getMetadataForFullPage(doc, uniqueUUIDs));
+        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
+                filter(Objects::nonNull);
         // Streams pages from URL to zip file with all illustrations
         createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
     }
@@ -403,13 +404,11 @@ public class ImageExport {
         try {
             switch (exportFormat){
                 case "illustrations":
-                    imageMetadata.map(metadata -> (IllustrationMetadata) metadata)
-                            .forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
+                    imageMetadata.forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
                     zos.close();
                     break;
                 case "fullPage":
-                    imageMetadata.map(metadata -> (FullPageMetadata) metadata)
-                            .forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
+                    imageMetadata.forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
                     zos.close();
                     break;
             }
