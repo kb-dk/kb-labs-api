@@ -2,6 +2,7 @@ package dk.kb.labsapi;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.AbstractTypeResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
@@ -21,6 +22,7 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -241,7 +243,8 @@ public class ImageExportTest {
                 limit(max);
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> ImageExport.getInstance().getMetadataForFullPage(doc, uniqueUUIDs));
+        AtomicInteger count = new AtomicInteger();
+        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> ImageExport.getInstance().getMetadataForFullPage(doc, uniqueUUIDs, count));
 
         long processed = pageMetadata.count();
         assertEquals(10, processed);
@@ -259,7 +262,8 @@ public class ImageExportTest {
                 streamSolr(finalQuery).
                 limit(max);
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.getMetadataForIllustrations(doc, uniqueUUIDs));
+        AtomicInteger count = new AtomicInteger();
+        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.getMetadataForIllustrations(doc, uniqueUUIDs, count));
 
         long received = illustrationMetadata.
                 peek(Assertions::assertNotNull).
