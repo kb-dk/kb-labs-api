@@ -243,8 +243,7 @@ public class ImageExportTest {
                 limit(max);
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        AtomicInteger count = new AtomicInteger();
-        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> ImageExport.getInstance().getMetadataForFullPage(doc, uniqueUUIDs, count));
+        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> ImageExport.getInstance().getMetadataForFullPage(doc, uniqueUUIDs));
 
         long processed = pageMetadata.count();
         assertEquals(10, processed);
@@ -262,8 +261,7 @@ public class ImageExportTest {
                 streamSolr(finalQuery).
                 limit(max);
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        AtomicInteger count = new AtomicInteger();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.getMetadataForIllustrations(doc, uniqueUUIDs, count));
+        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> exporter.getMetadataForIllustrations(doc, uniqueUUIDs));
 
         long received = illustrationMetadata.
                 peek(Assertions::assertNotNull).

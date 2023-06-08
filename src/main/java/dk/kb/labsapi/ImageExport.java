@@ -251,16 +251,16 @@ public class ImageExport {
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Get fullPage metadata
-        AtomicInteger count = new AtomicInteger();
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<FullPageMetadata> pageMetadata = docs.
-                map(doc -> getMetadataForFullPage(doc, uniqueUUIDs, count)).
+                map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
                 filter(Objects::nonNull).
                 limit(max);
 
-        log.info("Found: '" + count.get() + "' unique UUIDs in query");
         // Streams pages from URL to zip file with all illustrations
-        createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
+        AtomicInteger count = createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
+        log.info("Found: '" + count + "' unique UUIDs in query");
+
     }
 
     /**
@@ -282,14 +282,13 @@ public class ImageExport {
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        AtomicInteger count = new AtomicInteger();
         Stream<IllustrationMetadata> illustrationMetadata = docs.
-                flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs, count).
+                flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
                 limit(max));
 
-        log.info("Found: '" + count.get() + "' unique UUIDs in query");
         // Streams illustration from URL to zip file with all illustrations
-        createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
+        AtomicInteger count = createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
+        log.info("Found: '" + count + "' unique UUIDs in query");
     }
 
     /**
@@ -341,7 +340,7 @@ public class ImageExport {
      * The returned object contains metadata about a single page.
      * @return an object containing metadata from a single page. metadata values are: pageUUID, pageWidth and pageHeight.
      */
-    public FullPageMetadata getMetadataForFullPage(SolrDocument doc, HashSet<String> uniqueUUIDs, AtomicInteger count) {
+    public FullPageMetadata getMetadataForFullPage(SolrDocument doc, HashSet<String> uniqueUUIDs) {
         FullPageMetadata page = null;
 
         // Extract metadata from SolrDocument
@@ -350,7 +349,6 @@ public class ImageExport {
         if (!uniqueUUIDs.add(correctUUID)){
             return null;
         }
-        count.addAndGet(1);
         try {
             page = new FullPageMetadata(doc.get("pageUUID").toString(), (Long) doc.get("page_width"), (Long) doc.get("page_height"));
         } catch (IOException e) {
@@ -366,7 +364,7 @@ public class ImageExport {
      * X and Y are coordinates, w = width and h = height. pageUUID, pageWidth and pageHeight are related to the page, which the illustration has been extracted from and imageURL is the URL where the illustration is available.
      * @return a list of metadata objects consisting of the id, x, y, w, h, pageUUID, pageWidth and pageHeight values that are used to extract illustrations.
      */
-    public Stream<IllustrationMetadata> getMetadataForIllustrations(SolrDocument doc, HashSet<String> uniqueUUIDs, AtomicInteger count) {
+    public Stream<IllustrationMetadata> getMetadataForIllustrations(SolrDocument doc, HashSet<String> uniqueUUIDs) {
         // TODO: This endpoint still returns some odd illustrations, which are clearly not illustrations nut flaws in the illustration boxes. However it works and these illustrations can be filtered away later by filtering small hights away
 
         // Extract metadata from SolrDocument
@@ -375,7 +373,6 @@ public class ImageExport {
         if (!uniqueUUIDs.add(correctUUID)){
             return null;
         }
-        count.addAndGet(1);
         long pageWidth = (long) doc.getFieldValue("page_width");
         long pageHeight = (long) doc.getFieldValue("page_height");
         List<String> illustrations = (List<String>) doc.getFieldValue("illustration");
@@ -394,7 +391,7 @@ public class ImageExport {
      * @param metadataMap which delivers overall information on the export.
      * @param exportFormat determines what kind of export that are to be done.
      */
-    public void createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
+    public AtomicInteger createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
@@ -427,6 +424,7 @@ public class ImageExport {
             log.error("Error adding illustration to ZIP stream.");
             throw new IOException();
         }
+        return count;
     }
 
     /**
@@ -442,11 +440,11 @@ public class ImageExport {
         try {
             if (exportFormat.equals("illustrations")) {
                 addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count.get()), zos);
-                count.addAndGet(1);
             }
             if (exportFormat.equals("fullPage")){
                 addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + ".jpeg", pageUuid), zos);
             }
+            count.addAndGet(1);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
