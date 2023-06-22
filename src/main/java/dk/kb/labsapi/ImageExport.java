@@ -251,7 +251,7 @@ public class ImageExport {
                 limit(max);
 
         // Streams pages from URL to zip file with all illustrations
-        AtomicInteger count = createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
+        int count = createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
         log.info("Found: '" + count + "' unique UUIDs in query");
 
     }
@@ -280,8 +280,8 @@ public class ImageExport {
                 limit(max));
 
         // Streams illustration from URL to zip file with all illustrations
-        AtomicInteger count = createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
-        log.info("Found: '" + count + "' unique UUIDs in query");
+        int count = createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
+        log.info("Exported: '" + count + "' unique UUIDs from query: '" + query + "' with startYear: '" + startYear + "' and endYear: '" + endYear + "'");
     }
 
     /**
@@ -383,7 +383,7 @@ public class ImageExport {
      * @param metadataMap which delivers overall information on the export.
      * @param exportFormat determines what kind of export that are to be done.
      */
-    public AtomicInteger createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
+    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
@@ -416,7 +416,7 @@ public class ImageExport {
             log.error("Error adding illustration to ZIP stream.");
             throw new IOException();
         }
-        return count;
+        return count.intValue();
     }
 
     /**
