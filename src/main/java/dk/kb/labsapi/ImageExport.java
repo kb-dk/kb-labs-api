@@ -281,7 +281,7 @@ public class ImageExport {
 
         // Streams illustration from URL to zip file with all illustrations
         int count = createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
-        log.info("Exported: '" + count + "' unique UUIDs from query: '" + query + "' with startYear: '" + startYear + "' and endYear: '" + endYear + "'");
+        log.info("Exported: '{} unique UUIDs from query: '{}' with startYear: {} and endYear: {}", count, query, startYear, endYear);
     }
 
     /**
