@@ -95,11 +95,10 @@ public class ImageExport {
      * @param query to search for.
      * @param startYear sets the start of period range.
      * @param endYear sets the end of period range.
-     * @param max results to return.
      * @return a solrQuery object that can be extended before querying.
      */
-    private SolrQuery createSolrQuery(String query, Integer startYear, Integer endYear, Integer max) throws IOException {
-        validateQueryParams(startYear, endYear, max);
+    private SolrQuery createSolrQuery(String query, Integer startYear, Integer endYear) throws IOException {
+        validateQueryParams(startYear, endYear);
         int usableStartYear = setUsableStartYear(startYear);
         int usableEndYear = setUsableEndYear(endYear);
 
@@ -108,7 +107,6 @@ public class ImageExport {
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.addFilterQuery(filter);
         solrQuery.setQuery(query);
-        solrQuery.setRows(max == -1 ? defaultExport : max);
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
@@ -120,9 +118,8 @@ public class ImageExport {
      * Validate query parameters that are to be used for image extraction.
      * @param startYear of timespan for query.
      * @param endYear of timespan for query.
-     * @param max number of queries.
      */
-    private void validateQueryParams(Integer startYear, Integer endYear, Integer max) {
+    private void validateQueryParams(Integer startYear, Integer endYear) {
         // Check start and end times
         int usableStartYear = setUsableStartYear(startYear);
         int usableEndYear = setUsableEndYear(endYear);
@@ -130,10 +127,6 @@ public class ImageExport {
         if (usableStartYear > usableEndYear){
             log.error("The variable startYear is greater than endYear, which is not allowed. Please make startYear less than endYear.");
             throw new InvalidArgumentServiceException("The variable startYear is greater than endYear, which is not allowed. Please make startYear less than endYear.");
-        }
-        if (max > maxExport){
-            log.error("Maximum value is to high. Highest value is: " + maxExport);
-            throw new InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
         }
     }
 
@@ -259,8 +252,8 @@ public class ImageExport {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
         // Query Solr
-        SolrQuery finalQuery = fullpageSolrQuery(query, startYear, endYear, max);
-        Stream<SolrDocument> docs = streamSolr(finalQuery, max);
+        SolrQuery finalQuery = fullpageSolrQuery(query, startYear, endYear);
+        Stream<SolrDocument> docs = streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
 
@@ -269,10 +262,15 @@ public class ImageExport {
 
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<FullPageMetadata> pageMetadata = docs.map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
-                filter(Objects::nonNull);
+        Stream<FullPageMetadata> pageMetadata = docs.
+                map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
+                filter(Objects::nonNull).
+                limit(max);
+
         // Streams pages from URL to zip file with all illustrations
-        createZipOfImages(pageMetadata, output, metadataMap, csvStream, exportFormat);
+        int count = createZipOfImages(pageMetadata, output, metadataMap, csvStream, exportFormat);
+        log.info("Found: '" + count + "' unique UUIDs in query");
+
     }
 
     /**
@@ -289,7 +287,7 @@ public class ImageExport {
         }
         // Query Solr
         SolrQuery finalQuery = illustrationSolrQuery(query, startYear, endYear, max);
-        Stream<SolrDocument> docs = streamSolr(finalQuery, max);
+        Stream<SolrDocument> docs = streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
 
@@ -298,10 +296,13 @@ public class ImageExport {
 
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs));
+        Stream<IllustrationMetadata> illustrationMetadata = docs.
+                flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
+                limit(max));
 
         // Streams illustration from URL to zip file with all illustrations
-        createZipOfImages(illustrationMetadata, output, metadataMap, csvStream, exportFormat);
+        int count = createZipOfImages(illustrationMetadata, output, metadataMap, csvStream, exportFormat);
+        log.info("Exported: '{} unique UUIDs from query: '{}' with startYear: {} and endYear: {}", count, query, startYear, endYear);
     }
 
     /**
@@ -309,12 +310,11 @@ public class ImageExport {
      * @param query to query solr with
      * @param startYear is the earliest boundary for the query. Boundaries are inclusive.
      * @param endyear is the latest boundary for the query. Boundaries are inclusive.
-     * @param max number of results to return
      * @return a solr query used to deliver images of all pages. The fields asked for are the following: <em>pageUUID, page_width and page_height</em>
      */
-    public SolrQuery fullpageSolrQuery(String query, Integer startYear, Integer endyear, Integer max) throws IOException {
+    public SolrQuery fullpageSolrQuery(String query, Integer startYear, Integer endyear) throws IOException {
         // Construct solr query with filter
-        SolrQuery solrQuery = createSolrQuery(query, startYear, endyear, max);
+        SolrQuery solrQuery = createSolrQuery(query, startYear, endyear);
         solrQuery.setFields("pageUUID, page_width, page_height");
 
         return solrQuery;
@@ -330,7 +330,7 @@ public class ImageExport {
      */
     public SolrQuery illustrationSolrQuery(String query, Integer startYear, Integer endYear, int max) throws IOException{
         // Construct solr query with filter
-        SolrQuery solrQuery = createSolrQuery(query, startYear, endYear, max);
+        SolrQuery solrQuery = createSolrQuery(query, startYear, endYear);
         solrQuery.addFilterQuery("illustration: [* TO *]");
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
 
@@ -340,12 +340,11 @@ public class ImageExport {
     /**
      * Create stream of solr document from query.
      * @param query to create stream from.
-     * @param max amount of result.
      * @return a stream of SolrDocuments representing newspaper article hits.
      */
-    public Stream<SolrDocument> streamSolr(SolrQuery query, Integer max){
+    public Stream<SolrDocument> streamSolr(SolrQuery query){
         SolrBase base = new SolrBase(".labsapi.aviser");
-        Stream<SolrDocument> docs = base.streamSolr(query).limit(max);
+        Stream<SolrDocument> docs = base.streamSolr(query);
         return docs;
     }
 
@@ -403,10 +402,9 @@ public class ImageExport {
      * @param imageMetadata used to stream URLS from and construct filenames.
      * @param output stream which holds the outputted zip file.
      * @param metadataMap which delivers overall information on the export.
-     * @param csvStream delivers a stream containing metadata on each image as csv.
      * @param exportFormat determines what kind of export that are to be done.
      */
-    public void createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvStream, String exportFormat) throws IOException {
+    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvStream, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
@@ -440,6 +438,7 @@ public class ImageExport {
             log.error("Error adding illustration to ZIP stream.");
             throw new IOException();
         }
+        return count.intValue();
     }
 
     /**
@@ -460,6 +459,7 @@ public class ImageExport {
             if (exportFormat.equals("fullPage")){
                 addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + ".jpeg", pageUuid), zos);
             }
+            count.addAndGet(1);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
