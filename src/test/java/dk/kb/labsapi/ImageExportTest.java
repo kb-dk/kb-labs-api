@@ -74,7 +74,7 @@ public class ImageExportTest {
     @Test
     public void testQueryForIllustrations() throws IOException {
         SolrQuery query = ImageExport.getInstance().illustrationSolrQuery("politi", 1680, 1750, 1);
-        String corretQuery = "fq=recordBase:doms_aviser+AND+py:[1680+TO+1750]&fq=illustration:+[*+TO+*]&q=politi&rows=1&group=false&fl=pageUUID,+illustration,+page_width,+page_height";
+        String corretQuery = "fq=recordBase:doms_aviser+AND+py:[1680+TO+1750]&fq=illustration:+[*+TO+*]&q=politi&group=false&fl=pageUUID,+illustration,+page_width,+page_height";
 
         assertEquals(corretQuery, query.toString());
     }
