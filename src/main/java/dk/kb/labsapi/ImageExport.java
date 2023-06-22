@@ -212,6 +212,11 @@ public class ImageExport {
         zos.closeEntry();
     }
 
+    /**
+     * Add a streaming output containing data structured as csv to a zipped output stream.
+     * @param csvStream to include in zip stream.
+     * @param zos is the zip stream which the csv file gets added to.
+     */
     public void addCsvMetadataFileToZip(StreamingOutput csvStream, ZipOutputStream zos) throws IOException {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
@@ -398,6 +403,7 @@ public class ImageExport {
      * @param imageMetadata used to stream URLS from and construct filenames.
      * @param output stream which holds the outputted zip file.
      * @param metadataMap which delivers overall information on the export.
+     * @param csvStream delivers a stream containing metadata on each image as csv.
      * @param exportFormat determines what kind of export that are to be done.
      */
     public void createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvStream, String exportFormat) throws IOException {
