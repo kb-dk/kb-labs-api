@@ -94,11 +94,10 @@ public class ImageExport {
      * @param query to search for.
      * @param startYear sets the start of period range.
      * @param endYear sets the end of period range.
-     * @param max results to return.
      * @return a solrQuery object that can be extended before querying.
      */
-    private SolrQuery createSolrQuery(String query, Integer startYear, Integer endYear, Integer max) throws IOException {
-        validateQueryParams(startYear, endYear, max);
+    private SolrQuery createSolrQuery(String query, Integer startYear, Integer endYear) throws IOException {
+        validateQueryParams(startYear, endYear);
         int usableStartYear = setUsableStartYear(startYear);
         int usableEndYear = setUsableEndYear(endYear);
 
@@ -107,7 +106,6 @@ public class ImageExport {
         SolrQuery solrQuery = new SolrQuery();
         solrQuery.addFilterQuery(filter);
         solrQuery.setQuery(query);
-        solrQuery.setRows(max == -1 ? defaultExport : max);
         solrQuery.setFacet(false);
         solrQuery.setHighlight(false);
         solrQuery.set(GroupParams.GROUP, false);
@@ -119,9 +117,8 @@ public class ImageExport {
      * Validate query parameters that are to be used for image extraction.
      * @param startYear of timespan for query.
      * @param endYear of timespan for query.
-     * @param max number of queries.
      */
-    private void validateQueryParams(Integer startYear, Integer endYear, Integer max) {
+    private void validateQueryParams(Integer startYear, Integer endYear) {
         // Check start and end times
         int usableStartYear = setUsableStartYear(startYear);
         int usableEndYear = setUsableEndYear(endYear);
@@ -129,10 +126,6 @@ public class ImageExport {
         if (usableStartYear > usableEndYear){
             log.error("The variable startYear is greater than endYear, which is not allowed. Please make startYear less than endYear.");
             throw new InvalidArgumentServiceException("The variable startYear is greater than endYear, which is not allowed. Please make startYear less than endYear.");
-        }
-        if (max > maxExport){
-            log.error("Maximum value is to high. Highest value is: " + maxExport);
-            throw new InvalidArgumentServiceException("Maximum value is to high. Highest value is: " + maxExport);
         }
     }
 
@@ -246,7 +239,7 @@ public class ImageExport {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
         }
         // Query Solr
-        SolrQuery finalQuery = fullpageSolrQuery(query, startYear, endYear, max);
+        SolrQuery finalQuery = fullpageSolrQuery(query, startYear, endYear);
         Stream<SolrDocument> docs = streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
@@ -296,12 +289,11 @@ public class ImageExport {
      * @param query to query solr with
      * @param startYear is the earliest boundary for the query. Boundaries are inclusive.
      * @param endyear is the latest boundary for the query. Boundaries are inclusive.
-     * @param max number of results to return
      * @return a solr query used to deliver images of all pages. The fields asked for are the following: <em>pageUUID, page_width and page_height</em>
      */
-    public SolrQuery fullpageSolrQuery(String query, Integer startYear, Integer endyear, Integer max) throws IOException {
+    public SolrQuery fullpageSolrQuery(String query, Integer startYear, Integer endyear) throws IOException {
         // Construct solr query with filter
-        SolrQuery solrQuery = createSolrQuery(query, startYear, endyear, max);
+        SolrQuery solrQuery = createSolrQuery(query, startYear, endyear);
         solrQuery.setFields("pageUUID, page_width, page_height");
 
         return solrQuery;
@@ -317,7 +309,7 @@ public class ImageExport {
      */
     public SolrQuery illustrationSolrQuery(String query, Integer startYear, Integer endYear, int max) throws IOException{
         // Construct solr query with filter
-        SolrQuery solrQuery = createSolrQuery(query, startYear, endYear, max);
+        SolrQuery solrQuery = createSolrQuery(query, startYear, endYear);
         solrQuery.addFilterQuery("illustration: [* TO *]");
         solrQuery.setFields("pageUUID, illustration, page_width, page_height");
 
