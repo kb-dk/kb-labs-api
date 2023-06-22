@@ -18,6 +18,7 @@ import org.apache.solr.common.params.GroupParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.StreamingOutput;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
@@ -211,6 +212,13 @@ public class ImageExport {
         zos.closeEntry();
     }
 
+    public void addCsvMetadataFileToZip(StreamingOutput csvStream, ZipOutputStream zos) throws IOException {
+        ZipEntry ze = new ZipEntry("imageMetadata.csv");
+        zos.putNextEntry(ze);
+        csvStream.write(zos);
+        zos.closeEntry();
+    }
+
     /**
      * Add the content of a byte array to a given zip output stream.
      * @param data to write to zip stream as individual zip entry.
@@ -250,12 +258,16 @@ public class ImageExport {
         Stream<SolrDocument> docs = streamSolr(finalQuery, max);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
+
+        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
+        StreamingOutput csvStream = SolrExport.getInstance().export(query, fields,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
+
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<FullPageMetadata> pageMetadata = docs.map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
                 filter(Objects::nonNull);
         // Streams pages from URL to zip file with all illustrations
-        createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
+        createZipOfImages(pageMetadata, output, metadataMap, csvStream, exportFormat);
     }
 
     /**
@@ -275,12 +287,16 @@ public class ImageExport {
         Stream<SolrDocument> docs = streamSolr(finalQuery, max);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
+
+        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
+        StreamingOutput csvStream = SolrExport.getInstance().export(query, fields,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
+
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<IllustrationMetadata> illustrationMetadata = docs.flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs));
 
         // Streams illustration from URL to zip file with all illustrations
-        createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
+        createZipOfImages(illustrationMetadata, output, metadataMap, csvStream, exportFormat);
     }
 
     /**
@@ -384,13 +400,14 @@ public class ImageExport {
      * @param metadataMap which delivers overall information on the export.
      * @param exportFormat determines what kind of export that are to be done.
      */
-    public void createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
+    public void createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvStream, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
         // Add metadata file to zip
         try {
             addMetadataFileToZip(metadataMap, zos);
+            addCsvMetadataFileToZip(csvStream, zos);
         } catch (Exception e) {
             String message = String.format(
                     Locale.ROOT,
