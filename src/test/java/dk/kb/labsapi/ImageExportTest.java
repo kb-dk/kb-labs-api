@@ -48,7 +48,7 @@ public class ImageExportTest {
     @Test
     void testSolrCall() throws IOException {
         ImageExport export = ImageExport.getInstance();
-        SolrQuery testQuery = export.fullpageSolrQuery("hest", 1700, 1800, -1);
+        SolrQuery testQuery = export.fullpageSolrQuery("hest", 1700, 1800);
         Stream<SolrDocument> docs = export.
                 streamSolr(testQuery).
                 limit(10);
@@ -237,7 +237,7 @@ public class ImageExportTest {
         int startTime = 1750;
         int endTime = 1780;
         int max = 10;
-        SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime, max);
+        SolrQuery finalQuery = ImageExport.getInstance().fullpageSolrQuery(query, startTime, endTime);
         Stream<SolrDocument> docs = ImageExport.getInstance().
                 streamSolr(finalQuery).
                 limit(max);
