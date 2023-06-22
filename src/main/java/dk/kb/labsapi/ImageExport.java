@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.common.collect.Iterators;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.BasicMetadata;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
@@ -26,7 +27,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -40,6 +43,7 @@ public class ImageExport {
     public static int pageSize;
     private static ImageExport instance;
     private final String ImageExportService;
+    private final int PartitionSize = 20;
     private static int minAllowedStartYear;
     private static int maxAllowedEndYear;
     private static int maxExport;
@@ -215,6 +219,8 @@ public class ImageExport {
         zos.putNextEntry(ze);
         csvStream.write(zos);
         zos.closeEntry();
+
+        // TODO: header and content has to be delivered as two StreamingOutputs and then added to the same entry here.
     }
 
     /**
@@ -257,15 +263,15 @@ public class ImageExport {
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
 
-        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
-        StreamingOutput csvStream = SolrExport.getInstance().export(query, fields,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
-
         // Get fullPage metadata
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<FullPageMetadata> pageMetadata = docs.
-                map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
-                filter(Objects::nonNull).
-                limit(max);
+        Stream<FullPageMetadata> pageMetadata = docs
+                .map(doc -> getMetadataForFullPage(doc, uniqueUUIDs))
+                .filter(Objects::nonNull)
+                .limit(max);
+
+        // Create csv stream containing metadata from query
+        StreamingOutput csvStream = streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
 
         // Streams pages from URL to zip file with all illustrations
         int count = createZipOfImages(pageMetadata, output, metadataMap, csvStream, exportFormat);
@@ -291,14 +297,16 @@ public class ImageExport {
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
 
-        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
-        StreamingOutput csvStream = SolrExport.getInstance().export(query, fields,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
-
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
         Stream<IllustrationMetadata> illustrationMetadata = docs.
                 flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
                 limit(max));
+
+        // Create csv stream containing metadata from query
+
+        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
+        StreamingOutput csvStream = SolrExport.getInstance().export(query, fields,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
 
         // Streams illustration from URL to zip file with all illustrations
         int count = createZipOfImages(illustrationMetadata, output, metadataMap, csvStream, exportFormat);
@@ -463,5 +471,94 @@ public class ImageExport {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private StreamingOutput streamCsvOfUniqueUUIDsMetadata(HashSet<String> uniqueUUIDs, int max) {
+        SolrExport csvExporter =  SolrExport.getInstance();
+        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
+        Stream<List<String>> streamOfUuidLists = splitToLists(uniqueUUIDs.stream(), PartitionSize);
+
+        StreamingOutput csvOutput = createHeaderForCsvStream(fields, max);
+
+        streamOfUuidLists.map(this::createUuidQuery)
+                .map(query ->
+                        csvExporter.export(query.getQuery(), fields, max, Collections.singleton(SolrExport.STRUCTURE.content), SolrExport.EXPORT_FORMAT.csv )
+                    )
+                .forEach(csvStream -> safeCsvOutputWrite(csvOutput, csvStream));
+
+        return csvOutput;
+    }
+
+    private StreamingOutput createHeaderForCsvStream(Set<String> fields, int max) {
+        SolrExport csvExporter = new SolrExport();
+        return csvExporter.export("", fields, max, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
+    }
+
+    private void safeCsvOutputWrite(StreamingOutput csvOutput, StreamingOutput csvStream){
+        try {
+            csvStream.write((OutputStream) csvOutput);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+
+    public SolrQuery createUuidQuery(List<String> list) {
+        String query = list.stream().map(Object::toString)
+                .map(s -> "pageUUID:" + s)
+                .collect(Collectors.joining(" OR "));
+
+        SolrQuery solrQuery = new SolrQuery();
+        solrQuery.setQuery(query);
+        solrQuery.setFacet(false);
+        solrQuery.setHighlight(false);
+        solrQuery.set(GroupParams.GROUP, false);
+
+        return solrQuery;
+    }
+
+
+    // ********************** Utils ***********************************
+
+    /**
+     * Lazily partition the input to the given partitionSize.
+     * <p>
+     * All partitions will have exactly partitionSize elements, except for the last partition which will contain
+     * {@code input_size % partitionSize} elements.
+     * <p>
+     * The implementation is fully streaming and only holds the current partition in memory.
+     * <p>
+     * The implementation does not support parallelism: If source is parallel, it will be sequentialized.
+     * <p>
+     * If the end result should be a list of lists, use {@code splitToList(myStream, 87).collect(Collectors.toList())}.
+     * @param source any stream.
+     * @param partitionSize the maximum size for the partitions.
+     * @return the input partitioned into lists, each with partitionSize elements.
+     */
+    public static <T> Stream<List<T>> splitToLists(Stream<T> source, int partitionSize) {
+        return splitToStreams(source, partitionSize).map(stream -> stream.collect(Collectors.toList()));
+    }
+
+    /**
+     * Lazily partition the input to the given partitionSize.
+     * <p>
+     * All partitions will have exactly partitionSize elements, except for the last partition which will contain
+     * {@code input_size % partitionSize} elements.
+     * <p>
+     * The implementation is fully streaming and only holds the current partition in memory.
+     * <p>
+     * The implementation does not support parallelism: If source is parallel, it will be sequentialized.
+     * @param source any stream.
+     * @param partitionSize the maximum size for the partitions.
+     * @return the input partitioned into streams, each with partitionSize elements.
+     */
+    public static <T> Stream<Stream<T>> splitToStreams(Stream<T> source, int partitionSize) {
+        // https://stackoverflow.com/questions/32434592/partition-a-java-8-stream
+        final Iterator<T> it = source.iterator();
+        final Iterator<Stream<T>> partIt = Iterators.transform(Iterators.partition(it, partitionSize), List::stream);
+        final Iterable<Stream<T>> iterable = () -> partIt;
+
+        return StreamSupport.stream(iterable.spliterator(), false);
     }
 }

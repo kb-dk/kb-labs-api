@@ -20,7 +20,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -267,5 +270,15 @@ public class ImageExportTest {
                 peek(Assertions::assertNotNull).
                 count();
         assertTrue(received > 0, "Some results should be received");
+    }
+
+    @Test
+    public void testUuidQueryConstruction(){
+        List<String> ids = new ArrayList<>(Arrays.asList("UUID1", "UUID2", "UUID3"));
+        String correctQuery = "pageUUID:UUID1 OR pageUUID:UUID2 OR pageUUID:UUID3";
+
+        SolrQuery query = ImageExport.getInstance().createUuidQuery(ids);
+
+        assertEquals(correctQuery, query.getQuery());
     }
 }
