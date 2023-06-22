@@ -217,7 +217,7 @@ public class ImageExport {
      * @param csvStream to include in zip stream.
      * @param zos is the zip stream which the csv file gets added to.
      */
-    public void addCsvMetadataFileToZip(StreamingOutput csvStream, ZipOutputStream zos) throws IOException {
+    private void addCsvMetadataFileToZip(StreamingOutput csvStream, ZipOutputStream zos) throws IOException {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
         csvStream.write(zos);

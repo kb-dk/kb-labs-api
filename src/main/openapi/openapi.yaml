@@ -178,7 +178,7 @@ paths:
       description: |
         Export images from pages of newspapers that contains the given query. If images are too tiny, they will not be included in the export.
         
-        Images are exported as a zip file containing JPEG images.
+        Images are exported as a zip file containing JPEG images. The ZIP file also contains two metadata files. The JSON file contains the query and parameters used to call this endpoint.
       operationId: exportImages
       parameters:
         - name: exportFormat
