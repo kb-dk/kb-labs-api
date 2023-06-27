@@ -34,6 +34,8 @@ import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static dk.kb.labsapi.SolrExport.STRUCTURE.content;
+
 /**
  * Exports images from text queries to Solr below mediestream.
  * Images are defined by alto boxes.
@@ -44,6 +46,11 @@ public class ImageExport {
     private static ImageExport instance;
     private final String ImageExportService;
     private final int PartitionSize = 20;
+
+    /**
+     * Fields used for generating CSV metadata for each image exported.
+     */
+    private final Set<String> CSVFIELDS = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
     private static int minAllowedStartYear;
     private static int maxAllowedEndYear;
     private static int maxExport;
@@ -214,13 +221,28 @@ public class ImageExport {
      * @param csvStream to include in zip stream.
      * @param zos is the zip stream which the csv file gets added to.
      */
-    private void addCsvMetadataFileToZip(StreamingOutput csvStream, ZipOutputStream zos) throws IOException {
+    private void addCsvMetadataFileToZip(StreamingOutput csvHeader, Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
-        csvStream.write(zos);
-        zos.closeEntry();
 
-        // TODO: header and content has to be delivered as two StreamingOutputs and then added to the same entry here.
+        OutputStream nonCloser = getNonCloser(zos);
+
+        csvHeader.write(nonCloser);
+        csvStream.forEach(csv -> safeCsvStreamWrite(csv, zos));
+        zos.closeEntry();
+    }
+
+    /**
+     * Write CSV content from streamingOutput to output stream.
+     * @param csvOutput to write to output stream.
+     * @param zos is the ZipOutputStream which data gets streamed to.
+     */
+    private void safeCsvStreamWrite(StreamingOutput csvOutput, ZipOutputStream zos){
+        try {
+            csvOutput.write(zos);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -271,10 +293,11 @@ public class ImageExport {
                 .limit(max);
 
         // Create csv stream containing metadata from query
-        StreamingOutput csvStream = streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
+        StreamingOutput csvHeader = createHeaderForCsvStream(CSVFIELDS);
+        Stream<StreamingOutput> csvStream = streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
 
         // Streams pages from URL to zip file with all illustrations
-        int count = createZipOfImages(pageMetadata, output, metadataMap, csvStream, exportFormat);
+        int count = createZipOfImages(pageMetadata, output, metadataMap, csvHeader, csvStream, exportFormat);
         log.info("Found: '" + count + "' unique UUIDs in query");
 
     }
@@ -304,12 +327,11 @@ public class ImageExport {
                 limit(max));
 
         // Create csv stream containing metadata from query
-
-        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
-        StreamingOutput csvStream = SolrExport.getInstance().export(query, fields,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
+        StreamingOutput csvHeader = createHeaderForCsvStream(CSVFIELDS);
+        StreamingOutput csvStream = SolrExport.getInstance().export(query, CSVFIELDS,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
 
         // Streams illustration from URL to zip file with all illustrations
-        int count = createZipOfImages(illustrationMetadata, output, metadataMap, csvStream, exportFormat);
+        int count = createZipOfImages(illustrationMetadata, output, metadataMap, csvHeader, (Stream<StreamingOutput>) csvStream, exportFormat);
         log.info("Exported: '{} unique UUIDs from query: '{}' with startYear: {} and endYear: {}", count, query, startYear, endYear);
     }
 
@@ -412,14 +434,14 @@ public class ImageExport {
      * @param metadataMap which delivers overall information on the export.
      * @param exportFormat determines what kind of export that are to be done.
      */
-    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvStream, String exportFormat) throws IOException {
+    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvHeader,  Stream <StreamingOutput> csvStream, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
         // Add metadata file to zip
         try {
             addMetadataFileToZip(metadataMap, zos);
-            addCsvMetadataFileToZip(csvStream, zos);
+            addCsvMetadataFileToZip(csvHeader, csvStream, zos);
         } catch (Exception e) {
             String message = String.format(
                     Locale.ROOT,
@@ -473,37 +495,43 @@ public class ImageExport {
         }
     }
 
-    private StreamingOutput streamCsvOfUniqueUUIDsMetadata(HashSet<String> uniqueUUIDs, int max) {
+
+    /**
+     * Create a stream of streaming outputs containing metadata for images in CSV-format from a set of unique IDs.
+     * @param uniqueUUIDs to extract metadata for.
+     * @param max number of IDs to include in each output in the stream.
+     * @return a stream consisting of StreamingOutputs with a given size
+     */
+    private Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(HashSet<String> uniqueUUIDs, int max) {
         SolrExport csvExporter =  SolrExport.getInstance();
-        Set<String> fields = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
         Stream<List<String>> streamOfUuidLists = splitToLists(uniqueUUIDs.stream(), PartitionSize);
 
-        StreamingOutput csvOutput = createHeaderForCsvStream(fields, max);
-
-        streamOfUuidLists.map(this::createUuidQuery)
+        Stream<StreamingOutput> csvOutput = streamOfUuidLists.map(this::createUuidQuery)
                 .map(query ->
-                        csvExporter.export(query.getQuery(), fields, max, Collections.singleton(SolrExport.STRUCTURE.content), SolrExport.EXPORT_FORMAT.csv )
-                    )
-                .forEach(csvStream -> safeCsvOutputWrite(csvOutput, csvStream));
+                        csvExporter.export(query.getQuery(), CSVFIELDS, max, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
+                    );
 
         return csvOutput;
     }
 
-    private StreamingOutput createHeaderForCsvStream(Set<String> fields, int max) {
+
+
+    /**
+     * Create a header for a CSV file from the given fields.
+     * @param fields to create header from
+     * @return the CVS header as a streaming output.
+     */
+    private StreamingOutput createHeaderForCsvStream(Set<String> fields) {
         SolrExport csvExporter = new SolrExport();
-        return csvExporter.export("", fields, max, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
-    }
-
-    private void safeCsvOutputWrite(StreamingOutput csvOutput, StreamingOutput csvStream){
-        try {
-            csvStream.write((OutputStream) csvOutput);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        return csvExporter.export("", fields, 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
     }
 
 
+    /**
+     * Construct a solr query that returns hits from newspapers with PageUUIDs from the input list.
+     * @param list of pageUUIDs to query solr with.
+     * @return a SolrQuery containing all pageUUIDs from input list formatted correctly.
+     */
     public SolrQuery createUuidQuery(List<String> list) {
         String query = list.stream().map(Object::toString)
                 .map(s -> "pageUUID:" + s)
@@ -521,6 +549,7 @@ public class ImageExport {
 
     // ********************** Utils ***********************************
 
+    // TODO: These methods have been copied from SolrWayback utils and should be added to KB utils.
     /**
      * Lazily partition the input to the given partitionSize.
      * <p>
@@ -560,5 +589,19 @@ public class ImageExport {
         final Iterable<Stream<T>> iterable = () -> partIt;
 
         return StreamSupport.stream(iterable.spliterator(), false);
+    }
+
+    /**
+     * Create a non-closing OutputStream, which is used to combine different parts of zip entry to one entity.
+     * @param zos is the OutputStream which is not to be closed after use.
+     */
+    private OutputStream getNonCloser(ZipOutputStream zos) {
+        OutputStream nonCloser = new FilterOutputStream(zos) {
+            @Override
+            public void close() throws IOException {
+                // Don't care
+            }
+        };
+        return nonCloser;
     }
 }
