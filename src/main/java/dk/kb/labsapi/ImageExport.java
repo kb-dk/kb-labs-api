@@ -193,7 +193,7 @@ public class ImageExport {
      * @param url pointing to the image to download.
      * @return downloaded image as byte array.
      */
-    private byte[] downloadSingleIllustration(URL url) {
+     public byte[] downloadSingleIllustration(URL url) {
         try {
             return IOUtils.toByteArray(url);
         }  catch (IOException e) {

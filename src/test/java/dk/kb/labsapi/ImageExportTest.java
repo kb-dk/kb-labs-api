@@ -5,11 +5,15 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.AbstractTypeResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import dk.kb.labsapi.api.impl.LabsapiService;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
+import dk.kb.webservice.exception.ServiceException;
 import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -19,15 +23,18 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -90,6 +97,32 @@ public class ImageExportTest {
                     "Calling a mocked method with unexpected input should return null");
         }
     }
+
+    @Test
+    void testCsvConstructionWithMockedDownload() throws MalformedURLException {
+        URL testUrl = new URL("http://callisto.statsbiblioteket.dk/iipsrv/iipsrv.fcgi?FIF=/avis-show/symlinks/0/0/0/0/00005aff-ea53-46dd-bc90-0b0dd8917dbc.jp2&CVT=jpeg");
+        String testResponseString = "Image1";
+        byte[] testResponse = testResponseString.getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+
+        try (MockedConstruction mocked = mockConstruction(ImageExport.class)) {
+            ImageExport mockedExport = ImageExport.getInstance();
+
+            when(mockedExport.downloadSingleIllustration(testUrl)).thenReturn(testResponse);
+
+            mockedExport.exportFullpages("politi", 1666, 1700, 1, out, "fullPage");
+
+            String result = out.toString();
+            byte[] test = out.toByteArray();
+            System.out.println(test.length);
+            //assertEquals(testResponseString, new String(mockedExport.downloadSingleIllustration(testUrl), StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
 
 
     @Test
@@ -324,5 +357,15 @@ public class ImageExportTest {
         SolrQuery query = ImageExport.getInstance().createUuidQuery(ids);
 
         assertEquals(correctQuery, query.getQuery());
+    }
+
+    @Test
+    public void testIllustrationIdsAndPageUuidQuery(){
+        SolrQuery query = new SolrQuery();
+        query.setQuery("pageUUID:doms_aviser_page:uuid:aa186963-c51b-4ebb-a338-b77d85719829"); // AND illustration:(id=ART552-4_SUB*)
+        QueryResponse response = SolrExport.getInstance().solrClient.query(query);
+        SolrDocumentList results = response.getResults();
+        results.forEach(System.out::println);
+        System.out.println("Size of resultset: " + results.size());
     }
 }
