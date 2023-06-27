@@ -13,12 +13,16 @@ import org.apache.solr.common.SolrDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,10 +35,8 @@ import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * IMPORTANT: All this only works with a proper setup and contact to Solr
@@ -45,6 +47,48 @@ public class ImageExportTest {
     @BeforeAll
     static void setupConfig() throws IOException {
         ServiceConfig.initialize("conf/labsapi*.yaml");
+    }
+
+    // Illustrative unit test for mocking static methods
+    @Test
+    void testStaticMocking() throws MalformedURLException {
+        // All mocking takes place inside the try-block
+        try (MockedStatic<ImageExport> mockedExport = Mockito.mockStatic(ImageExport.class)) {
+            // Setup static method mock
+            mockedExport.when(() -> ImageExport.setUsableEndYear(2040)).thenReturn(2023);
+
+            // Perform unit tests
+            assertEquals(2023, ImageExport.setUsableEndYear(2040),
+                    "Calling a mocked static with the correct input should return the expected output");
+
+            assertEquals(0, ImageExport.setUsableEndYear(2050),
+                    "Calling a mocked static with unsupported input should return null (= 0 as int is an Atomic)");
+        }
+    }
+
+    @Test
+    void testInstanceMocking() throws MalformedURLException {
+        // All mocking takes place inside the try-block
+        // We use Mockedconstruction as we want the standard constructor for ImageExport to be evaluated
+        try (MockedConstruction mocked = mockConstruction(ImageExport.class)) {
+            ImageExport mockedExport = ImageExport.getInstance();
+            when(mockedExport.convertPageUUID("foo")).thenReturn("bar", "bar2");
+            when(mockedExport.convertPageUUID("hello")).thenReturn("world");
+
+            // Perform unit tests using the mocked instance
+            assertEquals("bar", mockedExport.convertPageUUID("foo"),
+                    "Calling a mocked method with the first correct input should return the first expected output");
+            assertEquals("bar2", mockedExport.convertPageUUID("foo"),
+                    "Calling a mocked method a second time with the first correct input should return the second expected output");
+            assertEquals("bar2", mockedExport.convertPageUUID("foo"),
+                    "Calling a mocked method a third time with the first correct input should return the last output in the response chain");
+
+            assertEquals("world", mockedExport.convertPageUUID("hello"),
+                    "Calling a mocked method with the other correct input should return the expected output");
+
+            assertNull(mockedExport.convertPageUUID("zoo"),
+                    "Calling a mocked method with unexpected input should return null");
+        }
     }
 
 

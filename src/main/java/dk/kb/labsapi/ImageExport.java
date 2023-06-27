@@ -169,7 +169,7 @@ public class ImageExport {
      * @param pageUUID to convert.
      * @return correct pageUUID without prefix.
      */
-    private String convertPageUUID(String pageUUID){
+    String convertPageUUID(String pageUUID){
          String correctUUID = "";
          Matcher m = pagePattern.matcher(pageUUID);
          if (m.matches()){
