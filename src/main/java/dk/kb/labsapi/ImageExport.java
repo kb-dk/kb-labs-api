@@ -322,9 +322,9 @@ public class ImageExport {
 
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.
-                flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
-                limit(max));
+        Stream<IllustrationMetadata> illustrationMetadata = docs
+                .flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs)
+                .limit(max));
 
         // Create csv stream containing metadata from query
         StreamingOutput csvHeader = createHeaderForCsvStream(CSVFIELDS);
@@ -432,7 +432,7 @@ public class ImageExport {
      * @param imageMetadata used to stream URLS from and construct filenames.
      * @param output stream which holds the outputted zip file.
      * @param metadataMap which delivers overall information on the export.
-     * @param exportFormat determines what kind of export that are to be done.
+     * @param exportFormat determines what kind of export that are to be done. Supports either "illustrations" or "fullPage".
      */
     public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvHeader,  Stream <StreamingOutput> csvStream, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
@@ -521,7 +521,7 @@ public class ImageExport {
      * @param fields to create header from
      * @return the CVS header as a streaming output.
      */
-    private StreamingOutput createHeaderForCsvStream(Set<String> fields) {
+    public StreamingOutput createHeaderForCsvStream(Set<String> fields) {
         SolrExport csvExporter = new SolrExport();
         return csvExporter.export("", fields, 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
     }

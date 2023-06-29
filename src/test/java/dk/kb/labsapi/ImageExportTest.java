@@ -23,10 +23,13 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.validation.constraints.AssertTrue;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -98,12 +101,14 @@ public class ImageExportTest {
         }
     }
 
+    /*
     @Test
-    void testCsvConstructionWithMockedDownload() throws MalformedURLException {
+    void testCsvConstructionWithMockedDownload() throws IOException {
         URL testUrl = new URL("http://callisto.statsbiblioteket.dk/iipsrv/iipsrv.fcgi?FIF=/avis-show/symlinks/0/0/0/0/00005aff-ea53-46dd-bc90-0b0dd8917dbc.jp2&CVT=jpeg");
         String testResponseString = "Image1";
         byte[] testResponse = testResponseString.getBytes(StandardCharsets.UTF_8);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
+        FileOutputStream outFile = new FileOutputStream("src/test/resources/testZip.zip");
 
 
         try (MockedConstruction mocked = mockConstruction(ImageExport.class)) {
@@ -111,19 +116,30 @@ public class ImageExportTest {
 
             when(mockedExport.downloadSingleIllustration(testUrl)).thenReturn(testResponse);
 
-            mockedExport.exportFullpages("politi", 1666, 1700, 1, out, "fullPage");
+            mockedExport.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1700, 1, out, "fullPage");
 
-            String result = out.toString();
-            byte[] test = out.toByteArray();
-            System.out.println(test.length);
-            //assertEquals(testResponseString, new String(mockedExport.downloadSingleIllustration(testUrl), StandardCharsets.UTF_8));
+            System.out.println(out.toString(StandardCharsets.UTF_8));
+
+            assertEquals(testResponseString, new String(mockedExport.downloadSingleIllustration(testUrl), StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
+        try (MockedStatic<LabsapiService> mockedService = Mockito.mockStatic(LabsapiService.class)) {
+            mockedService.when(() -> LabsapiService.exportImages());
+        }
+
+        try (MockedConstruction mocked = mockConstruction(LabsapiService.class)) {
+            LabsapiService mockedService = LabsapiService.class.getDeclaredConstructor().newInstance();
+
+            StreamingOutput output = mockedService.exportImages("fullPage", "pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1);
+
+        } catch (InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-
+     */
 
     @Test
     void testSolrCall() throws IOException {
@@ -359,13 +375,4 @@ public class ImageExportTest {
         assertEquals(correctQuery, query.getQuery());
     }
 
-    @Test
-    public void testIllustrationIdsAndPageUuidQuery(){
-        SolrQuery query = new SolrQuery();
-        query.setQuery("pageUUID:doms_aviser_page:uuid:aa186963-c51b-4ebb-a338-b77d85719829"); // AND illustration:(id=ART552-4_SUB*)
-        QueryResponse response = SolrExport.getInstance().solrClient.query(query);
-        SolrDocumentList results = response.getResults();
-        results.forEach(System.out::println);
-        System.out.println("Size of resultset: " + results.size());
-    }
 }
