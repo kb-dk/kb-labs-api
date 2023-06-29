@@ -2,18 +2,14 @@ package dk.kb.labsapi;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.AbstractTypeResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import dk.kb.labsapi.api.impl.LabsapiService;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
-import dk.kb.webservice.exception.ServiceException;
+import org.apache.commons.io.IOUtils;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentList;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,13 +19,12 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.AssertTrue;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -37,9 +32,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -101,45 +97,39 @@ public class ImageExportTest {
         }
     }
 
-    /*
+
     @Test
     void testCsvConstructionWithMockedDownload() throws IOException {
+        StreamingOutput output = testOutput();
+        assertNotNull(output);
+
+    }
+
+    public StreamingOutput testOutput() throws MalformedURLException {
         URL testUrl = new URL("http://callisto.statsbiblioteket.dk/iipsrv/iipsrv.fcgi?FIF=/avis-show/symlinks/0/0/0/0/00005aff-ea53-46dd-bc90-0b0dd8917dbc.jp2&CVT=jpeg");
         String testResponseString = "Image1";
         byte[] testResponse = testResponseString.getBytes(StandardCharsets.UTF_8);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        FileOutputStream outFile = new FileOutputStream("src/test/resources/testZip.zip");
-
 
         try (MockedConstruction mocked = mockConstruction(ImageExport.class)) {
             ImageExport mockedExport = ImageExport.getInstance();
 
             when(mockedExport.downloadSingleIllustration(testUrl)).thenReturn(testResponse);
 
-            mockedExport.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1700, 1, out, "fullPage");
-
-            System.out.println(out.toString(StandardCharsets.UTF_8));
-
-            assertEquals(testResponseString, new String(mockedExport.downloadSingleIllustration(testUrl), StandardCharsets.UTF_8));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        try (MockedStatic<LabsapiService> mockedService = Mockito.mockStatic(LabsapiService.class)) {
-            mockedService.when(() -> LabsapiService.exportImages());
-        }
-
-        try (MockedConstruction mocked = mockConstruction(LabsapiService.class)) {
-            LabsapiService mockedService = LabsapiService.class.getDeclaredConstructor().newInstance();
-
-            StreamingOutput output = mockedService.exportImages("fullPage", "pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1);
-
-        } catch (InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
-            throw new RuntimeException(e);
+            return output -> mockedExport.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1, output, "fullPage");
         }
     }
 
-     */
+
+    @Test
+    public void testCsvSize() throws IOException {
+        int zippedLength = 47;
+
+        FileInputStream inputFile = new FileInputStream("src/test/resources/test.zip");
+        String actualLength = IOUtils.toString(inputFile, StandardCharsets.UTF_8);
+
+        assertEquals(zippedLength, actualLength.length());
+    }
+
 
     @Test
     void testSolrCall() throws IOException {
@@ -375,4 +365,31 @@ public class ImageExportTest {
         assertEquals(correctQuery, query.getQuery());
     }
 
+    /**
+     * Constructs the resource located at: src/test/resources/test.zip
+     */
+    private void constructTestCsv() throws IOException {
+        ImageExport export = ImageExport.getInstance();
+        String query = "pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc";
+        int startYear = 1666;
+        int endYear = 1880;
+        int max = 20;
+
+        SolrQuery finalQuery = export.fullpageSolrQuery(query, startYear, endYear);
+        Stream<SolrDocument> docs = export.streamSolr(finalQuery);
+        // Create metadata file, that has to be added to output zip
+        Set<String> uniqueUUIDs = docs
+                .map(doc -> ImageExport.getInstance().saveDeduplicationList(doc, new HashSet<>()))
+                .filter(Objects::nonNull)
+                .limit(max)
+                .collect(Collectors.toSet());
+
+        StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream(new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org")));
+        Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
+
+        FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
+        ZipOutputStream zipOut = new ZipOutputStream(fos);
+
+        export.addCsvMetadataFileToZip(csvHeader, csvStream, zipOut);
+    }
 }

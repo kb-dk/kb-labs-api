@@ -221,7 +221,7 @@ public class ImageExport {
      * @param csvStream to include in zip stream.
      * @param zos is the zip stream which the csv file gets added to.
      */
-    private void addCsvMetadataFileToZip(StreamingOutput csvHeader, Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
+    public void addCsvMetadataFileToZip(StreamingOutput csvHeader, Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
 
@@ -229,7 +229,6 @@ public class ImageExport {
 
         csvHeader.write(nonCloser);
         csvStream.forEach(csv -> safeCsvStreamWrite(csv, zos));
-        zos.closeEntry();
     }
 
     /**
@@ -286,7 +285,12 @@ public class ImageExport {
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
 
         // Get fullPage metadata
-        HashSet<String> uniqueUUIDs = new HashSet<>();
+        Set<String> uniqueUUIDs = docs
+                .map(doc -> saveDeduplicationList(doc, new HashSet<>()))
+                .filter(Objects::nonNull)
+                .limit(max)
+                .collect(Collectors.toSet());
+
         Stream<FullPageMetadata> pageMetadata = docs
                 .map(doc -> getMetadataForFullPage(doc, uniqueUUIDs))
                 .filter(Objects::nonNull)
@@ -383,7 +387,7 @@ public class ImageExport {
      * The returned object contains metadata about a single page.
      * @return an object containing metadata from a single page. metadata values are: pageUUID, pageWidth and pageHeight.
      */
-    public FullPageMetadata getMetadataForFullPage(SolrDocument doc, HashSet<String> uniqueUUIDs) {
+    public FullPageMetadata getMetadataForFullPage(SolrDocument doc, Set<String> uniqueUUIDs) {
         FullPageMetadata page = null;
 
         // Extract metadata from SolrDocument
@@ -502,7 +506,7 @@ public class ImageExport {
      * @param max number of IDs to include in each output in the stream.
      * @return a stream consisting of StreamingOutputs with a given size
      */
-    private Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(HashSet<String> uniqueUUIDs, int max) {
+    public Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int max) {
         SolrExport csvExporter =  SolrExport.getInstance();
         Stream<List<String>> streamOfUuidLists = splitToLists(uniqueUUIDs.stream(), PartitionSize);
 
@@ -603,5 +607,20 @@ public class ImageExport {
             }
         };
         return nonCloser;
+    }
+
+    /**
+     * Deduplicates pageUUIDs
+     * @param doc Solrdocument which pageUUID gets extracted from
+     * @param uniqueUUIDs is a hashset, used for looking up duplicates.
+     * @return the pageUUID if unique.
+     */
+    public String saveDeduplicationList(SolrDocument doc, HashSet<String> uniqueUUIDs){
+        String pageUUID = doc.getFieldValue("pageUUID").toString();
+        if (uniqueUUIDs.add(pageUUID)){
+            return pageUUID;
+        } else {
+            return null;
+        }
     }
 }
