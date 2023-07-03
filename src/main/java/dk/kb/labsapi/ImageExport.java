@@ -218,17 +218,17 @@ public class ImageExport {
 
     /**
      * Add a streaming output containing data structured as csv to a zipped output stream.
+     *
      * @param csvStream to include in zip stream.
-     * @param zos is the zip stream which the csv file gets added to.
+     * @param zos       is the zip stream which the csv file gets added to.
      */
-    public void addCsvMetadataFileToZip(StreamingOutput csvHeader, Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
+    public void addCsvMetadataFileToZip(Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
 
-        OutputStream nonCloser = Utils.getNonCloser(zos);
-
-        csvHeader.write(nonCloser);
+        //OutputStream nonCloser = Utils.getNonCloser(zos);
         csvStream.forEach(csv -> Utils.safeStreamWrite(csv, zos));
+        zos.closeEntry();
     }
 
     /**
@@ -285,11 +285,9 @@ public class ImageExport {
 
         // Create csv stream containing metadata from query
         Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max));
-        StreamingOutput csvHeader = createHeaderForCsvStream();
-        Stream<StreamingOutput> csvStream = streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
 
         // Streams pages from URL to zip file with all illustrations
-        int count = createZipOfImages(pageMetadata, output, metadataMap, csvHeader, csvStream, exportFormat);
+        int count = createZipOfImages(pageMetadata, output, metadataMap, fullCsv, exportFormat);
         log.info("Found: '" + count + "' unique UUIDs in query");
 
     }
@@ -323,7 +321,7 @@ public class ImageExport {
         StreamingOutput csvStream = SolrExport.getInstance().export(query, Set.copyOf(CSVFIELDS),(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
 
         // Streams illustration from URL to zip file with all illustrations
-        int count = createZipOfImages(illustrationMetadata, output, metadataMap, csvHeader, (Stream<StreamingOutput>) csvStream, exportFormat);
+        int count = createZipOfImages(illustrationMetadata, output, metadataMap, (Stream<StreamingOutput>) csvStream, exportFormat);
         log.info("Exported: '{} unique UUIDs from query: '{}' with startYear: {} and endYear: {}", count, query, startYear, endYear);
     }
 
@@ -421,19 +419,20 @@ public class ImageExport {
 
     /**
      * Create ZIP file of images created from metadata objects.
+     *
      * @param imageMetadata used to stream URLS from and construct filenames.
-     * @param output stream which holds the outputted zip file.
-     * @param metadataMap which delivers overall information on the export.
-     * @param exportFormat determines what kind of export that are to be done. Supports either "illustrations" or "fullPage".
+     * @param output        stream which holds the outputted zip file.
+     * @param metadataMap   which delivers overall information on the export.
+     * @param exportFormat  determines what kind of export that are to be done. Supports either "illustrations" or "fullPage".
      */
-    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, StreamingOutput csvHeader,  Stream <StreamingOutput> csvStream, String exportFormat) throws IOException {
+    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, Stream <StreamingOutput> fullCsv, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
         // Add metadata file to zip
         try {
             addMetadataFileToZip(metadataMap, zos);
-            addCsvMetadataFileToZip(csvHeader, csvStream, zos);
+            addCsvMetadataFileToZip(fullCsv, zos);
         } catch (Exception e) {
             String message = String.format(
                     Locale.ROOT,

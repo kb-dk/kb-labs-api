@@ -30,7 +30,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -391,6 +390,6 @@ public class ImageExportTest {
         FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
         ZipOutputStream zipOut = new ZipOutputStream(fos);
 
-        export.addCsvMetadataFileToZip(csvHeader, csvStream, zipOut);
+        export.addCsvMetadataFileToZip(csvStream, zipOut);
     }
 }
