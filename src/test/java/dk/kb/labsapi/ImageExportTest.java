@@ -124,6 +124,7 @@ public class ImageExportTest {
 
     @Test
     public void testCsvSize() throws IOException {
+        constructTestCsv();
         long correctSize = 47;
         long fileSize = Files.size(Path.of("src/test/resources/test.zip"));
 
@@ -386,10 +387,12 @@ public class ImageExportTest {
 
         StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream();
         Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
+        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(csvHeader), csvStream);
 
-        FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
-        ZipOutputStream zipOut = new ZipOutputStream(fos);
+        try (FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
+             ZipOutputStream zipOut = new ZipOutputStream(fos)) {
 
-        export.addCsvMetadataFileToZip(csvStream, zipOut);
+            export.addCsvMetadataFileToZip(fullCsv, zipOut);
+        }
     }
 }
