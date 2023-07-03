@@ -28,6 +28,8 @@ import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -122,12 +124,10 @@ public class ImageExportTest {
 
     @Test
     public void testCsvSize() throws IOException {
-        int zippedLength = 47;
+        long correctSize = 47;
+        long fileSize = Files.size(Path.of("src/test/resources/test.zip"));
 
-        FileInputStream inputFile = new FileInputStream("src/test/resources/test.zip");
-        String actualLength = IOUtils.toString(inputFile, StandardCharsets.UTF_8);
-
-        assertEquals(zippedLength, actualLength.length());
+        assertEquals(correctSize, fileSize);
     }
 
 
