@@ -45,12 +45,12 @@ public class ImageExport {
     public static int pageSize;
     private static ImageExport instance;
     private final String ImageExportService;
-    private final int PartitionSize = 20;
+    private static int partitionSize;
 
     /**
      * Fields used for generating CSV metadata for each image exported.
      */
-    private final Set<String> CSVFIELDS = new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
+    private static List<String> CSVFIELDS = new ArrayList<>();
     private static int minAllowedStartYear;
     private static int maxAllowedEndYear;
     private static int maxExport;
@@ -77,6 +77,8 @@ public class ImageExport {
         maxAllowedEndYear = conf.getInteger(".imageserver.maxYear");
         maxExport = conf.getInteger(".imageserver.maxExport");
         defaultExport = conf.getInteger(".imageserver.defaultExport");
+        CSVFIELDS = conf.getList(".imageserver.metadataFields");
+        partitionSize = conf.getInteger(".imageserver.csvPartitionSize");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
 
@@ -332,7 +334,7 @@ public class ImageExport {
 
         // Create csv stream containing metadata from query
         StreamingOutput csvHeader = createHeaderForCsvStream(CSVFIELDS);
-        StreamingOutput csvStream = SolrExport.getInstance().export(query, CSVFIELDS,(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
+        StreamingOutput csvStream = SolrExport.getInstance().export(query, Set.copyOf(CSVFIELDS),(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
 
         // Streams illustration from URL to zip file with all illustrations
         int count = createZipOfImages(illustrationMetadata, output, metadataMap, csvHeader, (Stream<StreamingOutput>) csvStream, exportFormat);
@@ -508,11 +510,11 @@ public class ImageExport {
      */
     public Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int max) {
         SolrExport csvExporter =  SolrExport.getInstance();
-        Stream<List<String>> streamOfUuidLists = splitToLists(uniqueUUIDs.stream(), PartitionSize);
+        Stream<List<String>> streamOfUuidLists = splitToLists(uniqueUUIDs.stream(), partitionSize);
 
         Stream<StreamingOutput> csvOutput = streamOfUuidLists.map(this::createUuidQuery)
                 .map(query ->
-                        csvExporter.export(query.getQuery(), CSVFIELDS, max, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
+                        csvExporter.export(query.getQuery(), Set.copyOf(CSVFIELDS), max, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
                     );
 
         return csvOutput;
@@ -525,9 +527,9 @@ public class ImageExport {
      * @param fields to create header from
      * @return the CVS header as a streaming output.
      */
-    public StreamingOutput createHeaderForCsvStream(Set<String> fields) {
+    public StreamingOutput createHeaderForCsvStream(List<String> fields) {
         SolrExport csvExporter = new SolrExport();
-        return csvExporter.export("", fields, 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
+        return csvExporter.export("", Set.copyOf(fields), 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
     }
 
 

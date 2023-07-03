@@ -23,6 +23,12 @@ labsapi:
       url: 'https://example.com/?FIF=/avis-show/symlinks'
       maxExport: 10000
       defaultExport: 100
+      metadataFields:
+        - pageUUID
+        - familyId
+        - lplace
+        - fulltext_org
+      csvPartitionSize: 20
 
     summarise:
       # A summarise server with newspaper material

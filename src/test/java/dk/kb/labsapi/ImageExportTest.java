@@ -30,6 +30,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -384,7 +385,8 @@ public class ImageExportTest {
                 .limit(max)
                 .collect(Collectors.toSet());
 
-        StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream(new HashSet<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org")));
+        List<String> csvHeaderList = new ArrayList<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
+        StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream(csvHeaderList);
         Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
 
         FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
