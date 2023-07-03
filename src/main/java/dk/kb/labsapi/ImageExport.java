@@ -273,7 +273,7 @@ public class ImageExport {
         // Get fullPage metadata
         HashSet<String> UUIDs = new HashSet<>();
         Set<String> uniqueUUIDs = docs
-                .map(doc -> saveDeduplicationList(doc, UUIDs))
+                .map(doc -> deduplicateUUIDS(doc, UUIDs))
                 .filter(Objects::nonNull)
                 .limit(max)
                 .collect(Collectors.toSet());
@@ -544,7 +544,7 @@ public class ImageExport {
      * @param uniqueUUIDs is a hashset, used for looking up duplicates.
      * @return the pageUUID if unique.
      */
-    public String saveDeduplicationList(SolrDocument doc, HashSet<String> uniqueUUIDs){
+    public String deduplicateUUIDS(SolrDocument doc, HashSet<String> uniqueUUIDs){
         String pageUUID = doc.getFieldValue("pageUUID").toString();
         if (uniqueUUIDs.add(pageUUID)){
             return pageUUID;
