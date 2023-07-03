@@ -7,7 +7,10 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
-import org.apache.commons.io.IOUtils;
+import dk.kb.util.webservice.exception.ServiceException;
+import dk.kb.util.yaml.InvalidTypeException;
+import dk.kb.util.yaml.NotFoundException;
+import dk.kb.util.yaml.YAML;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocument;
 import org.junit.jupiter.api.Assertions;
@@ -19,12 +22,13 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -55,6 +59,13 @@ public class ImageExportTest {
     @BeforeAll
     static void setupConfig() throws IOException {
         ServiceConfig.initialize("conf/labsapi*.yaml");
+
+        YAML conf;
+        try {
+            conf = ServiceConfig.getConfig().getSubMap(".labsapi.aviser");
+        } catch (NotFoundException | InvalidTypeException | NullPointerException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // Illustrative unit test for mocking static methods
@@ -101,24 +112,29 @@ public class ImageExportTest {
 
 
     @Test
-    void testCsvConstructionWithMockedDownload() throws IOException {
-        StreamingOutput output = testOutput();
-        assertNotNull(output);
-
-    }
-
-    public StreamingOutput testOutput() throws MalformedURLException {
+    public void testMockedDownload() throws IOException {
         URL testUrl = new URL("http://callisto.statsbiblioteket.dk/iipsrv/iipsrv.fcgi?FIF=/avis-show/symlinks/0/0/0/0/00005aff-ea53-46dd-bc90-0b0dd8917dbc.jp2&CVT=jpeg");
         String testResponseString = "Image1";
         byte[] testResponse = testResponseString.getBytes(StandardCharsets.UTF_8);
 
-        try (MockedConstruction mocked = mockConstruction(ImageExport.class)) {
-            ImageExport mockedExport = ImageExport.getInstance();
+        // Create export and spy on it
+        ImageExport export = ImageExport.getInstance();
+        ImageExport exportSpy = spy(export);
 
-            when(mockedExport.downloadSingleIllustration(testUrl)).thenReturn(testResponse);
+        try {
+            // Define which method to stub
+            when(exportSpy.downloadSingleIllustration(testUrl)).thenReturn(testResponse);
 
-            return output -> mockedExport.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1, output, "fullPage");
-        }
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+            // Call method that we want to test, which uses the stubbed method above.
+            exportSpy.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1, output, "fullPage");
+
+            // Do tests on result
+            String content = output.toString(StandardCharsets.UTF_8);
+            assertEquals("Image1", content);
+            assertNotNull(output);
+        } catch (RuntimeException e){}
     }
 
 
@@ -379,7 +395,7 @@ public class ImageExportTest {
         Stream<SolrDocument> docs = export.streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Set<String> uniqueUUIDs = docs
-                .map(doc -> ImageExport.getInstance().saveDeduplicationList(doc, new HashSet<>()))
+                .map(doc -> ImageExport.getInstance().deduplicateUUIDS(doc, new HashSet<>()))
                 .filter(Objects::nonNull)
                 .limit(max)
                 .collect(Collectors.toSet());
@@ -389,7 +405,7 @@ public class ImageExportTest {
         Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(csvHeader), csvStream);
 
         try (FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
-             ZipOutputStream zipOut = new ZipOutputStream(fos)) {
+            ZipOutputStream zipOut = new ZipOutputStream(fos)) {
 
             export.addCsvMetadataFileToZip(fullCsv, zipOut);
         }

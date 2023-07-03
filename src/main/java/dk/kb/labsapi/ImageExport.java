@@ -316,11 +316,11 @@ public class ImageExport {
                 .limit(max));
 
         // Create csv stream containing metadata from query
-        StreamingOutput csvHeader = createHeaderForCsvStream();
-        StreamingOutput csvStream = SolrExport.getInstance().export(query, Set.copyOf(CSVFIELDS),(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
+        //StreamingOutput csvHeader = createHeaderForCsvStream();
+        //StreamingOutput csvStream = SolrExport.getInstance().export(query, Set.copyOf(CSVFIELDS),(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
 
         // Streams illustration from URL to zip file with all illustrations
-        int count = createZipOfImages(illustrationMetadata, output, metadataMap, (Stream<StreamingOutput>) csvStream, exportFormat);
+        int count = createZipOfImages(illustrationMetadata, output, metadataMap, null, exportFormat);
         log.info("Exported: '{} unique UUIDs from query: '{}' with startYear: {} and endYear: {}", count, query, startYear, endYear);
     }
 
