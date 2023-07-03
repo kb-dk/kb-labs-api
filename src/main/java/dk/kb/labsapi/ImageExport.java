@@ -228,7 +228,7 @@ public class ImageExport {
         OutputStream nonCloser = Utils.getNonCloser(zos);
 
         csvHeader.write(nonCloser);
-        csvStream.forEach(csv -> Utils.safeCsvStreamWrite(csv, zos));
+        csvStream.forEach(csv -> Utils.safeStreamWrite(csv, zos));
     }
 
     /**
@@ -284,6 +284,7 @@ public class ImageExport {
                 .limit(max);
 
         // Create csv stream containing metadata from query
+        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max));
         StreamingOutput csvHeader = createHeaderForCsvStream();
         Stream<StreamingOutput> csvStream = streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
 

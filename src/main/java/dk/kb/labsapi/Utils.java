@@ -20,7 +20,7 @@ public class Utils {
      * @param streamingOutput to write to output stream.
      * @param zos is the ZipOutputStream which data gets streamed to.
      */
-    public static void safeCsvStreamWrite(StreamingOutput streamingOutput, ZipOutputStream zos){
+    public static void safeStreamWrite(StreamingOutput streamingOutput, ZipOutputStream zos){
         try {
             streamingOutput.write(zos);
         } catch (IOException e) {
