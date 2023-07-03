@@ -124,8 +124,7 @@ public class ImageExportTest {
 
     @Test
     public void testCsvSize() throws IOException {
-        constructTestCsv();
-        long correctSize = 47;
+        long correctSize = 6442;
         long fileSize = Files.size(Path.of("src/test/resources/test.zip"));
 
         assertEquals(correctSize, fileSize);

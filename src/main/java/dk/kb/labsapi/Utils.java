@@ -18,11 +18,11 @@ public class Utils {
     /**
      * Write content from streamingOutput to output stream.
      * @param streamingOutput to write to output stream.
-     * @param zos is the ZipOutputStream which data gets streamed to.
+     * @param os is the ZipOutputStream which data gets streamed to.
      */
-    public static void safeStreamWrite(StreamingOutput streamingOutput, ZipOutputStream zos){
+    public static void safeStreamWrite(StreamingOutput streamingOutput, OutputStream os){
         try {
-            streamingOutput.write(zos);
+            streamingOutput.write(os);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

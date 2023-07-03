@@ -226,8 +226,8 @@ public class ImageExport {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
 
-        //OutputStream nonCloser = Utils.getNonCloser(zos);
-        csvStream.forEach(csv -> Utils.safeStreamWrite(csv, zos));
+        OutputStream nonCloser = Utils.getNonCloser(zos);
+        csvStream.forEach(csv -> Utils.safeStreamWrite(csv, nonCloser));
     }
 
     /**
