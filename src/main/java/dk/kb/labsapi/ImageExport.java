@@ -271,8 +271,9 @@ public class ImageExport {
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
 
         // Get fullPage metadata
+        HashSet<String> UUIDs = new HashSet<>();
         Set<String> uniqueUUIDs = docs
-                .map(doc -> saveDeduplicationList(doc, new HashSet<>()))
+                .map(doc -> saveDeduplicationList(doc, UUIDs))
                 .filter(Objects::nonNull)
                 .limit(max)
                 .collect(Collectors.toSet());
@@ -288,7 +289,6 @@ public class ImageExport {
         // Streams pages from URL to zip file with all illustrations
         int count = createZipOfImages(pageMetadata, output, metadataMap, fullCsv, exportFormat);
         log.info("Found: '" + count + "' unique UUIDs in query");
-
     }
 
     /**
