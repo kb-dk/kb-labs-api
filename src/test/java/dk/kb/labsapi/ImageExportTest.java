@@ -385,8 +385,7 @@ public class ImageExportTest {
                 .limit(max)
                 .collect(Collectors.toSet());
 
-        List<String> csvHeaderList = new ArrayList<>(Arrays.asList("pageUUID", "familyId", "lplace", "fulltext_org"));
-        StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream(csvHeaderList);
+        StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream();
         Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
 
         FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");

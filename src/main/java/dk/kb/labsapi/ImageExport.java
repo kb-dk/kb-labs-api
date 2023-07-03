@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.google.common.collect.Iterators;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.BasicMetadata;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
@@ -29,7 +28,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -227,7 +225,7 @@ public class ImageExport {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
 
-        OutputStream nonCloser = getNonCloser(zos);
+        OutputStream nonCloser = Utils.getNonCloser(zos);
 
         csvHeader.write(nonCloser);
         csvStream.forEach(csv -> Utils.safeCsvStreamWrite(csv, zos));
@@ -286,7 +284,7 @@ public class ImageExport {
                 .limit(max);
 
         // Create csv stream containing metadata from query
-        StreamingOutput csvHeader = createHeaderForCsvStream(CSVFIELDS);
+        StreamingOutput csvHeader = createHeaderForCsvStream();
         Stream<StreamingOutput> csvStream = streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
 
         // Streams pages from URL to zip file with all illustrations
@@ -320,7 +318,7 @@ public class ImageExport {
                 .limit(max));
 
         // Create csv stream containing metadata from query
-        StreamingOutput csvHeader = createHeaderForCsvStream(CSVFIELDS);
+        StreamingOutput csvHeader = createHeaderForCsvStream();
         StreamingOutput csvStream = SolrExport.getInstance().export(query, Set.copyOf(CSVFIELDS),(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
 
         // Streams illustration from URL to zip file with all illustrations
@@ -497,7 +495,7 @@ public class ImageExport {
      */
     public Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int max) {
         SolrExport csvExporter =  SolrExport.getInstance();
-        Stream<List<String>> streamOfUuidLists = splitToLists(uniqueUUIDs.stream(), partitionSize);
+        Stream<List<String>> streamOfUuidLists = Utils.splitToLists(uniqueUUIDs.stream(), partitionSize);
 
         Stream<StreamingOutput> csvOutput = streamOfUuidLists.map(this::createUuidQuery)
                 .map(query ->
@@ -510,13 +508,12 @@ public class ImageExport {
 
 
     /**
-     * Create a header for a CSV file from the given fields.
-     * @param fields to create header from
+     * Create a header for a CSV file from CSVFIELDS property.
      * @return the CVS header as a streaming output.
      */
-    public StreamingOutput createHeaderForCsvStream(List<String> fields) {
+    public StreamingOutput createHeaderForCsvStream() {
         SolrExport csvExporter = new SolrExport();
-        return csvExporter.export("", Set.copyOf(fields), 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
+        return csvExporter.export("", Set.copyOf(CSVFIELDS), 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
     }
 
 
@@ -541,62 +538,6 @@ public class ImageExport {
 
 
     // ********************** Utils ***********************************
-
-    // TODO: These methods have been copied from SolrWayback utils and should be added to KB utils.
-    /**
-     * Lazily partition the input to the given partitionSize.
-     * <p>
-     * All partitions will have exactly partitionSize elements, except for the last partition which will contain
-     * {@code input_size % partitionSize} elements.
-     * <p>
-     * The implementation is fully streaming and only holds the current partition in memory.
-     * <p>
-     * The implementation does not support parallelism: If source is parallel, it will be sequentialized.
-     * <p>
-     * If the end result should be a list of lists, use {@code splitToList(myStream, 87).collect(Collectors.toList())}.
-     * @param source any stream.
-     * @param partitionSize the maximum size for the partitions.
-     * @return the input partitioned into lists, each with partitionSize elements.
-     */
-    public static <T> Stream<List<T>> splitToLists(Stream<T> source, int partitionSize) {
-        return splitToStreams(source, partitionSize).map(stream -> stream.collect(Collectors.toList()));
-    }
-
-    /**
-     * Lazily partition the input to the given partitionSize.
-     * <p>
-     * All partitions will have exactly partitionSize elements, except for the last partition which will contain
-     * {@code input_size % partitionSize} elements.
-     * <p>
-     * The implementation is fully streaming and only holds the current partition in memory.
-     * <p>
-     * The implementation does not support parallelism: If source is parallel, it will be sequentialized.
-     * @param source any stream.
-     * @param partitionSize the maximum size for the partitions.
-     * @return the input partitioned into streams, each with partitionSize elements.
-     */
-    public static <T> Stream<Stream<T>> splitToStreams(Stream<T> source, int partitionSize) {
-        // https://stackoverflow.com/questions/32434592/partition-a-java-8-stream
-        final Iterator<T> it = source.iterator();
-        final Iterator<Stream<T>> partIt = Iterators.transform(Iterators.partition(it, partitionSize), List::stream);
-        final Iterable<Stream<T>> iterable = () -> partIt;
-
-        return StreamSupport.stream(iterable.spliterator(), false);
-    }
-
-    /**
-     * Create a non-closing OutputStream, which is used to combine different parts of zip entry to one entity.
-     * @param zos is the OutputStream which is not to be closed after use.
-     */
-    private OutputStream getNonCloser(ZipOutputStream zos) {
-        OutputStream nonCloser = new FilterOutputStream(zos) {
-            @Override
-            public void close() throws IOException {
-                // Don't care
-            }
-        };
-        return nonCloser;
-    }
 
     /**
      * Deduplicates pageUUIDs
