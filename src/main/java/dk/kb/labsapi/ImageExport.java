@@ -315,10 +315,6 @@ public class ImageExport {
                 .flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs)
                 .limit(max));
 
-        // Create csv stream containing metadata from query
-        //StreamingOutput csvHeader = createHeaderForCsvStream();
-        //StreamingOutput csvStream = SolrExport.getInstance().export(query, Set.copyOf(CSVFIELDS),(long) max, SolrExport.STRUCTURE.DEFAULT , SolrExport.EXPORT_FORMAT.csv );
-
         // Streams illustration from URL to zip file with all illustrations
         int count = createZipOfImages(illustrationMetadata, output, metadataMap, null, exportFormat);
         log.info("Exported: '{} unique UUIDs from query: '{}' with startYear: {} and endYear: {}", count, query, startYear, endYear);
@@ -431,7 +427,9 @@ public class ImageExport {
         // Add metadata file to zip
         try {
             addMetadataFileToZip(metadataMap, zos);
-            addCsvMetadataFileToZip(fullCsv, zos);
+            if (fullCsv != null) {
+                addCsvMetadataFileToZip(fullCsv, zos);
+            }
         } catch (Exception e) {
             String message = String.format(
                     Locale.ROOT,
