@@ -230,20 +230,7 @@ public class ImageExport {
         OutputStream nonCloser = getNonCloser(zos);
 
         csvHeader.write(nonCloser);
-        csvStream.forEach(csv -> safeCsvStreamWrite(csv, zos));
-    }
-
-    /**
-     * Write CSV content from streamingOutput to output stream.
-     * @param csvOutput to write to output stream.
-     * @param zos is the ZipOutputStream which data gets streamed to.
-     */
-    private void safeCsvStreamWrite(StreamingOutput csvOutput, ZipOutputStream zos){
-        try {
-            csvOutput.write(zos);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        csvStream.forEach(csv -> Utils.safeCsvStreamWrite(csv, zos));
     }
 
     /**
