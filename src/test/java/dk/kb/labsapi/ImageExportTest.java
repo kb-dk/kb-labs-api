@@ -134,7 +134,7 @@ public class ImageExportTest {
             String content = output.toString(StandardCharsets.UTF_8);
             assertEquals("Image1", content);
             assertNotNull(output);
-        } catch (RuntimeException e){}
+        } catch (RuntimeException ignored){ // Ignores the RuntimeException, that downloadSingleIllustration will throw.}
     }
 
 
@@ -394,14 +394,14 @@ public class ImageExportTest {
         SolrQuery finalQuery = export.fullpageSolrQuery(query, startYear, endYear);
         Stream<SolrDocument> docs = export.streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
-        Set<String> uniqueUUIDs = docs
-                .map(doc -> ImageExport.getInstance().deduplicateUUIDS(doc, new HashSet<>()))
-                .filter(Objects::nonNull)
-                .limit(max)
-                .collect(Collectors.toSet());
+        HashSet<String> UUIDs = new HashSet<>();
+        Stream<FullPageMetadata> pageMetadata = docs
+                .filter(doc -> export.deduplicateUUIDS(doc, UUIDs))
+                .map(doc -> export.getMetadataForFullPage(doc, UUIDs))
+                .limit(max);
 
         StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream();
-        Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max);
+        Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(UUIDs, max);
         Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(csvHeader), csvStream);
 
         try (FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");

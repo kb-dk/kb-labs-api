@@ -16,7 +16,8 @@ import java.util.zip.ZipOutputStream;
 public class Utils {
 
     /**
-     * Write content from streamingOutput to output stream.
+     * Write content from streamingOutput to output stream in a pretty way, by handling the exception in the method.
+     * This makes it prettier to write StreamingOutputs to OutputStreams.
      * @param streamingOutput to write to output stream.
      * @param os is the ZipOutputStream which data gets streamed to.
      */

@@ -273,9 +273,8 @@ public class ImageExport {
         // Get fullPage metadata
         HashSet<String> UUIDs = new HashSet<>();
         Stream<FullPageMetadata> pageMetadata = docs
-                .map(doc -> deduplicateUUIDS(doc, UUIDs))
+                .filter(doc -> deduplicateUUIDS(doc, UUIDs))
                 .map(doc -> getMetadataForFullPage(doc, UUIDs))
-                .filter(Objects::nonNull)
                 .limit(max);
 
         // Create csv stream containing metadata from query
@@ -409,10 +408,10 @@ public class ImageExport {
 
     /**
      * Create ZIP file of images created from metadata objects.
-     *
      * @param imageMetadata used to stream URLS from and construct filenames.
      * @param output        stream which holds the outputted zip file.
      * @param metadataMap   which delivers overall information on the export.
+     * @param fullCsv       is a stream containing different streamingOutputs, which combined creates a CSV file.
      * @param exportFormat  determines what kind of export that are to be done. Supports either "illustrations" or "fullPage".
      */
     public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, Stream <StreamingOutput> fullCsv, String exportFormat) throws IOException {
@@ -482,16 +481,16 @@ public class ImageExport {
     /**
      * Create a stream of streaming outputs containing metadata for images in CSV-format from a set of unique IDs.
      * @param uniqueUUIDs to extract metadata for.
-     * @param max number of IDs to include in each output in the stream.
+     * @param batchSize number of IDs to include in each output in the stream.
      * @return a stream consisting of StreamingOutputs with a given size
      */
-    public Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int max) {
+    Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int batchSize) {
         SolrExport csvExporter =  SolrExport.getInstance();
         Stream<List<String>> streamOfUuidLists = Utils.splitToLists(uniqueUUIDs.stream(), partitionSize);
 
         Stream<StreamingOutput> csvOutput = streamOfUuidLists.map(this::createUuidQuery)
                 .map(query ->
-                        csvExporter.export(query.getQuery(), Set.copyOf(CSVFIELDS), max, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
+                        csvExporter.export(query.getQuery(), Set.copyOf(CSVFIELDS), batchSize, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
                     );
 
         return csvOutput;
@@ -503,7 +502,7 @@ public class ImageExport {
      * Create a header for a CSV file from CSVFIELDS property.
      * @return the CVS header as a streaming output.
      */
-    public StreamingOutput createHeaderForCsvStream() {
+     StreamingOutput createHeaderForCsvStream() {
         SolrExport csvExporter = new SolrExport();
         return csvExporter.export("", Set.copyOf(CSVFIELDS), 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
     }
@@ -515,7 +514,7 @@ public class ImageExport {
      * @return a SolrQuery containing all pageUUIDs from input list formatted correctly.
      */
     public SolrQuery createUuidQuery(List<String> list) {
-        String query = list.stream().map(Object::toString)
+        String query = list.stream()
                 .map(s -> "pageUUID:" + s)
                 .collect(Collectors.joining(" OR "));
 
@@ -537,12 +536,8 @@ public class ImageExport {
      * @param uniqueUUIDs is a hashset, used for looking up duplicates.
      * @return the pageUUID if unique.
      */
-    public SolrDocument deduplicateUUIDS(SolrDocument doc, HashSet<String> uniqueUUIDs){
+    public boolean deduplicateUUIDS(SolrDocument doc, HashSet<String> uniqueUUIDs){
         String pageUUID = doc.getFieldValue("pageUUID").toString();
-        if (uniqueUUIDs.add(pageUUID)){
-            return doc;
-        } else {
-            return null;
-        }
+        return uniqueUUIDs.add(pageUUID);
     }
 }
