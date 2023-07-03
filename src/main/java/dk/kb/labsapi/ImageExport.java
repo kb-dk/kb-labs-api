@@ -48,7 +48,7 @@ public class ImageExport {
     /**
      * Fields used for generating CSV metadata for each image exported.
      */
-    private static List<String> CSVFIELDS = new ArrayList<>();
+    private List<String> CSVFIELDS = new ArrayList<>();
     private static int minAllowedStartYear;
     private static int maxAllowedEndYear;
     private static int maxExport;
@@ -222,7 +222,7 @@ public class ImageExport {
      * @param csvStream to include in zip stream.
      * @param zos       is the zip stream which the csv file gets added to.
      */
-    public void addCsvMetadataFileToZip(Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
+    void addCsvMetadataFileToZip(Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
         ZipEntry ze = new ZipEntry("imageMetadata.csv");
         zos.putNextEntry(ze);
 
@@ -272,19 +272,14 @@ public class ImageExport {
 
         // Get fullPage metadata
         HashSet<String> UUIDs = new HashSet<>();
-        Set<String> uniqueUUIDs = docs
-                .map(doc -> deduplicateUUIDS(doc, UUIDs))
-                .filter(Objects::nonNull)
-                .limit(max)
-                .collect(Collectors.toSet());
-
         Stream<FullPageMetadata> pageMetadata = docs
-                .map(doc -> getMetadataForFullPage(doc, uniqueUUIDs))
+                .map(doc -> deduplicateUUIDS(doc, UUIDs))
+                .map(doc -> getMetadataForFullPage(doc, UUIDs))
                 .filter(Objects::nonNull)
                 .limit(max);
 
         // Create csv stream containing metadata from query
-        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(uniqueUUIDs, max));
+        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(UUIDs, max));
 
         // Streams pages from URL to zip file with all illustrations
         int count = createZipOfImages(pageMetadata, output, metadataMap, fullCsv, exportFormat);
@@ -542,10 +537,10 @@ public class ImageExport {
      * @param uniqueUUIDs is a hashset, used for looking up duplicates.
      * @return the pageUUID if unique.
      */
-    public String deduplicateUUIDS(SolrDocument doc, HashSet<String> uniqueUUIDs){
+    public SolrDocument deduplicateUUIDS(SolrDocument doc, HashSet<String> uniqueUUIDs){
         String pageUUID = doc.getFieldValue("pageUUID").toString();
         if (uniqueUUIDs.add(pageUUID)){
-            return pageUUID;
+            return doc;
         } else {
             return null;
         }
