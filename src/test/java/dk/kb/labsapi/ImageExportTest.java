@@ -134,7 +134,9 @@ public class ImageExportTest {
             String content = output.toString(StandardCharsets.UTF_8);
             assertEquals("Image1", content);
             assertNotNull(output);
-        } catch (RuntimeException ignored){ // Ignores the RuntimeException, that downloadSingleIllustration will throw.}
+        } catch (RuntimeException ignored){
+            // Ignores the RuntimeException, that downloadSingleIllustration will throw.
+        }
     }
 
 
