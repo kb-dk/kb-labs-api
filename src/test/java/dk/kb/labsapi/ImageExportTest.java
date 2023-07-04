@@ -129,15 +129,10 @@ public class ImageExportTest {
                     doReturn(solrResponse).when(mock).streamSolr(solrQuery); //any additional mocking
                 })) {
 
-            SolrBase mockedBase = mock();
-
             // Create export and spy on it
             ImageExport export = ImageExport.getInstance();
             ImageExport exportSpy = spy(export);
 
-            // stubbing on mock
-            doReturn(solrResponse).when(mockedBase).streamSolr(solrQuery);
-            // Stubbing on spy
             doReturn(solrResponse).when(exportSpy).streamSolr(solrQuery);
             doReturn(testImage).when(exportSpy).downloadSingleIllustration(testUrl);
             doReturn(csvStream).when(exportSpy).streamCsvOfUniqueUUIDsMetadata(any(),anyInt());
