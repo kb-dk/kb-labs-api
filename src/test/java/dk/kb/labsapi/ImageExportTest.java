@@ -148,12 +148,7 @@ public class ImageExportTest {
     }
 
     private StreamingOutput convertStringToStreamingOutput(String string) {
-        return output ->
-        {
-            Writer writer = new BufferedWriter(new OutputStreamWriter(output));
-            writer.write(string);
-            writer.flush();
-        };
+        return (output) -> output.write(string.getBytes(StandardCharsets.UTF_8));
     }
 
     private Stream<SolrDocument> createMockedSolrResponse() {
