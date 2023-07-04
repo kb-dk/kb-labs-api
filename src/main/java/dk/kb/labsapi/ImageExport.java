@@ -18,6 +18,7 @@ import org.apache.solr.common.params.GroupParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.StreamingOutput;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
@@ -25,10 +26,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import static dk.kb.labsapi.SolrExport.STRUCTURE.content;
 
 /**
  * Exports images from text queries to Solr below mediestream.
@@ -39,10 +43,16 @@ public class ImageExport {
     public static int pageSize;
     private static ImageExport instance;
     private final String ImageExportService;
-    private static int minAllowedStartYear;
-    private static int maxAllowedEndYear;
-    private static int maxExport;
-    private static int defaultExport;
+    private static int partitionSize;
+
+    /**
+     * Fields used for generating CSV metadata for each image exported.
+     */
+    private List<String> CSVFIELDS = new ArrayList<>();
+    private int minAllowedStartYear;
+    private int maxAllowedEndYear;
+    private int maxExport;
+    private int defaultExport;
     static final Pattern pagePattern = Pattern.compile("doms_aviser_page:uuid:(\\S*)");
 
     public static ImageExport getInstance() {
@@ -65,6 +75,8 @@ public class ImageExport {
         maxAllowedEndYear = conf.getInteger(".imageserver.maxYear");
         maxExport = conf.getInteger(".imageserver.maxExport");
         defaultExport = conf.getInteger(".imageserver.defaultExport");
+        CSVFIELDS = conf.getList(".imageserver.metadataFields");
+        partitionSize = conf.getInteger(".imageserver.csvPartitionSize");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
 
@@ -135,11 +147,12 @@ public class ImageExport {
      * @return startYear if allowed else return default start year.
      */
     public static int setUsableStartYear(int startYear){
-         if (startYear < minAllowedStartYear){
-             log.info("Using startYear " + minAllowedStartYear);
-             return minAllowedStartYear;
+        ImageExport exporter = ImageExport.getInstance();
+         if (startYear < exporter.minAllowedStartYear){
+             log.info("Using StartYear: " + exporter.minAllowedStartYear);
+             return exporter.minAllowedStartYear;
          } else {
-             log.info("using startYear " + startYear);
+             log.info("Using startYear: " + startYear);
              return startYear;
          }
     }
@@ -150,11 +163,12 @@ public class ImageExport {
      * @return endYear if allowed else return default end year.
      */
     public static int setUsableEndYear(int endYear){
-         if (endYear > maxAllowedEndYear){
-             log.info("Using endYear " + maxAllowedEndYear);
-             return maxAllowedEndYear;
+        ImageExport exporter = ImageExport.getInstance();
+         if (endYear > exporter.maxAllowedEndYear){
+             log.info("Using endYear: " + exporter.maxAllowedEndYear);
+             return exporter.maxAllowedEndYear;
          } else {
-             log.info("Using endYear" + endYear);
+             log.info("Using endYear: " + endYear);
              return endYear;
          }
     }
@@ -164,7 +178,7 @@ public class ImageExport {
      * @param pageUUID to convert.
      * @return correct pageUUID without prefix.
      */
-    private String convertPageUUID(String pageUUID){
+    String convertPageUUID(String pageUUID){
          String correctUUID = "";
          Matcher m = pagePattern.matcher(pageUUID);
          if (m.matches()){
@@ -181,7 +195,7 @@ public class ImageExport {
      * @param url pointing to the image to download.
      * @return downloaded image as byte array.
      */
-    private byte[] downloadSingleIllustration(URL url) {
+     public byte[] downloadSingleIllustration(URL url) {
         try {
             return IOUtils.toByteArray(url);
         }  catch (IOException e) {
@@ -202,6 +216,20 @@ public class ImageExport {
         zos.putNextEntry(ze);
         writer.writeValue(zos, metadataMap);
         zos.closeEntry();
+    }
+
+    /**
+     * Add a streaming output containing data structured as csv to a zipped output stream.
+     *
+     * @param csvStream to include in zip stream.
+     * @param zos       is the zip stream which the csv file gets added to.
+     */
+    void addCsvMetadataFileToZip(Stream<StreamingOutput> csvStream, ZipOutputStream zos) throws IOException {
+        ZipEntry ze = new ZipEntry("imageMetadata.csv");
+        zos.putNextEntry(ze);
+
+        OutputStream nonCloser = Utils.getNonCloser(zos);
+        csvStream.forEach(csv -> Utils.safeStreamWrite(csv, nonCloser));
     }
 
     /**
@@ -243,17 +271,20 @@ public class ImageExport {
         Stream<SolrDocument> docs = streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
+
         // Get fullPage metadata
-        HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<FullPageMetadata> pageMetadata = docs.
-                map(doc -> getMetadataForFullPage(doc, uniqueUUIDs)).
-                filter(Objects::nonNull).
-                limit(max);
+        HashSet<String> UUIDs = new HashSet<>();
+        Stream<FullPageMetadata> pageMetadata = docs
+                .filter(doc -> deduplicateUUIDS(doc, UUIDs))
+                .map(doc -> getMetadataForFullPage(doc, UUIDs))
+                .limit(max);
+
+        // Create csv stream containing metadata from query
+        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(UUIDs, max));
 
         // Streams pages from URL to zip file with all illustrations
-        int count = createZipOfImages(pageMetadata, output, metadataMap, exportFormat);
+        int count = createZipOfImages(pageMetadata, output, metadataMap, fullCsv, exportFormat);
         log.info("Found: '" + count + "' unique UUIDs in query");
-
     }
 
     /**
@@ -273,14 +304,15 @@ public class ImageExport {
         Stream<SolrDocument> docs = streamSolr(finalQuery);
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
+
         // Create metadata objects
         HashSet<String> uniqueUUIDs = new HashSet<>();
-        Stream<IllustrationMetadata> illustrationMetadata = docs.
-                flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs).
-                limit(max));
+        Stream<IllustrationMetadata> illustrationMetadata = docs
+                .flatMap(doc -> getMetadataForIllustrations(doc, uniqueUUIDs)
+                .limit(max));
 
         // Streams illustration from URL to zip file with all illustrations
-        int count = createZipOfImages(illustrationMetadata, output, metadataMap, exportFormat);
+        int count = createZipOfImages(illustrationMetadata, output, metadataMap, null, exportFormat);
         log.info("Exported: '{} unique UUIDs from query: '{}' with startYear: {} and endYear: {}", count, query, startYear, endYear);
     }
 
@@ -332,7 +364,7 @@ public class ImageExport {
      * The returned object contains metadata about a single page.
      * @return an object containing metadata from a single page. metadata values are: pageUUID, pageWidth and pageHeight.
      */
-    public FullPageMetadata getMetadataForFullPage(SolrDocument doc, HashSet<String> uniqueUUIDs) {
+    public FullPageMetadata getMetadataForFullPage(SolrDocument doc, Set<String> uniqueUUIDs) {
         FullPageMetadata page = null;
 
         // Extract metadata from SolrDocument
@@ -379,17 +411,21 @@ public class ImageExport {
     /**
      * Create ZIP file of images created from metadata objects.
      * @param imageMetadata used to stream URLS from and construct filenames.
-     * @param output stream which holds the outputted zip file.
-     * @param metadataMap which delivers overall information on the export.
-     * @param exportFormat determines what kind of export that are to be done.
+     * @param output        stream which holds the outputted zip file.
+     * @param metadataMap   which delivers overall information on the export.
+     * @param fullCsv       is a stream containing different streamingOutputs, which combined creates a CSV file.
+     * @param exportFormat  determines what kind of export that are to be done. Supports either "illustrations" or "fullPage".
      */
-    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, String exportFormat) throws IOException {
+    public int createZipOfImages(Stream<? extends BasicMetadata> imageMetadata, OutputStream output, Map<String, Object> metadataMap, Stream <StreamingOutput> fullCsv, String exportFormat) throws IOException {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
         // Add metadata file to zip
         try {
             addMetadataFileToZip(metadataMap, zos);
+            if (fullCsv != null) {
+                addCsvMetadataFileToZip(fullCsv, zos);
+            }
         } catch (Exception e) {
             String message = String.format(
                     Locale.ROOT,
@@ -432,6 +468,7 @@ public class ImageExport {
         try {
             if (exportFormat.equals("illustrations")) {
                 addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + "_%03d.jpeg", pageUuid, count.get()), zos);
+                count.addAndGet(1);
             }
             if (exportFormat.equals("fullPage")){
                 addToZipStream(illustration, String.format(Locale.ROOT, "pageUUID_%s_" + exportFormat + ".jpeg", pageUuid), zos);
@@ -440,5 +477,69 @@ public class ImageExport {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+
+    /**
+     * Create a stream of streaming outputs containing metadata for images in CSV-format from a set of unique IDs.
+     * @param uniqueUUIDs to extract metadata for.
+     * @param batchSize number of IDs to include in each output in the stream.
+     * @return a stream consisting of StreamingOutputs with a given size
+     */
+    Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int batchSize) {
+        SolrExport csvExporter =  SolrExport.getInstance();
+        Stream<List<String>> streamOfUuidLists = Utils.splitToLists(uniqueUUIDs.stream(), partitionSize);
+
+        Stream<StreamingOutput> csvOutput = streamOfUuidLists.map(this::createUuidQuery)
+                .map(query ->
+                        csvExporter.export(query.getQuery(), Set.copyOf(CSVFIELDS), batchSize, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
+                    );
+
+        return csvOutput;
+    }
+
+
+
+    /**
+     * Create a header for a CSV file from CSVFIELDS property.
+     * @return the CVS header as a streaming output.
+     */
+     StreamingOutput createHeaderForCsvStream() {
+        SolrExport csvExporter = new SolrExport();
+        return csvExporter.export("", Set.copyOf(CSVFIELDS), 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
+    }
+
+
+    /**
+     * Construct a solr query that returns hits from newspapers with PageUUIDs from the input list.
+     * @param list of pageUUIDs to query solr with.
+     * @return a SolrQuery containing all pageUUIDs from input list formatted correctly.
+     */
+    public SolrQuery createUuidQuery(List<String> list) {
+        String query = list.stream()
+                .map(s -> "pageUUID:" + s)
+                .collect(Collectors.joining(" OR "));
+
+        SolrQuery solrQuery = new SolrQuery();
+        solrQuery.setQuery(query);
+        solrQuery.setFacet(false);
+        solrQuery.setHighlight(false);
+        solrQuery.set(GroupParams.GROUP, false);
+
+        return solrQuery;
+    }
+
+
+    // ********************** Utils ***********************************
+
+    /**
+     * Deduplicates pageUUIDs
+     * @param doc Solrdocument which pageUUID gets extracted from
+     * @param uniqueUUIDs is a hashset, used for looking up duplicates.
+     * @return the pageUUID if unique.
+     */
+    public boolean deduplicateUUIDS(SolrDocument doc, HashSet<String> uniqueUUIDs){
+        String pageUUID = doc.getFieldValue("pageUUID").toString();
+        return uniqueUUIDs.add(pageUUID);
     }
 }

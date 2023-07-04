@@ -23,6 +23,12 @@ labsapi:
       url: 'https://example.com/?FIF=/avis-show/symlinks'
       maxExport: 10000
       defaultExport: 100
+      metadataFields: # If these fields are updated, please update the endpoint description in src/main/openapi/openapi.yaml as well.
+        - pageUUID
+        - familyId
+        - lplace
+        - fulltext_org
+      csvPartitionSize: 20
 
     summarise:
       # A summarise server with newspaper material

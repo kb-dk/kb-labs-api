@@ -2,36 +2,51 @@ package dk.kb.labsapi;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.AbstractTypeResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
+import dk.kb.util.yaml.InvalidTypeException;
+import dk.kb.util.yaml.NotFoundException;
+import dk.kb.util.yaml.YAML;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.StreamingOutput;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * IMPORTANT: All this only works with a proper setup and contact to Solr
@@ -42,6 +57,116 @@ public class ImageExportTest {
     @BeforeAll
     static void setupConfig() throws IOException {
         ServiceConfig.initialize("conf/labsapi*.yaml");
+
+        YAML conf;
+        try {
+            conf = ServiceConfig.getConfig().getSubMap(".labsapi.aviser");
+        } catch (NotFoundException | InvalidTypeException | NullPointerException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Illustrative unit test for mocking static methods
+    @Test
+    void testStaticMocking() throws MalformedURLException {
+        // All mocking takes place inside the try-block
+        try (MockedStatic<ImageExport> mockedExport = Mockito.mockStatic(ImageExport.class)) {
+            // Setup static method mock
+            mockedExport.when(() -> ImageExport.setUsableEndYear(2040)).thenReturn(2023);
+
+            // Perform unit tests
+            assertEquals(2023, ImageExport.setUsableEndYear(2040),
+                    "Calling a mocked static with the correct input should return the expected output");
+
+            assertEquals(0, ImageExport.setUsableEndYear(2050),
+                    "Calling a mocked static with unsupported input should return null (= 0 as int is an Atomic)");
+        }
+    }
+
+    @Test
+    void testInstanceMocking() throws MalformedURLException {
+        // All mocking takes place inside the try-block
+        // We use Mockedconstruction as we want the standard constructor for ImageExport to be evaluated
+        try (MockedConstruction mocked = mockConstruction(ImageExport.class)) {
+            ImageExport mockedExport = ImageExport.getInstance();
+            when(mockedExport.convertPageUUID("foo")).thenReturn("bar", "bar2");
+            when(mockedExport.convertPageUUID("hello")).thenReturn("world");
+
+            // Perform unit tests using the mocked instance
+            assertEquals("bar", mockedExport.convertPageUUID("foo"),
+                    "Calling a mocked method with the first correct input should return the first expected output");
+            assertEquals("bar2", mockedExport.convertPageUUID("foo"),
+                    "Calling a mocked method a second time with the first correct input should return the second expected output");
+            assertEquals("bar2", mockedExport.convertPageUUID("foo"),
+                    "Calling a mocked method a third time with the first correct input should return the last output in the response chain");
+
+            assertEquals("world", mockedExport.convertPageUUID("hello"),
+                    "Calling a mocked method with the other correct input should return the expected output");
+
+            assertNull(mockedExport.convertPageUUID("zoo"),
+                    "Calling a mocked method with unexpected input should return null");
+        }
+    }
+
+    @Test
+    public void testMockedDownload() throws IOException {
+        // Variables used for mocking and testing
+        URL testUrl = new URL("http://callisto.statsbiblioteket.dk/iipsrv/iipsrv.fcgi?FIF=/avis-show/symlinks/0/0/0/0/00005aff-ea53-46dd-bc90-0b0dd8917dbc.jp2&CVT=jpeg");
+        String query = "pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc";
+        SolrQuery solrQuery = new SolrQuery(query);
+        String testResponseString = "Image1";
+        byte[] testImage = testResponseString.getBytes(StandardCharsets.UTF_8);
+        Stream<SolrDocument> solrResponse = createMockedSolrResponse();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        String csvOutputLine = "\"doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc\",\"lollandfalstersfolketidende\",\"Nykøbing Falster\",\"Lollands-Falsters\\nFolketi\\niiDc.\\n3. Anrg. Tirsdagen den 25de December IH11. Nr. 306\\nPaa rø'iiud af Helligdagene »dgaar intctNumcr af n«rrva?rendc Blad for paa fredag.\\n(Af Richard Kaufmann i „Nut.\"\")\"";
+        StreamingOutput streamingOutput =  convertStringToStreamingOutput(csvOutputLine);
+        Stream<StreamingOutput> csvStream = Stream.of(streamingOutput);
+
+        // Needs try block with MockedConstruction, to mock all SolrBases created throughout export
+        try (MockedConstruction<SolrBase> solrBaseMockedConstruction = Mockito.mockConstruction(SolrBase.class,
+                (mock, context) -> {
+                    doReturn(solrResponse).when(mock).streamSolr(solrQuery); //any additional mocking
+                })) {
+
+            // Create export and spy on it
+            ImageExport export = ImageExport.getInstance();
+            ImageExport exportSpy = spy(export);
+
+            doReturn(solrResponse).when(exportSpy).streamSolr(solrQuery);
+            doReturn(testImage).when(exportSpy).downloadSingleIllustration(testUrl);
+            doReturn(csvStream).when(exportSpy).streamCsvOfUniqueUUIDsMetadata(any(),anyInt());
+
+            // Call method that we want to test, which uses the stubbed method above.
+            exportSpy.exportFullpages(query, 1666, 1800, 1, output, "fullPage");
+
+            // Do tests on result
+            assertEquals(996, output.toByteArray().length);
+            assertNotNull(output);
+        }
+
+    }
+
+    private StreamingOutput convertStringToStreamingOutput(String string) {
+        return (output) -> output.write(string.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private Stream<SolrDocument> createMockedSolrResponse() {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("pageUUID", "doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc");
+        fields.put("page_width", 3573);
+        fields.put("page_height", 5120);
+        SolrDocument doc = new SolrDocument(fields);
+        return Stream.of(doc);
+    }
+
+
+    @Test
+    public void testCsvSize() throws IOException {
+        long correctSize = 6442;
+        long fileSize = Files.size(Path.of("src/test/resources/test.zip"));
+
+        assertEquals(correctSize, fileSize);
     }
 
 
@@ -74,7 +199,7 @@ public class ImageExportTest {
     @Test
     public void testQueryForIllustrations() throws IOException {
         SolrQuery query = ImageExport.getInstance().illustrationSolrQuery("politi", 1680, 1750, 1);
-        String corretQuery = "fq=recordBase:doms_aviser+AND+py:[1680+TO+1750]&fq=illustration:+[*+TO+*]&q=politi&rows=1&group=false&fl=pageUUID,+illustration,+page_width,+page_height";
+        String corretQuery = "fq=recordBase:doms_aviser+AND+py:[1680+TO+1750]&fq=illustration:+[*+TO+*]&q=politi&group=false&fl=pageUUID,+illustration,+page_width,+page_height";
 
         assertEquals(corretQuery, query.toString());
     }
@@ -267,5 +392,45 @@ public class ImageExportTest {
                 peek(Assertions::assertNotNull).
                 count();
         assertTrue(received > 0, "Some results should be received");
+    }
+
+    @Test
+    public void testUuidQueryConstruction(){
+        List<String> ids = new ArrayList<>(Arrays.asList("UUID1", "UUID2", "UUID3"));
+        String correctQuery = "pageUUID:UUID1 OR pageUUID:UUID2 OR pageUUID:UUID3";
+
+        SolrQuery query = ImageExport.getInstance().createUuidQuery(ids);
+
+        assertEquals(correctQuery, query.getQuery());
+    }
+
+    /**
+     * Constructs the resource located at: src/test/resources/test.zip
+     */
+    private void constructTestCsv() throws IOException {
+        ImageExport export = ImageExport.getInstance();
+        String query = "pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc";
+        int startYear = 1666;
+        int endYear = 1880;
+        int max = 20;
+
+        SolrQuery finalQuery = export.fullpageSolrQuery(query, startYear, endYear);
+        Stream<SolrDocument> docs = export.streamSolr(finalQuery);
+        // Create metadata file, that has to be added to output zip
+        HashSet<String> UUIDs = new HashSet<>();
+        Stream<FullPageMetadata> pageMetadata = docs
+                .filter(doc -> export.deduplicateUUIDS(doc, UUIDs))
+                .map(doc -> export.getMetadataForFullPage(doc, UUIDs))
+                .limit(max);
+
+        StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream();
+        Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(UUIDs, max);
+        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(csvHeader), csvStream);
+
+        try (FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
+            ZipOutputStream zipOut = new ZipOutputStream(fos)) {
+
+            export.addCsvMetadataFileToZip(fullCsv, zipOut);
+        }
     }
 }

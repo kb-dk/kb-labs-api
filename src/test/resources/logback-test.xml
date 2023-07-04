@@ -7,9 +7,10 @@
     </appender>
 
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
+    <logger name="dk.kb" level="DEBUG" />
 
 </configuration>
 
