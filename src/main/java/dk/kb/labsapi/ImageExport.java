@@ -49,10 +49,10 @@ public class ImageExport {
      * Fields used for generating CSV metadata for each image exported.
      */
     private List<String> CSVFIELDS = new ArrayList<>();
-    private static int minAllowedStartYear;
-    private static int maxAllowedEndYear;
-    private static int maxExport;
-    private static int defaultExport;
+    private int minAllowedStartYear;
+    private int maxAllowedEndYear;
+    private int maxExport;
+    private int defaultExport;
     static final Pattern pagePattern = Pattern.compile("doms_aviser_page:uuid:(\\S*)");
 
     public static ImageExport getInstance() {
@@ -147,11 +147,12 @@ public class ImageExport {
      * @return startYear if allowed else return default start year.
      */
     public static int setUsableStartYear(int startYear){
-         if (startYear < minAllowedStartYear){
-             log.info("Using startYear " + minAllowedStartYear);
-             return minAllowedStartYear;
+        ImageExport exporter = ImageExport.getInstance();
+         if (startYear < exporter.minAllowedStartYear){
+             log.info("Using StartYear: " + exporter.minAllowedStartYear);
+             return exporter.minAllowedStartYear;
          } else {
-             log.info("using startYear " + startYear);
+             log.info("Using startYear: " + startYear);
              return startYear;
          }
     }
@@ -162,11 +163,12 @@ public class ImageExport {
      * @return endYear if allowed else return default end year.
      */
     public static int setUsableEndYear(int endYear){
-         if (endYear > maxAllowedEndYear){
-             log.info("Using endYear " + maxAllowedEndYear);
-             return maxAllowedEndYear;
+        ImageExport exporter = ImageExport.getInstance();
+         if (endYear > exporter.maxAllowedEndYear){
+             log.info("Using endYear: " + exporter.maxAllowedEndYear);
+             return exporter.maxAllowedEndYear;
          } else {
-             log.info("Using endYear" + endYear);
+             log.info("Using endYear: " + endYear);
              return endYear;
          }
     }
