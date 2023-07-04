@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import dk.kb.labsapi.config.ServiceConfig;
 import dk.kb.labsapi.metadataFormats.FullPageMetadata;
 import dk.kb.labsapi.metadataFormats.IllustrationMetadata;
-import dk.kb.util.webservice.exception.ServiceException;
 import dk.kb.util.yaml.InvalidTypeException;
 import dk.kb.util.yaml.NotFoundException;
 import dk.kb.util.yaml.YAML;
@@ -22,13 +21,14 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.StreamingOutput;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -36,12 +36,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
@@ -110,33 +108,66 @@ public class ImageExportTest {
         }
     }
 
-
     @Test
     public void testMockedDownload() throws IOException {
+        // Variables used for mocking and testing
         URL testUrl = new URL("http://callisto.statsbiblioteket.dk/iipsrv/iipsrv.fcgi?FIF=/avis-show/symlinks/0/0/0/0/00005aff-ea53-46dd-bc90-0b0dd8917dbc.jp2&CVT=jpeg");
+        String query = "pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc";
+        SolrQuery solrQuery = new SolrQuery(query);
         String testResponseString = "Image1";
-        byte[] testResponse = testResponseString.getBytes(StandardCharsets.UTF_8);
-
-        // Create export and spy on it
-        ImageExport export = ImageExport.getInstance();
-        ImageExport exportSpy = spy(export);
-
-        // Define which method to stub
-        doReturn(testResponse).when(exportSpy).downloadSingleIllustration(testUrl);
-
+        byte[] testImage = testResponseString.getBytes(StandardCharsets.UTF_8);
+        Stream<SolrDocument> solrResponse = createMockedSolrResponse();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
-        // Call method that we want to test, which uses the stubbed method above.
-        exportSpy.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1, output, "fullPage");
+        String csvOutputLine = "\"doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc\",\"lollandfalstersfolketidende\",\"Nykøbing Falster\",\"Lollands-Falsters\\nFolketi\\niiDc.\\n3. Anrg. Tirsdagen den 25de December IH11. Nr. 306\\nPaa rø'iiud af Helligdagene »dgaar intctNumcr af n«rrva?rendc Blad for paa fredag.\\n(Af Richard Kaufmann i „Nut.\"\")\"";
+        StreamingOutput streamingOutput =  convertStringToStreamingOutput(csvOutputLine);
+        Stream<StreamingOutput> csvStream = Stream.of(streamingOutput);
 
-        // Extract testResponse from completed outputstream
-        byte[] imageContent = Arrays.copyOfRange(output.toByteArray(), 626, 632);
-        String imageContentAsString = new String(imageContent, StandardCharsets.UTF_8);
+        // Needs try block with MockedConstruction, to mock all SolrBases created throughout export
+        try (MockedConstruction<SolrBase> solrBaseMockedConstruction = Mockito.mockConstruction(SolrBase.class,
+                (mock, context) -> {
+                    doReturn(solrResponse).when(mock).streamSolr(solrQuery); //any additional mocking
+                })) {
 
-        // Do tests on result
-        assertEquals(897, output.toByteArray().length);
-        assertEquals("Image1", imageContentAsString);
-        assertNotNull(output);
+            SolrBase mockedBase = mock();
+
+            // Create export and spy on it
+            ImageExport export = ImageExport.getInstance();
+            ImageExport exportSpy = spy(export);
+
+            // stubbing on mock
+            doReturn(solrResponse).when(mockedBase).streamSolr(solrQuery);
+            // Stubbing on spy
+            doReturn(solrResponse).when(exportSpy).streamSolr(solrQuery);
+            doReturn(testImage).when(exportSpy).downloadSingleIllustration(testUrl);
+            doReturn(csvStream).when(exportSpy).streamCsvOfUniqueUUIDsMetadata(any(),anyInt());
+
+            // Call method that we want to test, which uses the stubbed method above.
+            exportSpy.exportFullpages(query, 1666, 1800, 1, output, "fullPage");
+
+            // Do tests on result
+            assertEquals(996, output.toByteArray().length);
+            assertNotNull(output);
+        }
+
+    }
+
+    private StreamingOutput convertStringToStreamingOutput(String string) {
+        return output ->
+        {
+            Writer writer = new BufferedWriter(new OutputStreamWriter(output));
+            writer.write(string);
+            writer.flush();
+        };
+    }
+
+    private Stream<SolrDocument> createMockedSolrResponse() {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("pageUUID", "doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc");
+        fields.put("page_width", 3573);
+        fields.put("page_height", 5120);
+        SolrDocument doc = new SolrDocument(fields);
+        return Stream.of(doc);
     }
 
 
