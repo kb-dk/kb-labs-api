@@ -121,22 +121,22 @@ public class ImageExportTest {
         ImageExport export = ImageExport.getInstance();
         ImageExport exportSpy = spy(export);
 
-        try {
-            // Define which method to stub
-            when(exportSpy.downloadSingleIllustration(testUrl)).thenReturn(testResponse);
+        // Define which method to stub
+        doReturn(testResponse).when(exportSpy).downloadSingleIllustration(testUrl);
 
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
 
-            // Call method that we want to test, which uses the stubbed method above.
-            exportSpy.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1, output, "fullPage");
+        // Call method that we want to test, which uses the stubbed method above.
+        exportSpy.exportFullpages("pageUUID:doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc", 1666, 1800, 1, output, "fullPage");
 
-            // Do tests on result
-            String content = output.toString(StandardCharsets.UTF_8);
-            assertEquals("Image1", content);
-            assertNotNull(output);
-        } catch (RuntimeException ignored){
-            // Ignores the RuntimeException, that downloadSingleIllustration will throw.
-        }
+        // Extract testResponse from completed outputstream
+        byte[] imageContent = Arrays.copyOfRange(output.toByteArray(), 626, 632);
+        String imageContentAsString = new String(imageContent, StandardCharsets.UTF_8);
+
+        // Do tests on result
+        assertEquals(897, output.toByteArray().length);
+        assertEquals("Image1", imageContentAsString);
+        assertNotNull(output);
     }
 
 
