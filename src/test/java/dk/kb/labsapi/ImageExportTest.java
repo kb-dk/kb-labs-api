@@ -136,7 +136,7 @@ public class ImageExportTest {
             exportSpy.exportFullpages(query, 1666, 1800, 1, output, "fullPage");
 
             // Do tests on result
-            // This is a quick test
+            // This is a quick test which will fail if CSV size changes.
             assertEquals(1007, output.toByteArray().length);
             assertNotNull(output);
         }
