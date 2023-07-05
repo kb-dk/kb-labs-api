@@ -264,6 +264,7 @@ public class ImageExport {
      * @param max       number of documents to fetch.
      * @param output    to write images to as one combined zip file.
      */
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     public void exportFullpages(String query, Integer startYear, Integer endYear, Integer max, OutputStream output, String exportFormat) throws IOException {
         if (instance.ImageExportService == null) {
             throw new InternalServiceException("Illustration delivery service has not been configured, sorry");
@@ -271,20 +272,30 @@ public class ImageExport {
         // Query Solr
         SolrQuery finalQuery = fullpageSolrQuery(query, startYear, endYear);
         Stream<SolrDocument> docs = streamSolr(finalQuery);
-        // Create metadata file, that has to be added to output zip
-        Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
 
         // Get fullPage metadata
         HashSet<String> UUIDs = new HashSet<>();
-        Stream<FullPageMetadata> pageMetadata = docs
+        docs
                 .filter(doc -> deduplicateUUIDS(doc, UUIDs))
-                .map(doc -> getMetadataForFullPage(doc, UUIDs))
+                .limit(max)
+                .count();
+
+        Stream<SolrDocument> illustrationDocs = streamSolr(finalQuery);
+        // Get fullPage metadata
+        HashSet<String> illUUIDs = new HashSet<>();
+        Stream<FullPageMetadata> pageMetadata = illustrationDocs
+                .filter(doc -> deduplicateUUIDS(doc, illUUIDs))
+                .map(doc -> getMetadataForFullPage(doc, illUUIDs))
                 .limit(max);
 
         // Create csv stream containing metadata from query
         Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(UUIDs, max));
 
+        // Create metadata file, that has to be added to output zip
+        Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
+
         // Streams pages from URL to zip file with all illustrations
+        log.debug("Creating zip for '{}'", query);
         int count = createZipOfImages(pageMetadata, output, metadataMap, fullCsv, exportFormat);
         log.info("Found: '" + count + "' unique UUIDs in query");
     }
@@ -423,21 +434,13 @@ public class ImageExport {
         zos.setLevel(Deflater.NO_COMPRESSION);
 
         AtomicInteger count = new AtomicInteger();
-        try {
-            switch (exportFormat){
-                case "illustrations":
-                    imageMetadata.forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
-                    zos.close();
-                    break;
-                case "fullPage":
-                    imageMetadata.forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
-                    zos.close();
-                    break;
-            }
-
-        } catch (IOException e) {
-            log.error("Error adding illustration to ZIP stream.");
-            throw new IOException();
+        switch (exportFormat){
+            case "illustrations":
+                imageMetadata.forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
+                break;
+            case "fullPage":
+                imageMetadata.forEach(metadata -> exportImage(metadata, exportFormat, count, zos));
+                break;
         }
 
         // Add metadata file to zip
@@ -448,14 +451,12 @@ public class ImageExport {
             addMetadataFileToZip(metadataMap, zos);
 
         } catch (Exception e) {
-            String message = String.format(
-                    Locale.ROOT,
-                    "Exception adding metadata entry to ZIP with  %s illustrationMetadatas",
-                    imageMetadata == null ? "null" : imageMetadata.count());
+            String message = "Exception adding metadata entry to ZIP";
             log.warn(message, e);
             throw new IOException(message, e);
         }
 
+        zos.close();
         return count.intValue();
     }
 
