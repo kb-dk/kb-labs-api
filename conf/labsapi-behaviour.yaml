@@ -25,10 +25,10 @@ labsapi:
       defaultExport: 100
       metadataFields: # If these fields are updated, please update the endpoint description in src/main/openapi/openapi.yaml as well.
         - pageUUID
+        - recordID
         - familyId
         - lplace
         - fulltext_org
-        - recordID
       csvPartitionSize: 20
 
     summarise:
