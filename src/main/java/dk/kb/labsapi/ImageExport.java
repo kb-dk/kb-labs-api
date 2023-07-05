@@ -48,7 +48,7 @@ public class ImageExport {
     /**
      * Fields used for generating CSV metadata for each image exported.
      */
-    private List<String> CSVFIELDS = new ArrayList<>();
+    private Set<String> CSVFIELDS;
     private int minAllowedStartYear;
     private int maxAllowedEndYear;
     private int maxExport;
@@ -75,7 +75,7 @@ public class ImageExport {
         maxAllowedEndYear = conf.getInteger(".imageserver.maxYear");
         maxExport = conf.getInteger(".imageserver.maxExport");
         defaultExport = conf.getInteger(".imageserver.defaultExport");
-        CSVFIELDS = conf.getList(".imageserver.metadataFields");
+        CSVFIELDS = new LinkedHashSet<>(conf.getList(".imageserver.metadataFields"));
         partitionSize = conf.getInteger(".imageserver.csvPartitionSize");
         log.info("Created ImageExport that exports images from this server: '{}'", ImageExportService);
     }
@@ -497,7 +497,7 @@ public class ImageExport {
 
         Stream<StreamingOutput> csvOutput = streamOfUuidLists.map(this::createUuidQuery)
                 .map(query ->
-                        csvExporter.export(query.getQuery(), Set.copyOf(CSVFIELDS), 100000, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
+                        csvExporter.export(query.getQuery(), CSVFIELDS, 100000, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
                     );
 
         return csvOutput;
@@ -511,7 +511,7 @@ public class ImageExport {
      */
      StreamingOutput createHeaderForCsvStream() {
         SolrExport csvExporter = new SolrExport();
-        return csvExporter.export("", Set.copyOf(CSVFIELDS), 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
+        return csvExporter.export("", CSVFIELDS, 1, Collections.singleton(SolrExport.STRUCTURE.header), SolrExport.EXPORT_FORMAT.csv);
     }
 
 
