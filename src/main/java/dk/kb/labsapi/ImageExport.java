@@ -489,6 +489,7 @@ public class ImageExport {
      * @return a stream consisting of StreamingOutputs with a given size
      */
     Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int batchSize) {
+        log.info("Creating csv of unique UUIDS with {} unique IDs and batchSize {}.", uniqueUUIDs.size(), batchSize);
         SolrExport csvExporter =  SolrExport.getInstance();
         Stream<List<String>> streamOfUuidLists = Utils.splitToLists(uniqueUUIDs.stream(), partitionSize);
 
