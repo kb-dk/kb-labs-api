@@ -128,6 +128,7 @@ public class SolrExport extends SolrBase {
      */
     public StreamingOutput export(String query, Set<String> fields, long max, Set<STRUCTURE> structure,
                                          EXPORT_FORMAT format) {
+        log.debug("export(query='{}', fields='{}', max='{}', structure='{}, format='{}') called", query, fields, max, structure, format);
         if (exportSort == null) {
             String message = "Error: Unable to export: " +
                              "No export sort (.labsapi.aviser.export.solr.sort) specified in config";
