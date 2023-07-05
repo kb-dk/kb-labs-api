@@ -289,7 +289,7 @@ public class ImageExport {
                 .limit(max);
 
         // Create csv stream containing metadata from query
-        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(UUIDs, max));
+        Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(createHeaderForCsvStream()), streamCsvOfUniqueUUIDsMetadata(UUIDs));
 
         // Create metadata file, that has to be added to output zip
         Map<String, Object> metadataMap = makeMetadataMap(query, startYear, endYear);
@@ -488,17 +488,16 @@ public class ImageExport {
     /**
      * Create a stream of streaming outputs containing metadata for images in CSV-format from a set of unique IDs.
      * @param uniqueUUIDs to extract metadata for.
-     * @param batchSize number of IDs to include in each output in the stream.
      * @return a stream consisting of StreamingOutputs with a given size
      */
-    Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs, int batchSize) {
-        log.info("Creating csv of unique UUIDS with {} unique IDs and batchSize {}.", uniqueUUIDs.size(), batchSize);
+    Stream<StreamingOutput> streamCsvOfUniqueUUIDsMetadata(Set<String> uniqueUUIDs) {
+        log.info("Creating csv of unique UUIDS with {} unique IDs and partitionSize {}.", uniqueUUIDs.size(), partitionSize);
         SolrExport csvExporter =  SolrExport.getInstance();
         Stream<List<String>> streamOfUuidLists = Utils.splitToLists(uniqueUUIDs.stream(), partitionSize);
 
         Stream<StreamingOutput> csvOutput = streamOfUuidLists.map(this::createUuidQuery)
                 .map(query ->
-                        csvExporter.export(query.getQuery(), Set.copyOf(CSVFIELDS), batchSize, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
+                        csvExporter.export(query.getQuery(), Set.copyOf(CSVFIELDS), 100000, Collections.singleton(content), SolrExport.EXPORT_FORMAT.csv )
                     );
 
         return csvOutput;
@@ -523,7 +522,7 @@ public class ImageExport {
      */
     public SolrQuery createUuidQuery(List<String> list) {
         String query = list.stream()
-                .map(s -> "pageUUID:" + s)
+                .map(s -> "pageUUID:\"" + s + "\"")
                 .collect(Collectors.joining(" OR "));
 
         SolrQuery solrQuery = new SolrQuery();

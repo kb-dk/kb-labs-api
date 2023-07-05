@@ -28,6 +28,7 @@ labsapi:
         - familyId
         - lplace
         - fulltext_org
+        - recordID
       csvPartitionSize: 20
 
     summarise:

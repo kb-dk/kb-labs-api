@@ -130,13 +130,14 @@ public class ImageExportTest {
 
             doReturn(solrResponse).when(exportSpy).streamSolr(solrQuery);
             doReturn(testImage).when(exportSpy).downloadSingleIllustration(testUrl);
-            doReturn(csvStream).when(exportSpy).streamCsvOfUniqueUUIDsMetadata(any(),anyInt());
+            doReturn(csvStream).when(exportSpy).streamCsvOfUniqueUUIDsMetadata(any());
 
             // Call method that we want to test, which uses the stubbed method above.
             exportSpy.exportFullpages(query, 1666, 1800, 1, output, "fullPage");
 
             // Do tests on result
-            assertEquals(996, output.toByteArray().length);
+            // This is a quick test
+            assertEquals(1007, output.toByteArray().length);
             assertNotNull(output);
         }
 
@@ -392,7 +393,7 @@ public class ImageExportTest {
     @Test
     public void testUuidQueryConstruction(){
         List<String> ids = new ArrayList<>(Arrays.asList("UUID1", "UUID2", "UUID3"));
-        String correctQuery = "pageUUID:UUID1 OR pageUUID:UUID2 OR pageUUID:UUID3";
+        String correctQuery = "pageUUID:\"UUID1\" OR pageUUID:\"UUID2\" OR pageUUID:\"UUID3\"";
 
         SolrQuery query = ImageExport.getInstance().createUuidQuery(ids);
 
@@ -466,7 +467,7 @@ public class ImageExportTest {
                 .limit(max);
 
         StreamingOutput csvHeader = ImageExport.getInstance().createHeaderForCsvStream();
-        Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(UUIDs, max);
+        Stream<StreamingOutput> csvStream = ImageExport.getInstance().streamCsvOfUniqueUUIDsMetadata(UUIDs);
         Stream<StreamingOutput> fullCsv = Stream.concat(Stream.of(csvHeader), csvStream);
 
         try (FileOutputStream fos = new FileOutputStream("src/test/resources/test.zip");
