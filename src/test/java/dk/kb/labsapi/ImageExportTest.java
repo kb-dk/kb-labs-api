@@ -22,8 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.StreamingOutput;
+import java.awt.*;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -119,9 +121,7 @@ public class ImageExportTest {
         Stream<SolrDocument> solrResponse = createMockedSolrResponse();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
-        String csvOutputLine = "\"doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc\",\"lollandfalstersfolketidende\",\"Nykøbing Falster\",\"Lollands-Falsters\\nFolketi\\niiDc.\\n3. Anrg. Tirsdagen den 25de December IH11. Nr. 306\\nPaa rø'iiud af Helligdagene »dgaar intctNumcr af n«rrva?rendc Blad for paa fredag.\\n(Af Richard Kaufmann i „Nut.\"\")\"";
-        StreamingOutput streamingOutput =  convertStringToStreamingOutput(csvOutputLine);
-        Stream<StreamingOutput> csvStream = Stream.of(streamingOutput);
+        Stream<StreamingOutput> csvStream = getCsvStream();
 
         // Needs try block with MockedConstruction, to mock all SolrBases created throughout export
         try (MockedConstruction<SolrBase> solrBaseMockedConstruction = Mockito.mockConstruction(SolrBase.class,
@@ -147,20 +147,20 @@ public class ImageExportTest {
 
     }
 
-    private StreamingOutput convertStringToStreamingOutput(String string) {
-        return (output) -> output.write(string.getBytes(StandardCharsets.UTF_8));
+    @Test
+    public void testCsvStreamCreation() throws IOException {
+        Stream<StreamingOutput> csvHeader = Stream.of(ImageExport.getInstance().createHeaderForCsvStream());
+        Stream<StreamingOutput> csvStream = getCsvStream();
+        Stream<StreamingOutput> fullCsv = Stream.concat(csvHeader, csvStream);
+
+        try (FileOutputStream fos = new FileOutputStream("src/test/resources/csvTest.zip");
+             ZipOutputStream zipOut = new ZipOutputStream(fos)) {
+
+            ImageExport.getInstance().addCsvMetadataFileToZip(fullCsv, zipOut);
+        }
+
+
     }
-
-    private Stream<SolrDocument> createMockedSolrResponse() {
-        Map<String, Object> fields = new HashMap<>();
-        fields.put("pageUUID", "doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc");
-        fields.put("page_width", 3573);
-        fields.put("page_height", 5120);
-        SolrDocument doc = new SolrDocument(fields);
-        return Stream.of(doc);
-    }
-
-
     @Test
     public void testCsvSize() throws IOException {
         long correctSize = 6442;
@@ -402,6 +402,30 @@ public class ImageExportTest {
         SolrQuery query = ImageExport.getInstance().createUuidQuery(ids);
 
         assertEquals(correctQuery, query.getQuery());
+    }
+
+
+
+    // Helpers
+
+    private StreamingOutput convertStringToStreamingOutput(String string) {
+        return (output) -> output.write(string.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private Stream<SolrDocument> createMockedSolrResponse() {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("pageUUID", "doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc");
+        fields.put("page_width", 3573);
+        fields.put("page_height", 5120);
+        SolrDocument doc = new SolrDocument(fields);
+        return Stream.of(doc);
+    }
+
+    private Stream<StreamingOutput> getCsvStream() {
+        String csvOutputLine = "\"doms_aviser_page:uuid:00005aff-ea53-46dd-bc90-0b0dd8917dbc\",\"lollandfalstersfolketidende\",\"Nykøbing Falster\",\"Lollands-Falsters\\nFolketi\\niiDc.\\n3. Anrg. Tirsdagen den 25de December IH11. Nr. 306\\nPaa rø'iiud af Helligdagene »dgaar intctNumcr af n«rrva?rendc Blad for paa fredag.\\n(Af Richard Kaufmann i „Nut.\"\")\"";
+        StreamingOutput streamingOutput =  convertStringToStreamingOutput(csvOutputLine);
+        Stream<StreamingOutput> csvStream = Stream.of(streamingOutput);
+        return csvStream;
     }
 
     /**
