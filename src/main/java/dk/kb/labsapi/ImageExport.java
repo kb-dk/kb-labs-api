@@ -231,6 +231,7 @@ public class ImageExport {
         OutputStream nonCloser = Utils.getNonCloser(zos);
         csvStream.forEach(csv -> Utils.safeStreamWrite(csv, nonCloser));
         zos.closeEntry();
+        zos.flush();
     }
 
     /**
