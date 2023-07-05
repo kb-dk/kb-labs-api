@@ -422,22 +422,6 @@ public class ImageExport {
         ZipOutputStream zos = new ZipOutputStream(output);
         zos.setLevel(Deflater.NO_COMPRESSION);
 
-        // Add metadata file to zip
-        try {
-            if (fullCsv != null) {
-                addCsvMetadataFileToZip(fullCsv, zos);
-            }
-            addMetadataFileToZip(metadataMap, zos);
-
-        } catch (Exception e) {
-            String message = String.format(
-                    Locale.ROOT,
-                    "Exception adding metadata entry to ZIP with  %s illustrationMetadatas",
-                    imageMetadata == null ? "null" : imageMetadata.count());
-            log.warn(message, e);
-            throw new IOException(message, e);
-        }
-
         AtomicInteger count = new AtomicInteger();
         try {
             switch (exportFormat){
@@ -455,6 +439,23 @@ public class ImageExport {
             log.error("Error adding illustration to ZIP stream.");
             throw new IOException();
         }
+
+        // Add metadata file to zip
+        try {
+            if (fullCsv != null) {
+                addCsvMetadataFileToZip(fullCsv, zos);
+            }
+            addMetadataFileToZip(metadataMap, zos);
+
+        } catch (Exception e) {
+            String message = String.format(
+                    Locale.ROOT,
+                    "Exception adding metadata entry to ZIP with  %s illustrationMetadatas",
+                    imageMetadata == null ? "null" : imageMetadata.count());
+            log.warn(message, e);
+            throw new IOException(message, e);
+        }
+
         return count.intValue();
     }
 
