@@ -22,15 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.StreamingOutput;
-import java.awt.*;
-import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -404,6 +399,29 @@ public class ImageExportTest {
         assertEquals(correctQuery, query.getQuery());
     }
 
+    @Test
+    public void testUniqueIdHashset() throws IOException {
+        ImageExport export = ImageExport.getInstance();
+        String query = "politi";
+        int startYear = 1666;
+        int endYear = 1880;
+        int max = 5;
+
+        SolrQuery finalQuery = export.fullpageSolrQuery(query, startYear, endYear);
+        Stream<SolrDocument> docs = export.streamSolr(finalQuery);
+
+        HashSet<String> UUIDs = new HashSet<>();
+        docs
+                .filter(doc -> export.deduplicateUUIDS(doc, UUIDs))
+                .limit(5);
+
+
+        System.out.println(UUIDs.size());
+    }
+
+    private void printDoc(SolrDocument doc) {
+        log.info(String.valueOf(doc.getFieldValue("pageUUID")));
+    }
 
 
     // Helpers

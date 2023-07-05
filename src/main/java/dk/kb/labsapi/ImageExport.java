@@ -424,10 +424,11 @@ public class ImageExport {
 
         // Add metadata file to zip
         try {
-            addMetadataFileToZip(metadataMap, zos);
             if (fullCsv != null) {
                 addCsvMetadataFileToZip(fullCsv, zos);
             }
+            addMetadataFileToZip(metadataMap, zos);
+
         } catch (Exception e) {
             String message = String.format(
                     Locale.ROOT,
@@ -543,6 +544,7 @@ public class ImageExport {
      */
     public boolean deduplicateUUIDS(SolrDocument doc, HashSet<String> uniqueUUIDs){
         String pageUUID = doc.getFieldValue("pageUUID").toString();
+        log.info(pageUUID);
         return uniqueUUIDs.add(pageUUID);
     }
 }
