@@ -5,6 +5,14 @@ info:
   description: |
     ${project.description}
     
+    Currently this API delivers data from newspapers that are available at [mediestream](https://www2.statsbiblioteket.dk/mediestream/). Mediestream is a service providing 
+    access to danish digitized cultural heritage material including radio, tv and newspapers. This API gives access to newspapers which have been published more than 140 years 
+    ago. The newspaper collection contains more than 26 million newspaper pages in total and many of these pages are programmatically available through this API. 
+    
+    The newspaper data has been digitized by OCR-technology (Optical Character Recognition), which is a technique to convert printed text to machine readable characters. 
+    However, the technique achieves the best results on modern text types and can have difficulties reading gothic printet letters. When using this API some flaws in the data 
+    will occur, as gothic letters are present in most newspapers available through the API. 
+    
     If you have any ideas or experience any issues please report them at the projects github issues [page](https://github.com/kb-dk/kb-labs-api/issues).
     
     Data from the API is licensed under a [${data.license.name}](${data.license.url}). <br/>
