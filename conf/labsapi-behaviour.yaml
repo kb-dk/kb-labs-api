@@ -7,7 +7,7 @@ labsapi:
       collection: 'aviser.1.prod'
       # The filter will be applied to all aviser-requests for facets and export
       # No default
-      filter: 'recordBase:doms_aviser AND py:[* TO 1881]'
+      filter: 'recordBase:doms_aviser AND py:[* TO 1885]'
       # The maximum number of simultaneous connections to Solr.
       # Note that export is internally performed by paging so it is possible to have more than
       # maxConnection exports running at the same time as they will interleave their paging.
